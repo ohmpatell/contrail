@@ -217,3 +217,35 @@ fun Sparkline(
         drawCircle(color, radius = 3.dp.toPx(), center = Offset(size.width, y(values.last())))
     }
 }
+
+/** The one filled button style: an accent pill with a soft glow. [secondary] is the glass outline variant. */
+@Composable
+fun AccentButton(
+    text: String,
+    onClick: () -> Unit,
+    modifier: Modifier = Modifier,
+    icon: ImageVector? = null,
+    accent: Color = ContrailTheme.colors.accent,
+    secondary: Boolean = false,
+    enabled: Boolean = true,
+) {
+    val colors = ContrailTheme.colors
+    val interaction = remember { MutableInteractionSource() }
+    val fill = if (secondary) accent.copy(alpha = 0.12f) else accent
+    val content = if (secondary) accent else colors.onAccent
+    Row(
+        modifier = modifier
+            .pressScale(interaction)
+            .graphicsLayer { alpha = if (enabled) 1f else 0.4f }
+            .clip(ContrailTheme.shapes.chip)
+            .background(if (secondary) Brush.linearGradient(listOf(fill, fill)) else Brush.verticalGradient(listOf(accent, accent.copy(alpha = 0.82f))))
+            .border(ContrailTheme.sizes.hairline, accent.copy(alpha = if (secondary) 0.6f else 0.9f), ContrailTheme.shapes.chip)
+            .clickable(interaction, indication = null, enabled = enabled, role = Role.Button, onClick = onClick)
+            .padding(horizontal = ContrailTheme.spacing.xl, vertical = ContrailTheme.spacing.md),
+        verticalAlignment = Alignment.CenterVertically,
+        horizontalArrangement = Arrangement.spacedBy(ContrailTheme.spacing.sm, Alignment.CenterHorizontally),
+    ) {
+        if (icon != null) Icon(icon, null, tint = content, modifier = Modifier.size(ContrailTheme.sizes.iconSmall + 2.dp))
+        Text(text, style = ContrailTheme.type.title, color = content, maxLines = 1)
+    }
+}

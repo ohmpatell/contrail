@@ -30,11 +30,32 @@ data class AirportKey(val icao: String) : NavKey
 @Serializable
 data object SettingsKey : NavKey
 
+@Serializable
+data class TripKey(val id: Long) : NavKey
+
+@Serializable
+data class FlightKey(val segmentId: Long) : NavKey
+
+@Serializable
+data object ImportKey : NavKey
+
+/** Log or edit a lounge visit. [phase] is "Departure" or "Arrival"; [visitId] 0 means a new visit. */
+@Serializable
+data class LoungeKey(val segmentId: Long, val phase: String, val visitId: Long = 0) : NavKey
+
+@Serializable
+data class YearInReviewKey(val year: Int) : NavKey
+
 /** How any screen opens a detail page or goes back. */
 interface Navigator {
     fun openAircraft(hex: String)
     fun openAirport(icao: String)
     fun openSettings()
+    fun openTrip(id: Long)
+    fun openFlight(segmentId: Long)
+    fun openImport()
+    fun openLounge(segmentId: Long, phase: String, visitId: Long = 0)
+    fun openYearInReview(year: Int)
     fun back()
 }
 
@@ -43,6 +64,11 @@ val LocalNavigator = staticCompositionLocalOf<Navigator> {
         override fun openAircraft(hex: String) = Unit
         override fun openAirport(icao: String) = Unit
         override fun openSettings() = Unit
+        override fun openTrip(id: Long) = Unit
+        override fun openFlight(segmentId: Long) = Unit
+        override fun openImport() = Unit
+        override fun openLounge(segmentId: Long, phase: String, visitId: Long) = Unit
+        override fun openYearInReview(year: Int) = Unit
         override fun back() = Unit
     }
 }

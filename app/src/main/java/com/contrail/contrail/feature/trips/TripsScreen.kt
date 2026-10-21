@@ -1,175 +1,358 @@
 package com.contrail.contrail.feature.trips
 
-import androidx.compose.animation.core.Animatable
-import androidx.compose.animation.core.tween
+import androidx.compose.animation.AnimatedVisibility
+import androidx.compose.animation.core.animateFloatAsState
+import androidx.compose.animation.expandVertically
+import androidx.compose.animation.fadeIn
+import androidx.compose.animation.fadeOut
+import androidx.compose.animation.shrinkVertically
 import androidx.compose.foundation.Canvas
+import androidx.compose.foundation.background
+import androidx.compose.foundation.clickable
+import androidx.compose.foundation.interaction.MutableInteractionSource
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.Row
+import androidx.compose.foundation.layout.Spacer
+import androidx.compose.foundation.layout.WindowInsets
+import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
+import androidx.compose.foundation.layout.statusBars
+import androidx.compose.foundation.layout.windowInsetsPadding
+import androidx.compose.foundation.rememberScrollState
+import androidx.compose.foundation.verticalScroll
 import androidx.compose.material3.Icon
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
-import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.getValue
-import androidx.compose.runtime.mutableLongStateOf
+import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
+import androidx.compose.runtime.saveable.rememberSaveable
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.draw.clip
+import androidx.compose.ui.geometry.CornerRadius
 import androidx.compose.ui.geometry.Offset
+import androidx.compose.ui.geometry.Size
 import androidx.compose.ui.graphics.Brush
 import androidx.compose.ui.graphics.Color
-import androidx.compose.ui.graphics.Path
 import androidx.compose.ui.graphics.PathEffect
-import androidx.compose.ui.graphics.PathMeasure
-import androidx.compose.ui.graphics.StrokeCap
 import androidx.compose.ui.graphics.drawscope.Stroke
-import androidx.compose.ui.graphics.drawscope.rotate
-import androidx.compose.ui.graphics.drawscope.translate
-import androidx.compose.ui.graphics.vector.rememberVectorPainter
-import androidx.compose.ui.graphics.ColorFilter
-import androidx.compose.ui.geometry.Size
-import androidx.compose.foundation.layout.fillMaxSize
+import androidx.compose.ui.graphics.graphicsLayer
+import androidx.compose.ui.semantics.Role
+import androidx.compose.ui.text.style.TextAlign
+import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
+import androidx.hilt.lifecycle.viewmodel.compose.hiltViewModel
+import androidx.lifecycle.compose.collectAsStateWithLifecycle
+import com.contrail.contrail.core.data.reference.AircraftTypes
 import com.contrail.contrail.core.data.reference.Airlines
+import com.contrail.contrail.core.data.reference.Rarity
+import com.contrail.contrail.core.data.ticket.AirportInfo
+import com.contrail.contrail.core.data.trip.FlightSegment
+import com.contrail.contrail.core.data.trip.Trip
+import com.contrail.contrail.core.designsystem.component.AccentButton
 import com.contrail.contrail.core.designsystem.component.Eyebrow
+import com.contrail.contrail.core.designsystem.component.GlassIconButton
+import com.contrail.contrail.core.designsystem.component.GlassSurface
+import com.contrail.contrail.core.designsystem.component.LivePulse
+import com.contrail.contrail.core.designsystem.component.RarityBadge
+import com.contrail.contrail.core.designsystem.component.RiseIn
 import com.contrail.contrail.core.designsystem.component.SplitFlapText
-import com.contrail.contrail.core.designsystem.component.TabScaffold
-import com.contrail.contrail.core.designsystem.component.UpcomingFeature
+import com.contrail.contrail.core.designsystem.component.pressScale
 import com.contrail.contrail.core.designsystem.icon.ContrailIcons
+import com.contrail.contrail.core.designsystem.livery.Liveries
+import com.contrail.contrail.core.designsystem.livery.LiveryRender
+import com.contrail.contrail.core.designsystem.livery.Profiles
 import com.contrail.contrail.core.designsystem.theme.ContrailTheme
-import kotlinx.coroutines.delay
-import kotlin.math.atan2
+import com.contrail.contrail.core.designsystem.theme.RarityPalette
+import com.contrail.contrail.navigation.LocalNavigator
+import java.time.Duration
+import java.time.Instant
 
 @Composable
-fun TripsScreen(modifier: Modifier = Modifier) {
-    val etihad = Color(Airlines.byIcao("ETD")!!.accentArgb)
-    TabScaffold(
-        modifier = modifier,
-        title = "Trips",
-        subtitle = "Your next flights, with the aircraft itself as the hero.",
-        eyebrow = "Coming next",
-        accent = etihad,
-        features = listOf(
-            UpcomingFeature(ContrailIcons.Trips, "Glass flight cards", "Floating aircraft, a self-drawing route arc and a split-flap countdown to departure."),
-            UpcomingFeature(ContrailIcons.Plane, "Cockpit-visit planner", "Your aircraft's whole day: the inbound leg, the next leg, and the turnaround at your arrival."),
-            UpcomingFeature(ContrailIcons.Sparkle, "Boarding pass scan", "Add a flight from its barcode in seconds, even in airplane mode."),
-        ),
-    ) { BoardingPassPreview(etihad) }
+fun TripsRoute(viewModel: TripsViewModel = hiltViewModel()) {
+    val state by viewModel.state.collectAsStateWithLifecycle()
+    val nav = LocalNavigator.current
+    TripsScreen(state, onImport = nav::openImport, onTrip = nav::openTrip, onFlight = nav::openFlight)
 }
 
 @Composable
-private fun BoardingPassPreview(accent: Color) {
+fun TripsScreen(
+    state: TripsUiState,
+    onImport: () -> Unit,
+    onTrip: (Long) -> Unit,
+    onFlight: (Long) -> Unit,
+    modifier: Modifier = Modifier,
+    fixedNow: Instant? = null,
+) {
+    val spacing = ContrailTheme.spacing
+    val now by rememberNow(fixedNow)
+    Column(
+        modifier
+            .fillMaxSize()
+            .verticalScroll(rememberScrollState())
+            .windowInsetsPadding(WindowInsets.statusBars)
+            .padding(horizontal = spacing.gutter)
+            .padding(top = spacing.xl, bottom = spacing.navBarClearance),
+        verticalArrangement = Arrangement.spacedBy(spacing.lg),
+    ) {
+        Header(state, now, onImport)
+        when {
+            state.loading -> Unit
+            state.upcoming.isEmpty() && state.past.isEmpty() -> RiseIn(0) { EmptyTrips(onImport) }
+            else -> {
+                state.next?.let { (trip, seg) ->
+                    RiseIn(0) { NextFlightCard(trip, seg, state.places, now, onClick = { onFlight(seg.id) }) }
+                }
+                if (state.upcoming.isNotEmpty()) {
+                    Eyebrow("Upcoming trips", Modifier.padding(top = spacing.xs))
+                    state.upcoming.forEachIndexed { i, t ->
+                        RiseIn(i + 1) { TripCard(t, state.places, onClick = { onTrip(t.id) }) }
+                    }
+                }
+                if (state.past.isNotEmpty()) PastTrips(state.past, onTrip)
+            }
+        }
+    }
+}
+
+@Composable
+private fun Header(state: TripsUiState, now: Instant, onImport: () -> Unit) {
     val spacing = ContrailTheme.spacing
     val colors = ContrailTheme.colors
-    Column(Modifier.padding(spacing.xl), verticalArrangement = Arrangement.spacedBy(spacing.lg)) {
-        Row(verticalAlignment = Alignment.CenterVertically) {
-            Column(Modifier.weight(1f)) {
-                Eyebrow("Sample · Etihad", color = accent)
-                Text("EY 140", style = ContrailTheme.type.displaySmall, color = colors.textPrimary)
+    Row(verticalAlignment = Alignment.CenterVertically) {
+        Column(Modifier.weight(1f), verticalArrangement = Arrangement.spacedBy(spacing.sm)) {
+            val next = state.next?.second
+            val accent = airlineAccent(next?.airlineIata)
+            Row(verticalAlignment = Alignment.CenterVertically, horizontalArrangement = Arrangement.spacedBy(spacing.sm)) {
+                LivePulse(color = if (next != null) accent else colors.textTertiary)
+                Eyebrow(
+                    when {
+                        next == null -> "Your journeys"
+                        next.departure.isBefore(now) -> "In the air: ${next.designator}"
+                        else -> "Next flight in ${relative(Duration.between(now, next.departure))}"
+                    },
+                    color = if (next != null) accent else colors.textTertiary,
+                )
             }
-            Column(horizontalAlignment = Alignment.End) {
-                Eyebrow("Boeing 787-9")
-                Text("A6-BLT", style = ContrailTheme.type.numeric, color = colors.textSecondary)
-            }
+            Text("Trips", style = ContrailTheme.type.displayLarge, color = colors.textPrimary)
         }
-        Row(verticalAlignment = Alignment.CenterVertically, horizontalArrangement = Arrangement.spacedBy(spacing.md)) {
-            AirportFlap("YYZ", "Toronto")
-            RouteArc(accent, Modifier.weight(1f).height(56.dp))
-            AirportFlap("AUH", "Abu Dhabi", alignEnd = true)
-        }
-        Row(horizontalArrangement = Arrangement.spacedBy(spacing.xl)) {
-            CountdownBlock(accent)
-            Column(verticalArrangement = Arrangement.spacedBy(spacing.xs)) {
-                Eyebrow("Gate")
-                SplitFlapText("E73", style = ContrailTheme.type.flap)
-            }
-        }
+        GlassIconButton(ContrailIcons.Plus, "Add a trip", onImport)
     }
 }
 
+private fun relative(d: Duration): String = when {
+    d.toDays() >= 2 -> "${d.toDays()} days"
+    d.toHours() >= 1 -> "${d.toHours()} h ${d.toMinutesPart()} min"
+    else -> "${d.toMinutes().coerceAtLeast(0)} min"
+}
+
+/** The hero: your next flight, with its aircraft floating in its airline's livery. */
 @Composable
-private fun AirportFlap(code: String, city: String, alignEnd: Boolean = false) {
-    Column(
-        horizontalAlignment = if (alignEnd) Alignment.End else Alignment.Start,
-        verticalArrangement = Arrangement.spacedBy(ContrailTheme.spacing.xs),
+private fun NextFlightCard(trip: Trip, seg: FlightSegment, places: Map<String, AirportInfo>, now: Instant, onClick: () -> Unit) {
+    val colors = ContrailTheme.colors
+    val spacing = ContrailTheme.spacing
+    val accent = airlineAccent(seg.airlineIata)
+    val airline = Airlines.byIata(seg.airlineIata)
+    val rarity = AircraftTypes.rarityFor(seg.aircraftType, airline)
+    val interaction = remember { MutableInteractionSource() }
+    val airborne = seg.departure.isBefore(now)
+    GlassSurface(
+        Modifier
+            .fillMaxWidth()
+            .pressScale(interaction)
+            .clickable(interaction, indication = null, role = Role.Button, onClick = onClick),
+        glow = accent.copy(alpha = 0.75f),
     ) {
-        SplitFlapText(code, style = ContrailTheme.type.flap, haptics = false)
-        Text(city, style = ContrailTheme.type.bodySmall, color = ContrailTheme.colors.textTertiary)
-    }
-}
-
-@Composable
-private fun CountdownBlock(accent: Color) {
-    // A gently ticking countdown so the preview feels alive.
-    var seconds by remember { mutableLongStateOf(3L * 86_400 + 14 * 3_600 + 22 * 60 + 5) }
-    val motion = ContrailTheme.motion
-    LaunchedEffect(motion.ambientEnabled) {
-        while (motion.ambientEnabled) {
-            delay(1_000)
-            seconds -= 1
-        }
-    }
-    val d = seconds / 86_400
-    val h = (seconds % 86_400) / 3_600
-    val m = (seconds % 3_600) / 60
-    val s = seconds % 60
-    Column(verticalArrangement = Arrangement.spacedBy(ContrailTheme.spacing.xs)) {
-        Eyebrow("Departs in")
-        Text(
-            "%dd %02d:%02d:%02d".format(d, h, m, s),
-            style = ContrailTheme.type.numericLarge,
-            color = accent,
-        )
-    }
-}
-
-/** A great-circle style arc that draws itself, with a plane riding the tip. */
-@Composable
-private fun RouteArc(accent: Color, modifier: Modifier) {
-    val motion = ContrailTheme.motion
-    val progress = remember { Animatable(if (motion.reduced) 1f else 0f) }
-    LaunchedEffect(Unit) {
-        if (!motion.reduced) {
-            delay(350)
-            progress.animateTo(1f, tween(1400))
-        }
-    }
-    val hairline = ContrailTheme.colors.hairline
-    val plane = rememberVectorPainter(ContrailIcons.Plane)
-    Box(modifier) {
-        Canvas(Modifier.fillMaxSize()) {
-            val path = Path().apply {
-                moveTo(0f, size.height * 0.8f)
-                quadraticTo(size.width / 2f, -size.height * 0.45f, size.width, size.height * 0.8f)
-            }
-            drawPath(path, hairline, style = Stroke(1.5.dp.toPx(), pathEffect = PathEffect.dashPathEffect(floatArrayOf(4.dp.toPx(), 5.dp.toPx()))))
-            val measure = PathMeasure().apply { setPath(path, false) }
-            val drawn = Path()
-            val length = measure.length * progress.value
-            measure.getSegment(0f, length, drawn, true)
-            drawPath(
-                drawn,
-                Brush.horizontalGradient(listOf(accent.copy(alpha = 0.2f), accent)),
-                style = Stroke(2.5.dp.toPx(), cap = StrokeCap.Round),
-            )
-            val tip = measure.getPosition(length.coerceAtLeast(0.01f))
-            val tangent = measure.getTangent(length.coerceAtLeast(0.01f))
-            val angle = Math.toDegrees(atan2(tangent.y, tangent.x).toDouble()).toFloat() + 90f
-            drawCircle(Brush.radialGradient(listOf(accent.copy(alpha = 0.5f), Color.Transparent), center = tip, radius = 16.dp.toPx()), radius = 16.dp.toPx(), center = tip)
-            val s = 18.dp.toPx()
-            rotate(angle, pivot = tip) {
-                translate(tip.x - s / 2, tip.y - s / 2) {
-                    with(plane) { draw(Size(s, s), colorFilter = ColorFilter.tint(Color.White)) }
+        Box(Modifier.matchParentSize().background(Brush.verticalGradient(listOf(accent.copy(alpha = 0.18f), Color.Transparent))))
+        Column(Modifier.padding(spacing.xl), verticalArrangement = Arrangement.spacedBy(spacing.md)) {
+            Row(verticalAlignment = Alignment.Top) {
+                Column(Modifier.weight(1f)) {
+                    Eyebrow(airline?.name ?: seg.airlineIata, color = accent)
+                    Text(seg.designator, style = ContrailTheme.type.displaySmall, color = colors.textPrimary)
+                }
+                Column(horizontalAlignment = Alignment.End, verticalArrangement = Arrangement.spacedBy(spacing.xs)) {
+                    if (rarity < Rarity.Common) {
+                        RarityBadge(rarity.label, when (rarity) { Rarity.Legendary -> RarityPalette.Legendary; Rarity.Rare -> RarityPalette.Rare; else -> RarityPalette.Uncommon })
+                    }
+                    Text(AircraftTypes.nameFor(seg.aircraftType) ?: "Aircraft to be confirmed", style = ContrailTheme.type.bodySmall, color = colors.textSecondary)
+                    seg.tail?.let { Text(it, style = ContrailTheme.type.numericSmall, color = colors.textTertiary) }
                 }
             }
-            drawCircle(accent, radius = 3.dp.toPx(), center = Offset(0f, size.height * 0.8f))
-            drawCircle(accent.copy(alpha = 0.5f), radius = 3.dp.toPx(), center = Offset(size.width, size.height * 0.8f))
+            LiveryRender(
+                Profiles.forType(seg.aircraftType ?: "B789"),
+                Liveries.forAirline(airline?.icao, accentArgb = airline?.accentArgb),
+                Modifier.fillMaxWidth().padding(horizontal = spacing.md),
+            )
+            Row(verticalAlignment = Alignment.CenterVertically, horizontalArrangement = Arrangement.spacedBy(spacing.md)) {
+                AirportFlap(seg.origin, TripFormat.city(seg.origin, places), time = TripFormat.time(seg.departureLocal))
+                val progress = if (airborne) {
+                    (Duration.between(seg.departure, now).seconds.toFloat() / seg.duration.seconds.coerceAtLeast(1)).coerceIn(0f, 1f)
+                } else {
+                    null
+                }
+                RouteArc(accent, Modifier.weight(1f).height(56.dp), progress = progress)
+                AirportFlap(seg.destination, TripFormat.city(seg.destination, places), alignEnd = true, time = TripFormat.time(seg.arrivalLocal) + (TripFormat.dayShift(seg) ?: ""))
+            }
+            Row(verticalAlignment = Alignment.Bottom) {
+                Column(Modifier.weight(1f), verticalArrangement = Arrangement.spacedBy(spacing.xs)) {
+                    Eyebrow(if (airborne) "Lands in" else "Departs in")
+                    val target = if (airborne) seg.arrival else seg.departure
+                    Text(TripFormat.countdown(Duration.between(now, target)), style = ContrailTheme.type.numericLarge, color = accent)
+                }
+                Column(horizontalAlignment = Alignment.End, verticalArrangement = Arrangement.spacedBy(spacing.xs)) {
+                    Eyebrow(TripFormat.day(seg.departureLocal))
+                    Row(horizontalArrangement = Arrangement.spacedBy(spacing.md)) {
+                        seg.departureTerminal?.let { MiniFlap("T", it) }
+                        seg.gate?.let { MiniFlap("Gate", it) }
+                        seg.seat?.let { MiniFlap("Seat", it) }
+                    }
+                }
+            }
+            if (trip.segments.size > 1) {
+                Text(
+                    "${trip.title} · flight ${seg.ordinal + 1} of ${trip.segments.size}",
+                    style = ContrailTheme.type.bodySmall,
+                    color = colors.textTertiary,
+                )
+            }
+        }
+    }
+}
+
+@Composable
+private fun MiniFlap(label: String, value: String) {
+    Column(horizontalAlignment = Alignment.End, verticalArrangement = Arrangement.spacedBy(ContrailTheme.spacing.xxs)) {
+        Eyebrow(label)
+        SplitFlapText(value, style = ContrailTheme.type.numeric)
+    }
+}
+
+/** A trip as a journey: its flights stacked, with each connection between them. */
+@Composable
+fun TripCard(trip: Trip, places: Map<String, AirportInfo>, onClick: () -> Unit, modifier: Modifier = Modifier) {
+    val colors = ContrailTheme.colors
+    val spacing = ContrailTheme.spacing
+    val accent = airlineAccent(trip.first.airlineIata)
+    val interaction = remember { MutableInteractionSource() }
+    GlassSurface(
+        modifier
+            .fillMaxWidth()
+            .pressScale(interaction)
+            .clickable(interaction, indication = null, role = Role.Button, onClick = onClick),
+        shape = ContrailTheme.shapes.medium,
+    ) {
+        Column(Modifier.padding(spacing.lg), verticalArrangement = Arrangement.spacedBy(spacing.md)) {
+            Row(verticalAlignment = Alignment.CenterVertically) {
+                Column(Modifier.weight(1f)) {
+                    Text(trip.title, style = ContrailTheme.type.headline, color = colors.textPrimary, maxLines = 1, overflow = TextOverflow.Ellipsis)
+                    Text(
+                        "${TripFormat.range(trip)} · ${trip.segments.size} flight${if (trip.segments.size == 1) "" else "s"}",
+                        style = ContrailTheme.type.bodySmall,
+                        color = colors.textTertiary,
+                    )
+                }
+                trip.pnr?.let { Tag(it, accent) }
+            }
+            trip.segments.forEach { s ->
+                SegmentRow(s)
+                trip.connectionAfter(s.id)?.let { ConnectionPill(it, places) }
+            }
+        }
+    }
+}
+
+@Composable
+private fun PastTrips(past: List<Trip>, onTrip: (Long) -> Unit) {
+    val colors = ContrailTheme.colors
+    val spacing = ContrailTheme.spacing
+    var open by rememberSaveable { mutableStateOf(false) }
+    val turn by animateFloatAsState(if (open) 90f else 0f, ContrailTheme.motion.snappy(), label = "chevron")
+    Row(
+        Modifier
+            .fillMaxWidth()
+            .clip(ContrailTheme.shapes.small)
+            .clickable(role = Role.Button) { open = !open }
+            .padding(vertical = spacing.sm),
+        verticalAlignment = Alignment.CenterVertically,
+    ) {
+        Eyebrow("Past trips · ${past.size}", Modifier.weight(1f))
+        Icon(ContrailIcons.ChevronRight, if (open) "Hide" else "Show", tint = colors.textTertiary, modifier = Modifier.size(18.dp).graphicsLayer { rotationZ = turn })
+    }
+    AnimatedVisibility(open, enter = expandVertically() + fadeIn(), exit = shrinkVertically() + fadeOut()) {
+        Column(verticalArrangement = Arrangement.spacedBy(spacing.sm)) {
+            past.forEach { t ->
+                GlassSurface(
+                    Modifier.fillMaxWidth().clickable(role = Role.Button) { onTrip(t.id) },
+                    shape = ContrailTheme.shapes.small,
+                ) {
+                    Row(Modifier.padding(spacing.md), verticalAlignment = Alignment.CenterVertically) {
+                        Column(Modifier.weight(1f)) {
+                            Text(t.title, style = ContrailTheme.type.title, color = colors.textSecondary)
+                            Text(
+                                (listOf(t.first.origin) + t.segments.map { it.destination }).joinToString(" → "),
+                                style = ContrailTheme.type.numericSmall,
+                                color = colors.textTertiary,
+                            )
+                        }
+                        Text(TripFormat.range(t), style = ContrailTheme.type.bodySmall, color = colors.textTertiary)
+                    }
+                }
+            }
+        }
+    }
+}
+
+/** No trips yet: a blank boarding pass waiting to be filled in. */
+@Composable
+private fun EmptyTrips(onImport: () -> Unit) {
+    val colors = ContrailTheme.colors
+    val spacing = ContrailTheme.spacing
+    val accent = colors.accent
+    GlassSurface(Modifier.fillMaxWidth(), glow = accent.copy(alpha = 0.6f)) {
+        Column(Modifier.padding(spacing.xl), verticalArrangement = Arrangement.spacedBy(spacing.lg), horizontalAlignment = Alignment.CenterHorizontally) {
+            Box(Modifier.fillMaxWidth().height(150.dp), contentAlignment = Alignment.Center) {
+                Canvas(Modifier.fillMaxSize()) {
+                    val w = size.width * 0.86f
+                    val h = size.height * 0.86f
+                    val tl = Offset((size.width - w) / 2, (size.height - h) / 2)
+                    val dash = PathEffect.dashPathEffect(floatArrayOf(6.dp.toPx(), 6.dp.toPx()))
+                    drawRoundRect(accent.copy(alpha = 0.08f), tl, Size(w, h), CornerRadius(18.dp.toPx()))
+                    drawRoundRect(accent.copy(alpha = 0.5f), tl, Size(w, h), CornerRadius(18.dp.toPx()), style = Stroke(1.5.dp.toPx(), pathEffect = dash))
+                    val stubX = tl.x + w * 0.72f
+                    drawLine(accent.copy(alpha = 0.4f), Offset(stubX, tl.y + 10.dp.toPx()), Offset(stubX, tl.y + h - 10.dp.toPx()), 1.5.dp.toPx(), pathEffect = dash)
+                    drawCircle(colors.canvas, 10.dp.toPx(), Offset(stubX, tl.y))
+                    drawCircle(colors.canvas, 10.dp.toPx(), Offset(stubX, tl.y + h))
+                }
+                Row(horizontalArrangement = Arrangement.spacedBy(spacing.md), verticalAlignment = Alignment.CenterVertically, modifier = Modifier.padding(end = 60.dp)) {
+                    SplitFlapText("YYZ", style = ContrailTheme.type.flap, color = colors.textSecondary)
+                    Icon(ContrailIcons.Plane, null, tint = accent, modifier = Modifier.size(20.dp).graphicsLayer { rotationZ = 90f })
+                    SplitFlapText("???", style = ContrailTheme.type.flap, color = colors.textSecondary)
+                }
+            }
+            Text("Where to next?", style = ContrailTheme.type.displaySmall, color = colors.textPrimary)
+            Text(
+                "Import a ticket and Contrail fills in every flight, connection, seat and terminal. It all stays on your phone.",
+                style = ContrailTheme.type.body,
+                color = colors.textSecondary,
+                textAlign = TextAlign.Center,
+            )
+            AccentButton("Import a ticket", onImport, icon = ContrailIcons.Plus)
+            Row(horizontalArrangement = Arrangement.spacedBy(spacing.sm), verticalAlignment = Alignment.CenterVertically) {
+                Icon(ContrailIcons.Sparkle, null, tint = colors.textTertiary, modifier = Modifier.size(14.dp))
+                Text(
+                    "Or share a PDF or boarding pass screenshot to Contrail from any app.",
+                    style = ContrailTheme.type.bodySmall,
+                    color = colors.textTertiary,
+                )
+            }
+            Spacer(Modifier.height(spacing.xxs))
         }
     }
 }

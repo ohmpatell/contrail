@@ -13,7 +13,7 @@ enum class TopLevelDestination(val label: String, val icon: () -> ImageVector) {
     ;
 
     companion object {
-        /** Radar is the start tab until Trips has real content (see DECISIONS.md). */
-        val Start = Radar
+        /** Trips is home (DESIGN.md); it opened on Radar until Trips had content. */
+        val Start = Trips
     }
 }

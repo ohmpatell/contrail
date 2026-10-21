@@ -183,6 +183,82 @@ object ContrailIcons {
         }.build()
     }
 
+    val Plus: ImageVector by lazy { strokeIcon("Plus", "M12 5v14M5 12h14") }
+
+    val Camera: ImageVector by lazy {
+        strokeIcon(
+            "Camera",
+            "M4 8.5A1.5 1.5 0 0 1 5.5 7h2.3l1.4-2h5.6l1.4 2h2.3A1.5 1.5 0 0 1 20 8.5v9a1.5 1.5 0 0 1-1.5 1.5h-13A1.5 1.5 0 0 1 4 17.5z",
+            "M12 9.5a3.5 3.5 0 1 1 0 7 3.5 3.5 0 0 1 0-7z",
+        )
+    }
+
+    val Document: ImageVector by lazy {
+        strokeIcon("Document", "M6.5 3.5H14l4 4v12a1 1 0 0 1-1 1H6.5a1 1 0 0 1-1-1v-15a1 1 0 0 1 1-1z", "M13.5 3.5V8H18", "M8.5 12.5h7M8.5 16h5")
+    }
+
+    val Image: ImageVector by lazy {
+        strokeIcon(
+            "Image",
+            "M4.5 5h15a1 1 0 0 1 1 1v12a1 1 0 0 1-1 1h-15a1 1 0 0 1-1-1V6a1 1 0 0 1 1-1z",
+            "M3.5 16l5-5 4 4 2.5-2.5 5.5 5",
+            filled = listOf("M15.5 7.8a1.4 1.4 0 1 1 0 2.8 1.4 1.4 0 0 1 0-2.8z"),
+        )
+    }
+
+    val Paste: ImageVector by lazy {
+        strokeIcon(
+            "Paste",
+            "M8.5 5H7a1.5 1.5 0 0 0-1.5 1.5v12A1.5 1.5 0 0 0 7 20h10a1.5 1.5 0 0 0 1.5-1.5v-12A1.5 1.5 0 0 0 17 5h-1.5",
+            "M9.5 3.5h5a1 1 0 0 1 1 1v1a1 1 0 0 1-1 1h-5a1 1 0 0 1-1-1v-1a1 1 0 0 1 1-1z",
+            "M9 11h6M9 14.5h4",
+        )
+    }
+
+    val Scan: ImageVector by lazy {
+        strokeIcon(
+            "Scan",
+            "M4 8V5.5A1.5 1.5 0 0 1 5.5 4H8M16 4h2.5A1.5 1.5 0 0 1 20 5.5V8M20 16v2.5a1.5 1.5 0 0 1-1.5 1.5H16M8 20H5.5A1.5 1.5 0 0 1 4 18.5V16",
+            "M8 8.5v7M11 8.5v7M13.5 8.5v7M16 8.5v7",
+        )
+    }
+
+    val Lounge: ImageVector by lazy {
+        strokeIcon(
+            "Lounge",
+            "M6 11V8.5A2.5 2.5 0 0 1 8.5 6h7A2.5 2.5 0 0 1 18 8.5V11",
+            "M4 11.5a1.5 1.5 0 0 1 3 0V14h10v-2.5a1.5 1.5 0 0 1 3 0V17a1 1 0 0 1-1 1H5a1 1 0 0 1-1-1z",
+            "M6.5 18v1.5M17.5 18v1.5",
+        )
+    }
+
+    val Edit: ImageVector by lazy { strokeIcon("Edit", "M15.5 4.5l4 4L9 19H5v-4z", "M13.5 6.5l4 4") }
+
+    val Trash: ImageVector by lazy {
+        strokeIcon("Trash", "M4.5 7h15", "M9.5 7V5a1 1 0 0 1 1-1h3a1 1 0 0 1 1 1v2", "M6.5 7l1 12a1 1 0 0 0 1 1h7a1 1 0 0 0 1-1l1-12", "M10 11v5M14 11v5")
+    }
+
+    val Bed: ImageVector by lazy {
+        strokeIcon("Bed", "M3.5 18V6.5", "M3.5 14h17v4", "M20.5 14v-2.5A2.5 2.5 0 0 0 18 9h-7.5v5", "M6.8 9.2a1.8 1.8 0 1 1 0 3.6 1.8 1.8 0 0 1 0-3.6z")
+    }
+
+    val Moon: ImageVector by lazy { strokeIcon("Moon", "M19 14.5A7.5 7.5 0 1 1 9.5 5a6 6 0 0 0 9.5 9.5z") }
+
+    val Swap: ImageVector by lazy { strokeIcon("Swap", "M6 7.5h12l-3-3", "M18 16.5H6l3 3") }
+
+    val Globe: ImageVector by lazy {
+        strokeIcon(
+            "Globe",
+            "M12 3.5a8.5 8.5 0 1 1 0 17 8.5 8.5 0 0 1 0-17z",
+            "M3.5 12h17",
+            "M12 3.5c2.4 2.3 3.6 5.1 3.6 8.5s-1.2 6.2-3.6 8.5c-2.4-2.3-3.6-5.1-3.6-8.5s1.2-6.2 3.6-8.5z",
+        )
+    }
+
+    val Calendar: ImageVector by lazy {
+        strokeIcon("Calendar", "M5 6h14a1 1 0 0 1 1 1v12a1 1 0 0 1-1 1H5a1 1 0 0 1-1-1V7a1 1 0 0 1 1-1z", "M4 10h16", "M8 4v3M16 4v3")
+    }
+
     private fun strokeIcon(
         name: String,
         vararg strokes: String,
