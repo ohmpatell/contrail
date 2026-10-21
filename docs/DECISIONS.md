@@ -111,3 +111,16 @@ Checked against the OpenAPI spec, the terms (Sept 3, 2026) and live probes with 
 | --- | --- |
 | Navigation 3 (`navigation3-runtime`, `navigation3-ui`, `lifecycle-viewmodel-navigation3`) | Detail pages with per-entry view models |
 | ML Kit Subject Segmentation (Play services, beta) | On-device photo cutouts, as DESIGN.md specifies |
+
+## Stage 3: trips, ticket import, lounges, flight detail, Passport (Oct 21, 2026)
+
+### Plan changes you asked for
+- **Trips are journeys of segments.** A trip ("Toronto to Manila") holds one or more flights, with a connection between each pair. DESIGN.md's Trips section was rewritten to match.
+- **Connection badges:** tight under 90 minutes, comfortable 90 minutes to 4 hours, long over 4 hours. 90 minutes is the usual minimum for an international self-check connection, and over 4 hours you'd plan around the wait.
+- **Layover vs stopover auto-guess:** over 24 hours, or overnight with a hotel, is a stopover. "Overnight" means the connection spans 01:00–05:00 local time at the connecting airport. A hotel is flagged when you tick it, or when the imported text mentions a hotel or a stopover package at that city. One tap on the badge overrides the guess, and the override is stored.
+- **Passport: visited vs transited.** Layover airports count as transited only. Origins, final destinations and stopover cities count as visited.
+- **FlightAware AeroAPI is removed.** You asked for no paid or card-required services at all, and AeroAPI's personal tier needs a payment card on file even for the free monthly credit. It's gone from DESIGN.md, CLAUDE.md and the plan; it never reached the code or Settings. Its jobs are covered by free sources: times from your ticket, your flight live on adsb.fi/adsb.lol by ICAO callsign, a hand-entered tail number, and OpenSky history for earlier legs and the 7-day turnaround. AviationStack (a last-resort status source that was never built) is dropped from the table too, since it no longer has a no-card free plan worth relying on.
+- **Start tab is Trips again**, now that it has real content.
+
+### Lounges
+- **Source: a curated list plus OpenStreetMap.** No free lounge database has an API (LoungeBuddy, Priority Pass and LoungeReview are all closed). OSM tags lounges as `amenity=lounge`; a live check found 15 named lounges at HKG and 13 at MNL but only one at YYZ, so OSM alone isn't enough. The curated list covers YYZ, AUH, HKG, MNL, DEL and BOM, OSM fills in everywhere else (credited under ODbL), and lounges you add by hand are stored and suggested next time.

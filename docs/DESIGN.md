@@ -98,30 +98,58 @@ Contrail has five tabs: Trips, Radar, Sky, Airports and Passport. Aircraft and a
 
 ### Trips (home)
 
-- Upcoming flights as large glass cards: floating aircraft, route arc, split-flap countdown to departure.
-- Add a flight by number and date, or scan the boarding pass barcode (works offline).
-- Each card shows type, tail number once assigned, terminal, gate when known, and the aircraft's rarity badge.
+A **trip** is a journey ("Toronto to Manila") made of one or more flight **segments**. The Trips tab opens on your next trip.
+
+- The next flight is a large glass card: floating aircraft, self-drawing route arc, split-flap airport codes and a countdown to departure.
+- Each trip is a glass card with its segments stacked as a journey. Each segment shows flight number, route, local times, type, tail number once known, terminal, seat, cabin and the aircraft's rarity badge.
+- **Connections** sit between segments and show:
+  - the connection time, with a **tight** (under 90 minutes), **comfortable** (90 minutes to 4 hours) or **long** (over 4 hours) badge;
+  - any terminal change ("T1 → T3");
+  - whether it's a **layover** (you stay airside, e.g. Hong Kong on the way to Manila) or a **stopover** (you leave the airport, e.g. Abu Dhabi on the way to India).
+- **Layover or stopover is guessed automatically:** over 24 hours, or an overnight connection with a hotel, is a stopover; everything else is a layover. One tap on the badge switches it, and the choice sticks.
+- **A stopover gets its own mini-section:** arrival and departure times, the city's live local time and weather, and a countdown to the next flight.
+- Add a trip by importing a ticket (below) or by entering a flight by number and date. Typing a flight number fills in its usual route from the free callsign database; the times come from you.
+
+### Ticket import
+
+Import fills in a whole trip from whatever you have, entirely on the phone.
+
+- **Sources:** a PDF e-ticket or itinerary, a screenshot or photo of a boarding pass, a live barcode scan, or pasted confirmation-email text.
+- **Share to Contrail:** Contrail appears in the Android share sheet for PDFs, images and text, so you can share an e-ticket straight from email or the Etihad or Cathay Pacific app.
+- **On-device parsing, no network:**
+  - Boarding-pass barcodes (IATA BCBP) are read with ML Kit Barcode Scanning.
+  - Text in screenshots, photos and PDFs is read with ML Kit Text Recognition. PDFs are rendered page by page with Android's `PdfRenderer` and scanned for both barcodes and text.
+- **What it extracts:** booking reference (PNR), every segment (flight number, date, route, departure and arrival times, terminals), cabin, seat, fare class, aircraft type and passenger name. Segments are grouped into one trip, and connections are classified as above.
+- **A review screen always comes first.** It shows everything that was found, flags anything missing or unsure, and lets you fix any field before saving.
+- The parsers are tested against realistic, made-up sample tickets in Etihad, Cathay Pacific and Air Canada formats.
+
+### Lounges
+
+- **Log a lounge visit** on any segment or connection: lounge name, airport, terminal, date, time in and out, how you got in (cabin, status, card or paid), a 1 to 5 rating and a short note.
+- **Suggestions** for the airport and terminal come from a curated list for your main airports (YYZ, AUH, HKG, MNL, DEL, BOM), plus OpenStreetMap lounges (`amenity=lounge`, credited under ODbL) everywhere else. There is no free lounge database with an API, and OSM coverage is uneven (Hong Kong is well mapped, Toronto has a single lounge), so the curated list leads and OSM fills in.
+- **Add a lounge by hand** when it isn't listed. Contrail remembers it for next time at that airport.
+- Lounge visits feed the Passport's Lounges section.
 
 ### Flight detail
 
 - Hero: the floating aircraft over a map with the great-circle route drawing itself.
-- Timeline: scheduled, estimated and actual times for gate out, takeoff, landing and gate in.
-- Live map once airborne, with altitude, speed and a progress arc.
-- Aircraft card: registration, type, age if known, engines, seat map link, and how many times you've flown on this exact tail.
+- Timeline: gate out, takeoff, landing and gate in. Scheduled times come from your ticket. Once the flight is seen on ADS-B, takeoff and landing get live estimates, each clearly labelled "estimated".
+- Live map once airborne, with altitude, speed and a progress arc. The flight is found on adsb.fi (adsb.lol as backup) by its ICAO callsign: the ticket's IATA flight number is converted, e.g. EY 141 → ETD141.
+- Aircraft card: registration, type, rarity, seat map link, and how many times you've flown on this exact tail. Until you enter a tail number, the card shows the type from the ticket.
+- Lounge visits for this flight, and a button to log one.
 
 ### Aircraft rotation (the cockpit-visit planner)
 
-This panel shows your aircraft's whole day so you can judge whether the crew will have time for a cockpit visit after landing.
+This panel shows your aircraft's whole day so you can judge whether the crew will have time for a cockpit visit after landing. It's built only from free sources, and every estimate is labelled "estimated".
 
-- **Where it's coming from:** the inbound flight that brings your aircraft, live on a mini-map with its ETA. A late inbound usually means a late departure for you.
-- **Where it went before that:** the earlier legs of the day, back to its overnight stop.
-- **Where it goes after you:** the next leg after you get off, with its scheduled departure time.
-- **Turnaround at your arrival:** next leg's departure minus your scheduled arrival, shown as a big number with a badge:
-  - **Relaxed:** 2 hours or more, or the aircraft overnights at your destination. Good time to ask.
+- **Tail number:** you can enter it by hand (from the airline app or the gate). Until then, the panel shows the type from the ticket and "aircraft not assigned yet".
+- **Where it's coming from:** with a tail, Contrail finds the aircraft live on adsb.fi or adsb.lol. If its current flight is heading to your departure airport, it's shown as your inbound, live on a mini-map with an estimated arrival time. A late inbound usually means a late departure for you.
+- **Where it went before that:** its earlier legs, from OpenSky's flights-by-aircraft history (free account).
+- **Turnaround at your arrival:** Contrail looks up the same flight number on each of the last 7 days on OpenSky, measures how long that day's aircraft stayed on the ground at your destination before its next departure, and shows the typical turnaround as a big number with a badge:
+  - **Relaxed:** 2 hours or more, or the aircraft usually overnights at your destination. Good time to ask.
   - **Maybe:** 60 to 120 minutes. Ask politely, accept a no.
   - **Tight:** under 60 minutes. Don't ask.
   - These thresholds are defaults; you can change them in Settings.
-- Airlines often assign the tail number only a day or so before departure. Until then, the panel shows "aircraft not assigned yet" and checks again on its own.
 - Long-haul widebodies like Etihad's and Cathay's often fly a simple out-and-back, so their turnarounds are usually long. Short-haul narrowbodies are where the tight turns happen.
 
 ### Radar
@@ -164,12 +192,14 @@ This panel shows your aircraft's whole day so you can judge whether the crew wil
 
 ### Passport
 
-- Lifetime globe of every route flown, drawn as glowing arcs.
+- Lifetime globe of every route flown, drawn as glowing arcs on a dotted globe you can spin.
 - Totals: flights, distance, hours aloft, airports, countries, airlines, aircraft types and individual tails.
+- **Visited and transited are separate.** Airports where you only made a layover count as "transited". Origins, destinations and stopover cities count as "visited".
 - Records: longest flight, highest-rarity aircraft, most-flown route, most-flown tail.
 - **Collection:** a grid of every aircraft type as livery renders, greyed out until you fly on it. Rare types unlock with the holographic card.
+- **Lounges:** lounges visited, total hours in lounges, favourites, average ratings, and a "lounge collection" grid.
 - Year in Review: a swipeable story of the year's flying.
-- Import past flights by boarding pass scan or by flight number and date.
+- Import past flights the same way as trips: ticket import or by flight number and date.
 
 ### Airports
 
@@ -184,35 +214,33 @@ This panel shows your aircraft's whole day so you can judge whether the crew wil
 
 ## Data sources and free budget
 
-Everything except trip details comes from free, keyless community sources. Your own flights and aircraft rotations use FlightAware AeroAPI's personal tier, which includes [up to $5 of free queries a month](https://flightaware.com/commercial/aeroapi/) ($10 if you run an ADS-B feeder). The app tracks spend and stops at a cap you set, so it never bills you.
+Everything comes from free sources, and nothing needs a payment card. Your flights' schedules come from your own tickets; live tracking, inbound aircraft and rotation history come from free community ADS-B feeds and a free OpenSky account. No paid or card-required service is used anywhere (FlightAware AeroAPI was dropped in Stage 3 for that reason).
 
 | Source | Used for | Free allowance | Key |
 | --- | --- | --- | --- |
-| [adsb.lol](https://api.adsb.lol/) | Radar, Sky, proximity alerts | Free, open data (ODbL), throttles heavy bursts | None |
-| [adsb.fi](https://github.com/adsbfi/opendata) | Backup live positions | Free open data for personal use, 1 request per second | None |
+| [adsb.fi](https://github.com/adsbfi/opendata) | Radar, Sky, your flight live by callsign, your aircraft by registration | Free open data for personal use, 1 request per second | None |
+| [adsb.lol](https://api.adsb.lol/) | Backup live positions and callsign lookups | Free, open data (ODbL), 500 requests a day | None |
 | [airplanes.live](https://airplanes.live/) | Optional third live provider | Now requires approval by email | Approval |
-| [OpenSky Network](https://openskynetwork.github.io/opensky-api/rest.html) | Backup positions, recent airport flights, flight tracks | 400 credits a day anonymous, 4,000 with a free account | Free account |
-| [adsbdb](https://www.adsbdb.com/) | Callsign → route, hex → registration and type | Free | None |
+| [OpenSky Network](https://openskynetwork.github.io/opensky-api/rest.html) | Flight tracks, an aircraft's earlier legs, 7-day turnaround history for your flight number | 400 credits a day anonymous, 4,000 with a free account | Free account (OAuth client) |
+| [adsbdb](https://www.adsbdb.com/) | Callsign → route, registration → transponder hex and type | Free | None |
 | [Planespotters photo API](https://planespotters.net/photo/api) | Aircraft photos | Free, credit and link back required | None |
-| [FlightAware AeroAPI](https://flightaware.com/commercial/aeroapi/) (Personal) | Your flights, tail assignment, inbound and next legs | Up to $5 of queries a month free | Free key |
-| [AviationStack](https://aviationstack.com/pricing) | Last-resort flight status | 100 requests a month | Free key |
 | [aviationweather.gov](https://aviationweather.gov/data/api/) | METAR and TAF | Free | None |
 | [OurAirports](https://ourairports.com/data/) | Airports, runways, frequencies (bundled in the app) | Public domain | None |
 | [logostream](https://airline.logostream.dev/) (Community) | Airline logos and tail art, airline data, routes, airport stats (timezone, airlines served, destinations) | 20,000 requests a month; logos can't be cached; "Logos by logostream" attribution required. Liveries, airport logos, airport data and news need a paid plan | Free key |
-| [OpenStreetMap Overpass](https://overpass-api.de/) | Terminal and runway geometry for airport diagrams | Free, fair use, ODbL attribution | None |
+| [OpenStreetMap Overpass](https://overpass-api.de/) | Terminal and runway geometry for airport diagrams, lounge suggestions | Free, fair use, ODbL attribution | None |
+| Google ML Kit (on device) | Boarding-pass barcodes, text in tickets and screenshots, photo cutouts | Free, runs offline | None |
+| [Natural Earth](https://www.naturalearthdata.com/) (bundled) | Land outline for the Passport globe | Public domain | None |
 | Aviation RSS (Simple Flying, AeroTime, FlightGlobal, AirlineGeeks, Aviation Week, Google News) | News feed, filtered by airline and airport | Free; headlines and links back to the source | None |
 | [RainViewer](https://www.rainviewer.com/api.html) | Weather radar layer | Free for personal use | None |
 | [OpenFreeMap](https://openfreemap.org/) | Map tiles | Free | None |
 | [Open-Meteo](https://open-meteo.com/) | Winds and weather layers | Free for non-commercial use | None |
 
-How the AeroAPI budget is spent:
+How the free budgets are spent:
 
-- Rotation data is fetched only for flights departing within the next 48 hours, plus whenever you open that flight.
-- Every response is cached in the phone's database, so revisiting a flight costs nothing.
-- A spend meter in Settings shows this month's estimated cost against your cap. At the cap, the app falls back to the free live feeds.
-- Once your aircraft is airborne, live tracking switches to adsb.lol, which is free.
+- OpenSky history is fetched only for your flights departing within the next 7 days, plus whenever you open that flight, and every answer is cached on the phone. Its data is published the day after, so a day's result never changes once stored.
+- Live lookups of your flight and your aircraft run only while you have the flight open, at most every 15 seconds, through the same polite throttles as the radar.
 
-Callsign-based routes from free databases are sometimes wrong, especially for airlines that change callsigns daily, so the app labels them as "route from callsign" rather than confirmed.
+Callsign-based routes from free databases are sometimes wrong, especially for airlines that change callsigns daily, so the app labels them as "route from callsign" rather than confirmed. Your own flights use the route on your ticket.
 
 ## Architecture
 
@@ -250,13 +278,15 @@ The biggest gap in free data is the aircraft rotation before a tail is assigned.
 
 | Risk | What you'd notice | Mitigation |
 | --- | --- | --- |
-| Tail number assigned late | Rotation panel empty until about a day before | Clear "not assigned yet" state, automatic recheck |
-| AeroAPI free credit used up | Rotation and status stop refreshing for the month | Hard spend cap, cache everything, fall back to the free live feeds |
+| Tail number assigned late | Rotation panel shows only the type and the 7-day turnaround until you enter a tail | Clear "not assigned yet" state; the turnaround history needs no tail |
+| No free schedule or tail-assignment API | Times only update once the flight is on ADS-B; tail must be entered by hand | Times from your ticket, live estimates once airborne, every estimate labelled |
+| OpenSky credit budget used up | Rotation history stops refreshing until the next day | Cache every day's result forever (history never changes), fetch only for upcoming flights |
 | No ADS-B coverage over oceans and remote areas | Plane disappears mid-flight (e.g. over the Arabian Sea or Bay of Bengal) | Show an estimated position along the route, clearly marked "estimated" |
 | Community APIs change or throttle | Radar slows or shows gaps | Three live providers behind one interface, switch automatically |
-| Wrong routes from callsign databases | Odd origin or destination on the radar | Labelled "route from callsign", corrected once AeroAPI confirms |
+| Wrong routes from callsign databases | Odd origin or destination on the radar | Labelled "route from callsign"; your own flights use the ticket's route |
 | Rough photo cutouts | Jagged edges on busy ramp photos | Try the next photo, or switch to the livery render |
 | Planespotters terms | Photo use must stay credited and unchanged when shared | Credits always shown, cutouts never leave the phone |
 | ML Kit segmentation is still beta | API could change in an update | Isolated in one module, livery render as fallback |
 | Android background limits | Proximity checks run about every 15 minutes in the background | Live mode with a foreground service when you want real-time alerts |
-| Some aircraft are filtered or hidden | Certain military or blocked aircraft never appear | Use adsb.lol and airplanes.live, which don't filter |
+| Some aircraft are filtered or hidden | Certain military or blocked aircraft never appear | Use adsb.fi and adsb.lol, which don't filter |
+| Ticket formats vary | A field is missed or misread on import | The review screen always shows every field before saving, and missing ones are flagged |

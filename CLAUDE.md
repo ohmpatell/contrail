@@ -28,7 +28,7 @@ Personal Android flight tracking app for one aviation enthusiast (me). Flighty-g
 - Layers: UI (Compose screens) → ViewModels (StateFlow UI state) → Repositories → data sources + Room.
 - Screens never call the network directly.
 - Each external API sits behind an interface so providers can be swapped (e.g. `LiveTrafficSource` implemented by adsb.lol, airplanes.live, OpenSky).
-- FlightAware AeroAPI calls go through a quota guard that tracks estimated monthly spend and stops at the cap set in Settings.
+- OpenSky calls go through a credit guard that tracks the daily budget, and history results are cached on device.
 - Package by feature: `feature/radar`, `feature/trips`, `feature/aircraft`, `feature/airport`, `feature/passport`, `feature/sky`, `feature/airports`, `feature/settings`, plus `core/designsystem`, `core/data`, `core/network`, `core/database`.
 
 ## Design system
@@ -43,8 +43,8 @@ Personal Android flight tracking app for one aviation enthusiast (me). Flighty-g
 
 - Send a descriptive User-Agent on every request (Planespotters requires identifying requests).
 - Show photographer credit and link for every Planespotters photo.
-- Respect rate limits: adsb.lol and airplanes.live about 1 request per second max, OpenSky credit budget, AeroAPI spend cap. Cache aggressively.
-- Label callsign-derived routes as "route from callsign" unless confirmed by AeroAPI.
+- Respect rate limits: adsb.lol and airplanes.live about 1 request per second max, OpenSky credit budget. Cache aggressively.
+- Label callsign-derived routes as "route from callsign" unless they come from your own ticket. Label every rotation and timing estimate as "estimated".
 - logostream (free plan): show "Logos by logostream" linked to https://logostream.dev, never cache logo images on disk, and track the monthly request quota from its `X-RateLimit-*` headers.
 - Credit OpenStreetMap (ODbL) wherever Overpass geometry is drawn, and link every news item back to its source.
 
