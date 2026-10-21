@@ -1,0 +1,373 @@
+{
+  "formatVersion": 1,
+  "database": {
+    "version": 1,
+    "identityHash": "fb010f0024c052d05e93237cb7c84551",
+    "entities": [
+      {
+        "tableName": "live_aircraft",
+        "createSql": "CREATE TABLE IF NOT EXISTS `${TABLE_NAME}` (`hex` TEXT NOT NULL, `callsign` TEXT, `registration` TEXT, `typeCode` TEXT, `typeDescription` TEXT, `category` TEXT, `lat` REAL NOT NULL, `lon` REAL NOT NULL, `altitudeFt` INTEGER, `geometricAltitudeFt` INTEGER, `onGround` INTEGER NOT NULL, `groundSpeedKt` REAL, `trackDeg` REAL, `trackRateDegS` REAL, `verticalRateFpm` INTEGER, `squawk` TEXT, `emergency` TEXT, `military` INTEGER NOT NULL, `positionTimeMs` INTEGER NOT NULL, `fetchedAtMs` INTEGER NOT NULL, `source` TEXT NOT NULL, PRIMARY KEY(`hex`))",
+        "fields": [
+          {
+            "fieldPath": "hex",
+            "columnName": "hex",
+            "affinity": "TEXT",
+            "notNull": true
+          },
+          {
+            "fieldPath": "callsign",
+            "columnName": "callsign",
+            "affinity": "TEXT"
+          },
+          {
+            "fieldPath": "registration",
+            "columnName": "registration",
+            "affinity": "TEXT"
+          },
+          {
+            "fieldPath": "typeCode",
+            "columnName": "typeCode",
+            "affinity": "TEXT"
+          },
+          {
+            "fieldPath": "typeDescription",
+            "columnName": "typeDescription",
+            "affinity": "TEXT"
+          },
+          {
+            "fieldPath": "category",
+            "columnName": "category",
+            "affinity": "TEXT"
+          },
+          {
+            "fieldPath": "lat",
+            "columnName": "lat",
+            "affinity": "REAL",
+            "notNull": true
+          },
+          {
+            "fieldPath": "lon",
+            "columnName": "lon",
+            "affinity": "REAL",
+            "notNull": true
+          },
+          {
+            "fieldPath": "altitudeFt",
+            "columnName": "altitudeFt",
+            "affinity": "INTEGER"
+          },
+          {
+            "fieldPath": "geometricAltitudeFt",
+            "columnName": "geometricAltitudeFt",
+            "affinity": "INTEGER"
+          },
+          {
+            "fieldPath": "onGround",
+            "columnName": "onGround",
+            "affinity": "INTEGER",
+            "notNull": true
+          },
+          {
+            "fieldPath": "groundSpeedKt",
+            "columnName": "groundSpeedKt",
+            "affinity": "REAL"
+          },
+          {
+            "fieldPath": "trackDeg",
+            "columnName": "trackDeg",
+            "affinity": "REAL"
+          },
+          {
+            "fieldPath": "trackRateDegS",
+            "columnName": "trackRateDegS",
+            "affinity": "REAL"
+          },
+          {
+            "fieldPath": "verticalRateFpm",
+            "columnName": "verticalRateFpm",
+            "affinity": "INTEGER"
+          },
+          {
+            "fieldPath": "squawk",
+            "columnName": "squawk",
+            "affinity": "TEXT"
+          },
+          {
+            "fieldPath": "emergency",
+            "columnName": "emergency",
+            "affinity": "TEXT"
+          },
+          {
+            "fieldPath": "military",
+            "columnName": "military",
+            "affinity": "INTEGER",
+            "notNull": true
+          },
+          {
+            "fieldPath": "positionTimeMs",
+            "columnName": "positionTimeMs",
+            "affinity": "INTEGER",
+            "notNull": true
+          },
+          {
+            "fieldPath": "fetchedAtMs",
+            "columnName": "fetchedAtMs",
+            "affinity": "INTEGER",
+            "notNull": true
+          },
+          {
+            "fieldPath": "source",
+            "columnName": "source",
+            "affinity": "TEXT",
+            "notNull": true
+          }
+        ],
+        "primaryKey": {
+          "autoGenerate": false,
+          "columnNames": [
+            "hex"
+          ]
+        },
+        "indices": [
+          {
+            "name": "index_live_aircraft_fetchedAtMs",
+            "unique": false,
+            "columnNames": [
+              "fetchedAtMs"
+            ],
+            "orders": [],
+            "createSql": "CREATE INDEX IF NOT EXISTS `index_live_aircraft_fetchedAtMs` ON `${TABLE_NAME}` (`fetchedAtMs`)"
+          }
+        ]
+      },
+      {
+        "tableName": "trail_point",
+        "createSql": "CREATE TABLE IF NOT EXISTS `${TABLE_NAME}` (`hex` TEXT NOT NULL, `timeMs` INTEGER NOT NULL, `lat` REAL NOT NULL, `lon` REAL NOT NULL, `altitudeFt` INTEGER, `onGround` INTEGER NOT NULL, `verticalRateFpm` INTEGER, `trackDeg` REAL, PRIMARY KEY(`hex`, `timeMs`))",
+        "fields": [
+          {
+            "fieldPath": "hex",
+            "columnName": "hex",
+            "affinity": "TEXT",
+            "notNull": true
+          },
+          {
+            "fieldPath": "timeMs",
+            "columnName": "timeMs",
+            "affinity": "INTEGER",
+            "notNull": true
+          },
+          {
+            "fieldPath": "lat",
+            "columnName": "lat",
+            "affinity": "REAL",
+            "notNull": true
+          },
+          {
+            "fieldPath": "lon",
+            "columnName": "lon",
+            "affinity": "REAL",
+            "notNull": true
+          },
+          {
+            "fieldPath": "altitudeFt",
+            "columnName": "altitudeFt",
+            "affinity": "INTEGER"
+          },
+          {
+            "fieldPath": "onGround",
+            "columnName": "onGround",
+            "affinity": "INTEGER",
+            "notNull": true
+          },
+          {
+            "fieldPath": "verticalRateFpm",
+            "columnName": "verticalRateFpm",
+            "affinity": "INTEGER"
+          },
+          {
+            "fieldPath": "trackDeg",
+            "columnName": "trackDeg",
+            "affinity": "REAL"
+          }
+        ],
+        "primaryKey": {
+          "autoGenerate": false,
+          "columnNames": [
+            "hex",
+            "timeMs"
+          ]
+        },
+        "indices": [
+          {
+            "name": "index_trail_point_timeMs",
+            "unique": false,
+            "columnNames": [
+              "timeMs"
+            ],
+            "orders": [],
+            "createSql": "CREATE INDEX IF NOT EXISTS `index_trail_point_timeMs` ON `${TABLE_NAME}` (`timeMs`)"
+          }
+        ]
+      },
+      {
+        "tableName": "route_cache",
+        "createSql": "CREATE TABLE IF NOT EXISTS `${TABLE_NAME}` (`callsign` TEXT NOT NULL, `found` INTEGER NOT NULL, `fetchedAtMs` INTEGER NOT NULL, `airlineName` TEXT, `originIata` TEXT, `originIcao` TEXT, `originName` TEXT, `originCity` TEXT, `originCountry` TEXT, `originLat` REAL, `originLon` REAL, `destIata` TEXT, `destIcao` TEXT, `destName` TEXT, `destCity` TEXT, `destCountry` TEXT, `destLat` REAL, `destLon` REAL, PRIMARY KEY(`callsign`))",
+        "fields": [
+          {
+            "fieldPath": "callsign",
+            "columnName": "callsign",
+            "affinity": "TEXT",
+            "notNull": true
+          },
+          {
+            "fieldPath": "found",
+            "columnName": "found",
+            "affinity": "INTEGER",
+            "notNull": true
+          },
+          {
+            "fieldPath": "fetchedAtMs",
+            "columnName": "fetchedAtMs",
+            "affinity": "INTEGER",
+            "notNull": true
+          },
+          {
+            "fieldPath": "airlineName",
+            "columnName": "airlineName",
+            "affinity": "TEXT"
+          },
+          {
+            "fieldPath": "originIata",
+            "columnName": "originIata",
+            "affinity": "TEXT"
+          },
+          {
+            "fieldPath": "originIcao",
+            "columnName": "originIcao",
+            "affinity": "TEXT"
+          },
+          {
+            "fieldPath": "originName",
+            "columnName": "originName",
+            "affinity": "TEXT"
+          },
+          {
+            "fieldPath": "originCity",
+            "columnName": "originCity",
+            "affinity": "TEXT"
+          },
+          {
+            "fieldPath": "originCountry",
+            "columnName": "originCountry",
+            "affinity": "TEXT"
+          },
+          {
+            "fieldPath": "originLat",
+            "columnName": "originLat",
+            "affinity": "REAL"
+          },
+          {
+            "fieldPath": "originLon",
+            "columnName": "originLon",
+            "affinity": "REAL"
+          },
+          {
+            "fieldPath": "destIata",
+            "columnName": "destIata",
+            "affinity": "TEXT"
+          },
+          {
+            "fieldPath": "destIcao",
+            "columnName": "destIcao",
+            "affinity": "TEXT"
+          },
+          {
+            "fieldPath": "destName",
+            "columnName": "destName",
+            "affinity": "TEXT"
+          },
+          {
+            "fieldPath": "destCity",
+            "columnName": "destCity",
+            "affinity": "TEXT"
+          },
+          {
+            "fieldPath": "destCountry",
+            "columnName": "destCountry",
+            "affinity": "TEXT"
+          },
+          {
+            "fieldPath": "destLat",
+            "columnName": "destLat",
+            "affinity": "REAL"
+          },
+          {
+            "fieldPath": "destLon",
+            "columnName": "destLon",
+            "affinity": "REAL"
+          }
+        ],
+        "primaryKey": {
+          "autoGenerate": false,
+          "columnNames": [
+            "callsign"
+          ]
+        }
+      },
+      {
+        "tableName": "photo_cache",
+        "createSql": "CREATE TABLE IF NOT EXISTS `${TABLE_NAME}` (`hex` TEXT NOT NULL, `found` INTEGER NOT NULL, `fetchedAtMs` INTEGER NOT NULL, `thumbnailUrl` TEXT, `largeUrl` TEXT, `pageUrl` TEXT, `photographer` TEXT, PRIMARY KEY(`hex`))",
+        "fields": [
+          {
+            "fieldPath": "hex",
+            "columnName": "hex",
+            "affinity": "TEXT",
+            "notNull": true
+          },
+          {
+            "fieldPath": "found",
+            "columnName": "found",
+            "affinity": "INTEGER",
+            "notNull": true
+          },
+          {
+            "fieldPath": "fetchedAtMs",
+            "columnName": "fetchedAtMs",
+            "affinity": "INTEGER",
+            "notNull": true
+          },
+          {
+            "fieldPath": "thumbnailUrl",
+            "columnName": "thumbnailUrl",
+            "affinity": "TEXT"
+          },
+          {
+            "fieldPath": "largeUrl",
+            "columnName": "largeUrl",
+            "affinity": "TEXT"
+          },
+          {
+            "fieldPath": "pageUrl",
+            "columnName": "pageUrl",
+            "affinity": "TEXT"
+          },
+          {
+            "fieldPath": "photographer",
+            "columnName": "photographer",
+            "affinity": "TEXT"
+          }
+        ],
+        "primaryKey": {
+          "autoGenerate": false,
+          "columnNames": [
+            "hex"
+          ]
+        }
+      }
+    ],
+    "setupQueries": [
+      "CREATE TABLE IF NOT EXISTS room_master_table (id INTEGER PRIMARY KEY,identity_hash TEXT)",
+      "INSERT OR REPLACE INTO room_master_table (id,identity_hash) VALUES(42, 'fb010f0024c052d05e93237cb7c84551')"
+    ]
+  }
+}

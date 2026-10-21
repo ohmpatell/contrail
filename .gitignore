@@ -13,3 +13,9 @@
 .externalNativeBuild
 .cxx
 local.properties
+# Signing material never lives in the repo
+*.jks
+*.keystore
+keystore.properties
+# Roborazzi intermediate output
+/app/build/outputs/roborazzi
