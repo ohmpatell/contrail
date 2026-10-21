@@ -50,13 +50,22 @@ Personal Android flight tracking app for one aviation enthusiast (me). Flighty-g
 
 This is a side project I work on around a full-time job. I want minimal involvement. Work autonomously for long stretches and don't wait on me.
 
-- **Decide, don't ask.** When something is ambiguous, pick the option that best fits `docs/DESIGN.md`, write the decision and the reason in `docs/DECISIONS.md`, and keep going. Only stop for something that truly needs me: an API key, a paid service, or deleting my data.
-- **Verify it yourself instead of asking me to test.** For every feature:
-    - The project must build: `./gradlew assembleDebug`.
-    - Write unit tests for data, parsing and logic, and keep `./gradlew test` green.
-    - Use Roborazzi screenshot tests for every screen and key state, then look at the generated PNGs yourself to judge layout and visual quality. Fix what looks wrong before moving on.
-    - Run `./gradlew lint` and fix real issues.
-- **Use fakes when keys are missing.** If a feature needs an API key I haven't added yet, build it against a fake data source with realistic sample data, so the UI and screenshots still work. Note in `docs/STATUS.md` that it needs a key.
+- **Decide, don't ask.** When something is ambiguous, pick the option that best fits `docs/DESIGN.md`, write the decision and the reason in `docs/DECISIONS.md`, and keep going.
+- **Pause and ask me only for these:** I need to register for a free API key or account, a feature can't work without a service I haven't set up, something would cost money, or you'd delete my data. When that happens:
+    - Stop and tell me exactly which service, the sign-up link, which plan to pick (must be free), and where to put the key (`local.properties` with the exact variable name).
+    - Wait for me to say it's done before continuing with anything that depends on it. Keep working on other parts of the stage in the meantime if you can, and ask all such questions together rather than one at a time.
+- **Work fast.** Speed matters; I'm waiting on you.
+    - During development, compile only what changed: `.\gradlew.bat :app:compileDebugKotlin` or the affected module, not a full build every step.
+    - Run only the unit tests for the code you changed, with `--tests`. Run the full test suite once at the end of the stage.
+    - Keep Gradle fast: enable the configuration cache, build cache and parallel builds in `gradle.properties`, and keep the Gradle daemon running.
+    - Don't re-read `docs/DESIGN.md` in full each step; read only the section you're working on.
+    - Don't refactor or polish working code outside the current task.
+- **Verify efficiently.** For every stage:
+    - Unit tests for data, parsing and logic, kept green.
+    - Roborazzi screenshot tests for each main screen in its main state only, not every variant. Record and inspect them once per screen when that screen is finished, not after every change.
+    - Start the emulator, install, and take adb screenshots only once, at the end of the stage. Fix what looks wrong, then finish.
+    - Run `.\gradlew.bat lint` once at the end of the stage and fix real issues.
+- **Use fakes when keys are missing.** If a feature needs an API key I haven't added yet, build it against a fake data source with realistic sample data so the UI still works, ask me for the key as above, and note it in `docs/STATUS.md`.
 - **Commit often.** Make small, clear git commits after each working step, and push to `origin` if a remote is set.
 - **Keep a status file.** `docs/STATUS.md` lists what's done, what's in progress, what's next, and anything waiting on me. Update it as you go. It's how I catch up.
 - **Check in only at phase ends.** Tell me when a roadmap phase is complete, with a short list of what to look at on my phone. Don't ask me to test individual steps.
@@ -69,9 +78,11 @@ This is a side project I work on around a full-time job. I want minimal involvem
 - Set up a GitHub Actions workflow early in Phase 1 that builds a signed release APK on every push to `main` and attaches it to a GitHub Release, so I can install updates from my phone with Obtainium.
 - The signing keystore and its passwords come from GitHub Secrets. Never commit the keystore. Tell me the exact secrets to add, once.
 
-## Commands
+## Commands (Windows PowerShell: use .\gradlew.bat, never chain with &&)
 
-- Build debug APK: `./gradlew assembleDebug`
-- Install on connected phone: `./gradlew installDebug`
-- Unit tests: `./gradlew test`
-- Lint: `./gradlew lint`
+- Quick compile check: `.\gradlew.bat :app:compileDebugKotlin`
+- Build debug APK: `.\gradlew.bat assembleDebug`
+- Install on emulator or phone: `.\gradlew.bat installDebug`
+- Unit tests for one class: `.\gradlew.bat testDebugUnitTest --tests "*ClassName*"`
+- All unit tests: `.\gradlew.bat testDebugUnitTest`
+- Lint: `.\gradlew.bat lint`
