@@ -50,6 +50,7 @@ import com.contrail.contrail.feature.sky.SkyScreen
 import com.contrail.contrail.feature.trips.TripsScreen
 import com.contrail.contrail.navigation.ContrailApp
 import com.contrail.contrail.navigation.TopLevelDestination
+import com.contrail.contrail.testing.TripFixtures
 import com.contrail.contrail.testing.aircraft
 import com.github.takahirom.roborazzi.RobolectricDeviceQualifiers
 import com.github.takahirom.roborazzi.captureRoboImage
@@ -81,10 +82,10 @@ class ScreenshotTests {
     private fun shell(tab: TopLevelDestination, radar: RadarUiState = idle) = snap("tab_${tab.name.lowercase()}") {
         ContrailApp(initial = tab) { t ->
             when (t) {
-                TopLevelDestination.Trips -> TripsScreen()
+                TopLevelDestination.Trips -> TripsScreen(tripsState, {}, {}, {}, fixedNow = TripFixtures.now)
                 TopLevelDestination.Radar -> RadarScreen(radar, RadarActions()) { FakeRadarBackdrop(it) }
                 TopLevelDestination.Sky -> SkyScreen()
-                TopLevelDestination.Passport -> PassportScreen()
+                TopLevelDestination.Passport -> PassportScreen(passportState, {}, {})
                 TopLevelDestination.Airports -> AirportsScreen(airportsState, {}, {}, {}, {}, {}, nowMs = NOW)
             }
         }

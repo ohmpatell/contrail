@@ -209,7 +209,7 @@ private fun NextFlightCard(trip: Trip, seg: FlightSegment, places: Map<String, A
                 Column(horizontalAlignment = Alignment.End, verticalArrangement = Arrangement.spacedBy(spacing.xs)) {
                     Eyebrow(TripFormat.day(seg.departureLocal))
                     Row(horizontalArrangement = Arrangement.spacedBy(spacing.md)) {
-                        seg.departureTerminal?.let { MiniFlap("T", it) }
+                        seg.departureTerminal?.let { MiniFlap("Terminal", it) }
                         seg.gate?.let { MiniFlap("Gate", it) }
                         seg.seat?.let { MiniFlap("Seat", it) }
                     }

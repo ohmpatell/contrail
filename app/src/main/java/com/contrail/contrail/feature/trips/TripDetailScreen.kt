@@ -212,10 +212,11 @@ private fun SegmentCard(s: FlightSegment, places: Map<String, AirportInfo>, onCl
                 AirportFlap(s.destination, TripFormat.city(s.destination, places), alignEnd = true, time = TripFormat.time(s.arrivalLocal) + (TripFormat.dayShift(s) ?: ""))
             }
             Row(horizontalArrangement = Arrangement.spacedBy(spacing.lg)) {
-                Field("Terminal", s.departureTerminal, Modifier.weight(1f))
-                Field("Arrives at", s.arrivalTerminal?.let { "T$it" }, Modifier.weight(1f))
-                Field("Seat", s.seat, Modifier.weight(1f))
-                Field("Cabin", s.cabin?.label?.let { c -> s.fareClass?.let { "$c ($it)" } ?: c }, Modifier.weight(1.6f))
+                val terminals = if (s.departureTerminal == null && s.arrivalTerminal == null) null else "${s.departureTerminal ?: "?"} → ${s.arrivalTerminal ?: "?"}"
+                Field("Terminals", terminals, Modifier.weight(1.3f))
+                Field("Seat", s.seat, Modifier.weight(0.9f))
+                Field("Class", s.fareClass, Modifier.weight(0.8f))
+                Field("Cabin", s.cabin?.label, Modifier.weight(1.5f))
             }
             Row(verticalAlignment = Alignment.CenterVertically) {
                 Text("${TripFormat.duration(s.duration)} flight", style = ContrailTheme.type.bodySmall, color = colors.textTertiary, modifier = Modifier.weight(1f))
@@ -258,7 +259,8 @@ private fun ConnectionCard(
                 }
                 KindToggle(c.kind, onToggleKind)
                 Text(
-                    if (c.guessed) "Guessed: ${reason(c)}. Tap to switch." else "Set by you. Tap to switch.",
+                    (if (c.kind == ConnectionKind.Stopover) "Leaving the airport. " else "Staying airside. ") +
+                        (if (c.guessed) "Guessed from ${reason(c)}; tap to switch." else "Set by you; tap to switch."),
                     style = ContrailTheme.type.bodySmall,
                     color = colors.textTertiary,
                 )
@@ -314,11 +316,10 @@ private fun KindToggle(kind: ConnectionKind, onToggle: () -> Unit) {
                 .border(ContrailTheme.sizes.hairline, tint.copy(alpha = 0.8f), ContrailTheme.shapes.chip),
         )
         Row(Modifier.fillMaxWidth().fillMaxHeight(), verticalAlignment = Alignment.CenterVertically) {
-            listOf("Layover" to "Stay airside", "Stopover" to "Leave the airport").forEachIndexed { i, (label, hint) ->
+            listOf("Layover", "Stopover").forEachIndexed { i, label ->
                 val on = (i == 1) == (kind == ConnectionKind.Stopover)
                 Row(Modifier.weight(1f), horizontalArrangement = Arrangement.Center, verticalAlignment = Alignment.CenterVertically) {
                     Text(label, style = ContrailTheme.type.title, color = if (on) colors.textPrimary else colors.textTertiary)
-                    Text("  $hint", style = ContrailTheme.type.bodySmall, color = colors.textTertiary, maxLines = 1, overflow = TextOverflow.Ellipsis)
                 }
             }
         }

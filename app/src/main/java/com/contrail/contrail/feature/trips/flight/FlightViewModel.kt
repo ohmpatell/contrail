@@ -88,8 +88,8 @@ object FlightTimeline {
         fun arr(i: Instant) = LocalDateTime.ofInstant(i, s.arrivalZone)
         return listOf(
             TimelineRow("Gate out", s.departureLocal, firstSeen?.let { dep(it.minusSeconds(TAXI_OUT_MIN * 60)) }, firstSeen?.let { "from ADS-B" }),
-            TimelineRow("Takeoff", null, dep(takeoff), if (firstSeen != null) "first seen airborne" else "typical taxi"),
-            TimelineRow("Landing", null, arr(landing), if (ac != null) "live speed" else "typical taxi"),
+            TimelineRow("Takeoff", null, dep(takeoff), if (firstSeen != null) "first seen airborne" else "typical taxi out"),
+            TimelineRow("Landing", null, arr(landing), if (ac != null) "live speed" else "typical taxi in"),
             TimelineRow("Gate in", s.arrivalLocal, if (ac != null) arr(landing.plusSeconds(TAXI_IN_MIN * 60)) else null, if (ac != null) "live speed" else null),
         )
     }

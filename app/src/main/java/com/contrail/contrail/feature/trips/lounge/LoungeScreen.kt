@@ -42,7 +42,6 @@ import com.contrail.contrail.core.designsystem.component.SectionCard
 import com.contrail.contrail.core.designsystem.icon.ContrailIcons
 import com.contrail.contrail.core.designsystem.theme.ContrailTheme
 import com.contrail.contrail.feature.trips.Stars
-import com.contrail.contrail.feature.trips.Tag
 import com.contrail.contrail.feature.trips.TripFormat
 import com.contrail.contrail.feature.trips.importing.FormField
 import com.contrail.contrail.feature.trips.importing.SegmentForm
@@ -106,10 +105,12 @@ fun LoungeScreen(
         }
         SectionCard("When") {
             Row(horizontalArrangement = Arrangement.spacedBy(spacing.sm)) {
-                FormField("Date", f.date, { v -> onEdit { it.copy(date = v) } }, Modifier.weight(1.4f), "12 Dec 2026", missing = SegmentForm.parseDate(f.date) == null)
-                FormField("In", f.timeIn, { v -> onEdit { it.copy(timeIn = v) } }, Modifier.weight(1f), "20:10", number = true)
-                FormField("Out", f.timeOut, { v -> onEdit { it.copy(timeOut = v) } }, Modifier.weight(1f), "21:30", number = true)
-                FormField("Term.", f.terminal, { v -> onEdit { it.copy(terminal = v.uppercase().take(3)) } }, Modifier.weight(0.8f), "3", caps = true)
+                FormField("Date", f.date, { v -> onEdit { it.copy(date = v) } }, Modifier.weight(2f), "12 Dec 2026", missing = SegmentForm.parseDate(f.date) == null)
+                FormField("Terminal", f.terminal, { v -> onEdit { it.copy(terminal = v.uppercase().take(3)) } }, Modifier.weight(1f), "3", caps = true)
+            }
+            Row(horizontalArrangement = Arrangement.spacedBy(spacing.sm)) {
+                FormField("Time in", f.timeIn, { v -> onEdit { it.copy(timeIn = v) } }, Modifier.weight(1f), "20:10", number = true)
+                FormField("Time out", f.timeOut, { v -> onEdit { it.copy(timeOut = v) } }, Modifier.weight(1f), "21:30", number = true)
             }
             val a = SegmentForm.parseTime(f.timeIn)
             val b = SegmentForm.parseTime(f.timeOut)
@@ -190,7 +191,6 @@ private fun LoungeOption(l: Lounge, selected: Boolean, onPick: (Lounge) -> Unit,
                 Eyebrow(l.source.label, color = if (l.source == LoungeSource.Yours) gold else colors.textTertiary)
             }
         }
-        if (selected) Tag("Here", gold, filled = true)
         Icon(
             if (l.favourite) ContrailIcons.StarFilled else ContrailIcons.Star,
             if (l.favourite) "Remove favourite" else "Favourite",

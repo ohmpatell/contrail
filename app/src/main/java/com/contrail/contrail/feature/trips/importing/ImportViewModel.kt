@@ -15,6 +15,7 @@ import com.contrail.contrail.core.data.ticket.SharedTicket
 import com.contrail.contrail.core.data.ticket.SharedTicketInbox
 import com.contrail.contrail.core.data.ticket.TicketDraft
 import com.contrail.contrail.core.data.ticket.TicketImporter
+import com.contrail.contrail.core.data.ticket.TicketText
 import com.contrail.contrail.core.data.ticket.TripAssembler
 import com.contrail.contrail.core.data.trip.Cabin
 import com.contrail.contrail.core.data.trip.Connection
@@ -82,6 +83,7 @@ data class SegmentForm(
     }
 
     companion object {
+        private val DAY_MONTH_YEAR = Regex("^(\\d{1,2})\\s*([A-Za-z]{3,9})\\.?\\s*(\\d{4})$")
         private val FLIGHT = Regex("^([A-Z][A-Z0-9]|[0-9][A-Z])\\s?0*(\\d{1,4}[A-Z]?)$")
         private val dateOut = DateTimeFormatter.ofPattern("d MMM yyyy", Locale.UK)
         private val timeOut = DateTimeFormatter.ofPattern("HH:mm", Locale.UK)
@@ -110,8 +112,11 @@ data class SegmentForm(
             val s = raw.trim()
             if (s.isEmpty()) return null
             runCatching { return LocalDate.parse(s) }
-            runCatching { return LocalDate.parse(s, DateTimeFormatter.ofPattern("d MMM yyyy", Locale.UK)) }
-            runCatching { return LocalDate.parse(s.lowercase().replaceFirstChar { it.uppercase() }, DateTimeFormatter.ofPattern("d MMM yyyy", Locale.UK)) }
+            // "12 Dec 2026", any case, "Sep" or "Sept".
+            DAY_MONTH_YEAR.matchEntire(s)?.let { m ->
+                val month = TicketText.month(m.groupValues[2])
+                if (month != null) runCatching { return LocalDate.of(m.groupValues[3].toInt(), month, m.groupValues[1].toInt()) }
+            }
             runCatching { return LocalDate.parse(s, DateTimeFormatter.ofPattern("d/M/yyyy")) }
             if (s.length == 8 && s.all { it.isDigit() }) runCatching { return LocalDate.parse(s, DateTimeFormatter.BASIC_ISO_DATE) }
             return null
