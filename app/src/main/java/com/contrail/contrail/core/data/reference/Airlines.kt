@@ -96,6 +96,11 @@ object Airlines {
 
     fun byIcao(icao: String?): Airline? = icao?.let { all[it.uppercase()] }
 
+    private val byIataCode = all.values.filter { it.iata.isNotBlank() }.groupBy { it.iata }
+
+    /** The curated airline for an IATA code. IATA codes are reused, so the first listed wins. */
+    fun byIata(iata: String?): Airline? = iata?.let { byIataCode[it.uppercase()]?.firstOrNull() }
+
     /**
      * Airline ICAO designator from an ATC callsign: three letters followed by a digit
      * (`ETD141`, `CPA889`). Registrations used as callsigns (`CFWLV`, `N194V`) return null.

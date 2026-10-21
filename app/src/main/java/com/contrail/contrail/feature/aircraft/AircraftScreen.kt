@@ -157,7 +157,7 @@ private fun Hero(state: AircraftUiState, accent: Color, onHero: (HeroMode) -> Un
                     )
                     HeroMode.Cutout -> state.cutout?.let { file ->
                         AsyncImage(file, "Cutout of ${state.registration}", contentScale = ContentScale.Fit, modifier = Modifier.fillMaxSize().padding(spacing.lg))
-                    } ?: Text(if (state.cutoutWorking) "Lifting the aircraft out of its photo…" else "No cutout yet", style = ContrailTheme.type.bodySmall, color = colors.textSecondary)
+                    } ?: Text(if (state.cutoutWorking) "Lifting the aircraft out of its photo…" else "The cutout model is still downloading. Tap Cutout again in a moment.", style = ContrailTheme.type.bodySmall, color = colors.textSecondary)
                     HeroMode.Photo -> Box(Modifier.fillMaxSize())
                 }
             }

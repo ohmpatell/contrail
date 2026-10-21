@@ -8,6 +8,7 @@ import androidx.room.Room
 import com.contrail.contrail.BuildConfig
 import com.contrail.contrail.core.common.Clock
 import com.contrail.contrail.core.data.repository.AircraftDetailsRepository
+import com.contrail.contrail.core.data.repository.AirportsAsset
 import com.contrail.contrail.core.data.repository.DataStoreRadarPreferences
 import com.contrail.contrail.core.data.repository.DefaultAircraftDetailsRepository
 import com.contrail.contrail.core.data.repository.DefaultLiveTrafficRepository
@@ -41,7 +42,6 @@ import dagger.hilt.components.SingletonComponent
 import io.ktor.client.HttpClient
 import kotlinx.serialization.json.Json
 import okhttp3.OkHttpClient
-import java.io.InputStream
 import javax.inject.Named
 import javax.inject.Singleton
 
@@ -115,8 +115,8 @@ object StorageModule {
     @Provides @Singleton
     fun cipher(): SecretCipher = KeystoreCipher()
 
-    @Provides @Named("airportsAsset")
-    fun airportsAsset(@ApplicationContext context: Context): () -> InputStream = { context.assets.open("airports.json") }
+    @Provides
+    fun airportsAsset(@ApplicationContext context: Context): AirportsAsset = AirportsAsset { context.assets.open("airports.json") }
 }
 
 @Module

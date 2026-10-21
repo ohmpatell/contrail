@@ -191,12 +191,13 @@ private fun WeatherCard(m: Metar?, taf: String?) {
             return@SectionCard
         }
         val dir = m.wdir?.jsonPrimitive?.content
-        Row(Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.SpaceBetween) {
-            WindTile(dir, m.wspd, m.wgst)
-            StatTile("Visibility", m.visib?.jsonPrimitive?.content?.let { if (it.endsWith("+")) it else "$it" } ?: "—", unit = "SM")
-            StatTile("Temp", m.temp?.let { "%.0f°".format(it) } ?: "—", unit = m.dewp?.let { "dew %.0f°".format(it) })
-            StatTile("QNH", m.altim?.let { "%.0f".format(it) } ?: "—", unit = "hPa")
+        Row(Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.spacedBy(spacing.md)) {
+            WindTile(dir, m.wspd, m.wgst, Modifier.weight(1.35f))
+            StatTile("Visibility", m.visib?.jsonPrimitive?.content ?: "—", Modifier.weight(1f), unit = "SM")
+            StatTile("Temp", m.temp?.let { "%.0f°".format(it) } ?: "—", Modifier.weight(0.8f))
+            StatTile("QNH", m.altim?.let { "%.0f".format(it) } ?: "—", Modifier.weight(0.9f))
         }
+        m.dewp?.let { Text("Dew point %.0f°  ·  altimeter in hPa".format(it), style = ContrailTheme.type.bodySmall, color = colors.textTertiary) }
         val clouds = m.clouds.joinToString("  ") { c -> listOfNotNull(c.cover, c.base?.let { "${it / 100}".padStart(3, '0') }).joinToString("") }
         Text(if (clouds.isBlank()) "Sky clear" else "Clouds  $clouds", style = ContrailTheme.type.bodySmall, color = colors.textSecondary)
         m.rawOb?.let { Text(it, style = ContrailTheme.type.numericSmall, color = colors.textTertiary) }
@@ -212,9 +213,9 @@ private fun WeatherCard(m: Metar?, taf: String?) {
 private fun Spacer(h: androidx.compose.ui.unit.Dp) = Box(Modifier.height(h))
 
 @Composable
-private fun WindTile(dir: String?, speed: Int?, gust: Int?) {
+private fun WindTile(dir: String?, speed: Int?, gust: Int?, modifier: Modifier = Modifier) {
     val colors = ContrailTheme.colors
-    Column(verticalArrangement = Arrangement.spacedBy(ContrailTheme.spacing.xs)) {
+    Column(modifier, verticalArrangement = Arrangement.spacedBy(ContrailTheme.spacing.xs)) {
         Eyebrow("Wind")
         Row(verticalAlignment = Alignment.CenterVertically) {
             val deg = dir?.toFloatOrNull()
@@ -294,7 +295,8 @@ private fun AirlinesCard(airlines: List<AirlineServed>) {
                     } else {
                         Text(al.iata ?: al.icao ?: "", style = ContrailTheme.type.numeric, color = accent)
                     }
-                    Text("${al.name} · ${al.routes}", style = ContrailTheme.type.label, color = colors.textSecondary, maxLines = 1)
+                    val label = if (al.name == al.iata || al.name == al.icao) "${al.routes}" else "${al.name} · ${al.routes}"
+                    Text(label, style = ContrailTheme.type.label, color = colors.textSecondary, maxLines = 1)
                 }
             }
         }

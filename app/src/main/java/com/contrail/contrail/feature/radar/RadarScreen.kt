@@ -181,7 +181,7 @@ fun RadarScreen(
 @Composable
 private fun Attribution(modifier: Modifier = Modifier) {
     Text(
-        "© OpenFreeMap · OpenMapTiles · OpenStreetMap · ADS-B adsb.fi · adsb.lol (ODbL)",
+        "© OpenFreeMap · OpenStreetMap · ADS-B adsb.fi · adsb.lol",
         style = ContrailTheme.type.eyebrow.copy(letterSpacing = ContrailTheme.type.bodySmall.letterSpacing),
         color = ContrailTheme.colors.textTertiary.copy(alpha = 0.8f),
         modifier = modifier,

@@ -149,18 +149,21 @@ class AircraftViewModel @AssistedInject constructor(
             }
         }
         // Prepare the cutout in the background once there is a photo, so switching is instant.
-        viewModelScope.launch {
-            val p = photo.filterNotNull().first()
-            if (cutout.value == null) {
-                cutoutWorking.value = true
-                cutout.value = runCatching { cutouts.cutout(hex, p.largeUrl) }.getOrNull()
-                cutoutWorking.value = false
-            }
-        }
+        viewModelScope.launch { makeCutout() }
+    }
+
+    private suspend fun makeCutout() {
+        if (cutout.value != null || cutoutWorking.value) return
+        val p = photo.filterNotNull().first()
+        cutoutWorking.value = true
+        cutout.value = runCatching { cutouts.cutout(hex, p.largeUrl) }.getOrNull()
+        cutoutWorking.value = false
     }
 
     fun showHero(mode: HeroMode) {
         hero.value = mode
+        // The segmentation model downloads on first use; asking again retries once it's there.
+        if (mode == HeroMode.Cutout) viewModelScope.launch { makeCutout() }
     }
 
     fun toggleWatch(item: WatchItem, on: Boolean) {

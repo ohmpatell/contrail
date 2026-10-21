@@ -41,7 +41,7 @@ import com.contrail.contrail.core.designsystem.theme.AltitudeRamp
 import com.contrail.contrail.core.designsystem.theme.ContrailTheme
 import com.contrail.contrail.core.network.airport.OsmResult
 import org.maplibre.android.geometry.LatLng
-import org.maplibre.android.geometry.LatLngBounds
+import org.maplibre.android.camera.CameraPosition
 import org.maplibre.android.maps.Style
 import org.maplibre.android.snapshotter.MapSnapshotter
 import kotlin.math.cos
@@ -91,7 +91,8 @@ fun RunwayDiagram(
             points.forEachIndexed { i, pt -> if (i == 0) moveTo(p.x(pt.lon), p.y(pt.lat)) else lineTo(p.x(pt.lon), p.y(pt.lat)) }
             if (close) close()
         }
-        val widthPx = { m: Double -> (m / mpp).toFloat().coerceIn(2f, 26f) }
+        val minStroke = 3.dp.toPx()
+        val widthPx = { m: Double -> (m / mpp).toFloat().coerceIn(minStroke, 26f) }
         val osm = geometry?.elements.orEmpty()
         osm.filter { it.tags["aeroway"] == "apron" }.forEach { drawPath(path(it.geometry.map { g -> LatLon(g.lat, g.lon) }, close = true), colors.glassTint) }
         osm.filter { it.tags["aeroway"] == "taxiway" }.forEach {
@@ -120,12 +121,16 @@ fun RunwayDiagram(
                 drawText(layout, topLeft = Offset(p.x(c.lon) - layout.size.width / 2f, p.y(c.lat) - layout.size.height / 2f))
             }
         }
-        // Runway end labels; the likely active end is highlighted.
+        // Runway end labels, nudged off the end of the runway; the likely active end glows.
         runways.forEach { r ->
-            listOf(Triple(r.leIdent, r.leLat, r.leLon), Triple(r.heIdent, r.heLat, r.heLon)).forEach { (ident, la, lo) ->
-                if (la == null || lo == null || ident.isBlank()) return@forEach
+            if (r.leLat == null || r.leLon == null || r.heLat == null || r.heLon == null) return@forEach
+            val le = Offset(p.x(r.leLon), p.y(r.leLat))
+            val he = Offset(p.x(r.heLon), p.y(r.heLat))
+            val dir = (le - he).let { v -> v / v.getDistance().coerceAtLeast(1f) }
+            val push = 14.dp.toPx()
+            listOf(r.leIdent to le + dir * push, r.heIdent to he - dir * push).forEach { (ident, o) ->
+                if (ident.isBlank()) return@forEach
                 val active = ident == activeEnd
-                val o = Offset(p.x(lo), p.y(la))
                 if (active) {
                     drawCircle(Brush.radialGradient(listOf(colors.statusOnTime.copy(alpha = 0.55f), Color.Transparent), o, 26.dp.toPx()), 26.dp.toPx(), o)
                 }
@@ -177,25 +182,43 @@ fun DestinationsMap(home: LatLon, destinations: List<Destination>, modifier: Mod
         var snapshot by remember { mutableStateOf<Pair<Bitmap, List<List<PointF>>>?>(null) }
         if (!inPreview && destinations.isNotEmpty() && wPx > 0) {
             DisposableEffect(destinations, wPx, hPx) {
-                val all = destinations.map { LatLon(it.lat, it.lon) } + home
-                val bounds = LatLngBounds.Builder().apply { all.forEach { include(LatLng(it.lat, it.lon)) } }.build()
+                val d = density.density
+                val wDp = wPx / d
+                val hDp = hPx / d
+                // Arcs in Web Mercator world units, unwrapped around the home longitude.
+                val arcsWorld = destinations.map { dest ->
+                    RouteOverlayMath.unwrapAround(home.lon, Geo.greatCircle(home, LatLon(dest.lat, dest.lon), 48))
+                        .map { WebMercator.x(it.lon) to WebMercator.y(it.lat) }
+                }
+                val xs = arcsWorld.flatten().map { it.first }
+                val ys = arcsWorld.flatten().map { it.second }
+                val cx = (xs.min() + xs.max()) / 2
+                val cy = (ys.min() + ys.max()) / 2
+                val spanX = (xs.max() - xs.min()).coerceAtLeast(1e-4)
+                val spanY = (ys.max() - ys.min()).coerceAtLeast(1e-4)
+                // We set the camera ourselves so the projection of every arc point is exact.
+                val zoom = kotlin.math.log2(min(wDp * 0.9 / (spanX * 512), hDp * 0.85 / (spanY * 512))).coerceIn(0.0, 12.0)
+                val scalePx = 512 * Math.pow(2.0, zoom) * d
+                val arcs = arcsWorld.map { arc ->
+                    arc.map { (x, y) -> PointF(((x - cx) * scalePx + wPx / 2.0).toFloat(), ((y - cy) * scalePx + hPx / 2.0).toFloat()) }
+                }
                 val json = context.assets.open("map/contrail_dark.json").bufferedReader().use { it.readText() }
                 val snapper = runCatching {
                     MapSnapshotter(
                         context,
-                        MapSnapshotter.Options(wPx, hPx)
+                        MapSnapshotter.Options(wDp.toInt(), hDp.toInt())
                             .withStyleBuilder(Style.Builder().fromJson(json))
-                            .withRegion(bounds)
+                            .withCameraPosition(
+                                CameraPosition.Builder()
+                                    .target(LatLng(WebMercator.lat(cy), Geo.normalizeLon(WebMercator.lon(cx))))
+                                    .zoom(zoom)
+                                    .build(),
+                            )
                             .withLogo(false)
-                            .withPixelRatio(density.density),
+                            .withPixelRatio(d),
                     )
                 }.getOrNull()
-                snapper?.start({ snap ->
-                    val arcs = destinations.map { d ->
-                        Geo.greatCircle(home, LatLon(d.lat, d.lon), 40).map { snap.pixelForLatLng(LatLng(it.lat, it.lon)) }
-                    }
-                    snapshot = snap.bitmap to arcs
-                }, { })
+                snapper?.start({ snap -> snapshot = snap.bitmap to arcs }, { })
                 onDispose { snapper?.cancel() }
             }
         }
@@ -208,7 +231,12 @@ fun DestinationsMap(home: LatLon, destinations: List<Destination>, modifier: Mod
             val arcs: List<List<Offset>> = snap?.second?.map { a -> a.map { Offset(it.x, it.y) } }
                 ?: fallbackArcs(home, destinations)
             arcs.forEach { arc ->
-                val path = Path().apply { arc.forEachIndexed { i, o -> if (i == 0) moveTo(o.x, o.y) else lineTo(o.x, o.y) } }
+                // Break the line where it wraps around the antimeridian instead of streaking across.
+                val path = Path().apply {
+                    arc.forEachIndexed { i, o ->
+                        if (i == 0 || kotlin.math.abs(o.x - arc[i - 1].x) > size.width / 2) moveTo(o.x, o.y) else lineTo(o.x, o.y)
+                    }
+                }
                 drawPath(path, colors.accent.copy(alpha = 0.18f), style = Stroke(4.dp.toPx(), cap = StrokeCap.Round))
                 drawPath(path, colors.accent.copy(alpha = 0.85f), style = Stroke(1.2.dp.toPx(), cap = StrokeCap.Round))
                 arc.lastOrNull()?.let { drawCircle(colors.accent, 2.2.dp.toPx(), it) }
@@ -234,4 +262,25 @@ private fun DrawScope.fallbackArcs(home: LatLon, destinations: List<Destination>
     val oy = (size.height - (maxLat - minLat).toFloat() * s) / 2
     fun o(p: LatLon) = Offset(ox + ((p.lon - minLon) * s).toFloat(), oy + ((maxLat - p.lat) * s).toFloat())
     return destinations.map { d -> Geo.greatCircle(home, LatLon(d.lat, d.lon), 24).map(::o) }
+}
+
+/** Web Mercator in world units (0..1 across the 512 dp world at zoom 0). */
+internal object WebMercator {
+    fun x(lon: Double): Double = (lon + 180.0) / 360.0
+    fun y(lat: Double): Double {
+        val phi = Geo.toRad(lat.coerceIn(-85.0, 85.0))
+        return (1 - kotlin.math.ln(kotlin.math.tan(Math.PI / 4 + phi / 2)) / Math.PI) / 2
+    }
+    fun lon(x: Double): Double = x * 360.0 - 180.0
+    fun lat(y: Double): Double = Geo.toDeg(kotlin.math.atan(kotlin.math.sinh(Math.PI * (1 - 2 * y))))
+}
+
+internal object RouteOverlayMath {
+    /** Shifts longitudes so the whole line stays within 180 degrees of [centerLon]. */
+    fun unwrapAround(centerLon: Double, points: List<LatLon>): List<LatLon> = points.map { p ->
+        var lon = p.lon
+        while (lon - centerLon > 180) lon -= 360
+        while (lon - centerLon < -180) lon += 360
+        p.copy(lon = lon)
+    }
 }

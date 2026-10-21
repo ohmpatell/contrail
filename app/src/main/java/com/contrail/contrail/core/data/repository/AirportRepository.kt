@@ -26,8 +26,12 @@ import kotlinx.serialization.json.jsonObject
 import kotlinx.serialization.json.jsonPrimitive
 import java.io.InputStream
 import javax.inject.Inject
-import javax.inject.Named
 import javax.inject.Singleton
+
+/** Opens the bundled airports.json (an asset in the app, a file in tests). */
+fun interface AirportsAsset {
+    fun open(): InputStream
+}
 
 /**
  * Every airport with scheduled service, bundled from OurAirports and imported into Room the
@@ -36,7 +40,7 @@ import javax.inject.Singleton
 @Singleton
 class AirportRepository @Inject constructor(
     private val db: ContrailDatabase,
-    @Named("airportsAsset") private val openAsset: () -> InputStream,
+    private val asset: AirportsAsset,
     private val clock: Clock,
 ) {
     private val dao = db.airportDao()
@@ -103,7 +107,7 @@ class AirportRepository @Inject constructor(
     }
 
     private suspend fun import() {
-        val root = openAsset().bufferedReader().use { Json.parseToJsonElement(it.readText()) }.jsonObject
+        val root = asset.open().bufferedReader().use { Json.parseToJsonElement(it.readText()) }.jsonObject
         val countries = root["countries"]?.jsonObject?.mapValues { it.value.jsonPrimitive.content }.orEmpty()
         val airports = root.getValue("airports").jsonArray.map { e ->
             val a = e.jsonArray

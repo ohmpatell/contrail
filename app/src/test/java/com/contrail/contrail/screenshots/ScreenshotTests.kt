@@ -35,7 +35,7 @@ import com.contrail.contrail.core.designsystem.icon.ContrailIcons
 import com.contrail.contrail.core.designsystem.theme.AltitudeRamp
 import com.contrail.contrail.core.designsystem.theme.ContrailTheme
 import com.contrail.contrail.core.designsystem.theme.RarityPalette
-import com.contrail.contrail.feature.logbook.LogbookScreen
+import com.contrail.contrail.feature.airports.AirportsScreen
 import com.contrail.contrail.feature.passport.PassportScreen
 import com.contrail.contrail.feature.radar.FeedStatus
 import com.contrail.contrail.feature.radar.FilterFacets
@@ -85,7 +85,7 @@ class ScreenshotTests {
                 TopLevelDestination.Radar -> RadarScreen(radar, RadarActions()) { FakeRadarBackdrop(it) }
                 TopLevelDestination.Sky -> SkyScreen()
                 TopLevelDestination.Passport -> PassportScreen()
-                TopLevelDestination.Logbook -> LogbookScreen()
+                TopLevelDestination.Airports -> AirportsScreen(airportsState, {}, {}, {}, {}, {}, nowMs = NOW)
             }
         }
     }
@@ -100,7 +100,7 @@ class ScreenshotTests {
     @Test fun radarTab() = shell(TopLevelDestination.Radar)
     @Test fun sky() = shell(TopLevelDestination.Sky)
     @Test fun passport() = shell(TopLevelDestination.Passport)
-    @Test fun logbook() = shell(TopLevelDestination.Logbook)
+    @Test fun airports() = shell(TopLevelDestination.Airports)
 
     @Test fun radarFilters() = radar(
         "filters",

@@ -100,16 +100,20 @@ class AirportViewModel @AssistedInject constructor(
         airport.filterNotNull().flatMapLatest { a ->
             logostream.observeRoutesFrom(a.iata).map { routes ->
                 routes.orEmpty().let { list ->
+                    // logostream's route data reuses IATA codes and sometimes carries the wrong ICAO
+                    // (Rouge as CPN), so group by IATA and resolve names through our own table first.
                     val byAirline = list.flatMap { r -> r.airlines.map { it to r } }
-                        .groupBy { it.first.icao ?: it.first.iata ?: "?" }
+                        .groupBy { it.first.iata ?: it.first.icao ?: "?" }
                     val served = byAirline.map { (code, pairs) ->
                         val first = pairs.first().first
-                        val local = Airlines.byIcao(first.icao)
-                        val profile = first.icao?.let { logostream.observeAirline(it).first() }
+                        val local = Airlines.byIata(first.iata) ?: Airlines.byIcao(first.icao)
+                        val icao = local?.icao ?: first.icao
+                        val profile = icao?.let { logostream.observeAirline(it).first() }
+                            ?.takeIf { local != null || it.iata == null || it.iata == first.iata }
                         AirlineServed(
-                            icao = first.icao, iata = first.iata,
-                            name = profile?.name ?: local?.name ?: code,
-                            routes = pairs.size,
+                            icao = icao, iata = first.iata,
+                            name = local?.name ?: profile?.name ?: code,
+                            routes = pairs.map { it.second.to }.distinct().size,
                             logoUrl = profile?.logo?.logoWhite ?: profile?.logo?.icon,
                             accentArgb = local?.accentArgb,
                         )
@@ -170,7 +174,9 @@ class AirportViewModel @AssistedInject constructor(
                 logostream.refreshRoutesFrom(a.iata)
                 // Profiles (names and logo URLs) for the airlines with the most routes here.
                 val routes = logostream.observeRoutesFrom(a.iata).first().orEmpty()
-                routes.flatMap { it.airlines }.mapNotNull { it.icao }.groupingBy { it }.eachCount()
+                routes.flatMap { it.airlines }
+                    .mapNotNull { al -> (Airlines.byIata(al.iata) ?: Airlines.byIcao(al.icao))?.icao ?: al.icao }
+                    .groupingBy { it }.eachCount()
                     .entries.sortedByDescending { it.value }.take(TOP_AIRLINES)
                     .forEach { (code, _) -> logostream.refreshAirline(code) }
             }

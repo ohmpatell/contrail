@@ -2,6 +2,7 @@ package com.contrail.contrail.core.network.airport
 
 import io.ktor.client.HttpClient
 import io.ktor.client.request.forms.submitForm
+import io.ktor.client.plugins.timeout
 import io.ktor.client.request.get
 import io.ktor.client.statement.bodyAsText
 import io.ktor.http.encodeURLQueryComponent
@@ -63,7 +64,13 @@ class OverpassSource(private val client: HttpClient) {
             """[out:json][timeout:25];(way["aeroway"~"^(runway|taxiway|terminal|apron)$"](around:%d,%.5f,%.5f);relation["aeroway"="terminal"](around:%d,%.5f,%.5f););out geom tags;""",
             radiusM, lat, lon, radiusM, lat, lon,
         )
-        val r = client.submitForm("https://overpass-api.de/api/interpreter", parameters { append("data", query) })
+        // Overpass can take a while on big airports; give it longer than the default 15 s.
+        val r = client.submitForm("https://overpass-api.de/api/interpreter", parameters { append("data", query) }) {
+            timeout {
+                requestTimeoutMillis = 45_000
+                socketTimeoutMillis = 45_000
+            }
+        }
         return if (r.status.isSuccess()) r.bodyAsText() else null
     }
 }

@@ -74,3 +74,39 @@ Checked against the OpenAPI spec, the terms (Sept 3, 2026) and live probes with 
 - **Attribution.** "Logos by logostream", linked to https://logostream.dev, is shown in Settings → About, as the terms allow.
 - **Usage counter** reads `X-RateLimit-Remaining` and `X-RateLimit-Reset` from every response, so Settings shows the real monthly quota instead of an estimate. A guard stops calling logostream when fewer than 500 requests remain.
 - **Key handling.** Debug builds read `LOGOSTREAM_API_KEY` from `local.properties` into BuildConfig. Release builds never embed it: the key is entered in Settings and stored with DataStore, encrypted with an Android Keystore AES-GCM key.
+
+## Stage 2 (Oct 21, 2026)
+
+### Radar fixes
+- **Icon classes come from ICAO Doc 8643.** The Mictronics readsb copy (2,788 designators) is bundled as `assets/aircraft_types.json`. Its descriptor (e.g. `L2J`) and wake category map every type to one of 17 classes: Jumbo, Quad, WideTri, Widebody, Narrowbody, RearJet, Regional, Bizjet, Fighter, TurbopropQuad, Turboprop, TurbopropSingle, LightTwin, Light, Helicopter, Glider, Generic. Name patterns separate engine layouts the descriptor can't (CRJ rear engines vs E-Jet underwing, bizjets vs airliners). A per-type wingspan scale sizes variants within a class, and the emitter category is the fallback. `ZZZZ` (ICAO's "no designator") counts as unknown.
+- **Clutter is dropped at ingest.** Categories C1–C5 (vehicles and obstacles, including the C4/C5 obstacle classes beyond the C1–C3 you named) and typeless ground targets never reach Room.
+- **"Show ground traffic" semantics.** On (default): parked and taxiing aircraft appear once you zoom into an airport (fading in from zoom 8.5 to 10). Off: never shown.
+- **Full route uses OpenSky's anonymous `tracks/all`** for the flown part. adsb.lol traces sit behind a browser verification page and can't be called from the app. With no track, a great circle runs from the origin to where our trail begins. The remaining part is a dashed great circle that re-draws twice a second from the interpolated position. Tracks are cached in memory for 90 s; they're live data, so they don't go into Room.
+- **adsb.fi is now the primary feed and adsb.lol the backup.** adsb.lol's headers show 4/s, 60/min and **500 per day** per client, which a few hours of radar would exhaust. adsb.fi allows 1/s with no daily cap for personal use and asks for a citation, which is in the attribution line and Settings. Polling is every 5 s, with a 4 s minimum gap.
+
+### Navigation and screens
+- **Navigation 3 with an overlay scene for detail pages.** Aircraft, airport and settings pages slide in over the tab shell instead of replacing it, so the MapLibre view, camera and polling survive. Detail view models are assisted-injected per key.
+- **Logbook removed.** Watchlist is in the radar filters (tails, types, airlines; glowing rings). The spotting log is gone.
+- **Airports tab.** Search runs offline over bundled OurAirports data: 5,332 airports with IATA codes and scheduled service, 7,122 runways, 14,992 frequencies, and an IANA timezone computed at build time with `timezonefinder` (`tools/gen_airports.py`). It's imported into Room on first use.
+- **Airport page sources.**
+  - Weather: METAR/TAF from aviationweather.gov, cached 10 min.
+  - Diagram: OpenStreetMap runways, taxiways, aprons and terminals via Overpass (45 s timeout), cached 30 days, falling back to OurAirports runway ends. The likely active runway is the end most into the wind.
+  - Airline and route data: logostream stats (permanent cache) and routes (weekly cache).
+  - Live movements: the board and mini-radar come from ADS-B around the airport, polled every 10 s while the page is open.
+  - Destinations map: a MapLibre snapshot with a camera we compute ourselves, so the Web Mercator projection of each arc is exact.
+- **The live board is ADS-B based until AeroDataBox has a key.** It shows aircraft climbing out or descending in within 60 km, plus any whose callsign route starts or ends here, labelled "from ADS-B · route from callsign".
+- **logostream's route data has ambiguous airline codes.** IATA codes are shared (RV is Rouge, Reeve Aleutian and Caspian) and some routes carry the wrong ICAO (Rouge as CPN). Airlines served are grouped by IATA and named from our curated table first, and a logostream profile is used only when its IATA matches.
+- **Aircraft page "recent flights" are Contrail's own sightings** (`sighting` table). OpenSky's historical flights need an account (HTTP 403 anonymously).
+- **Settings is reachable from the gear on the Airports tab.** Keys are AES-GCM encrypted with a non-exportable Android Keystore key and stored in DataStore.
+
+### Imagery
+- **The floating-plane order is: logostream livery (paid plan, not available) → data-driven livery render → photo cutout.** The render is a single parametric side-profile style per icon class: fuselage length and height, a 747 hump or A380 double deck, engine layout with pylons, T-tail, props. Each airline's livery fills fuselage, belly, cheatline, fin and engines. Etihad, Cathay Pacific, Air Canada, Rouge, WestJet, Emirates, Qatar, BA and Lufthansa are hand-tuned; others get white with their brand colour. logostream's free tail art is drawn into the fin.
+- **When there's no airline** (private, military), the aircraft page defaults to the cutout instead of a plain white render.
+- **ML Kit Subject Segmentation (16.0.0-beta1)** is declared in the manifest so Play services downloads the model with the app. If it isn't ready yet, tapping Cutout retries. Cutouts are stored in app-private files and never shared.
+- **Rarity badges shimmer** with an animated gradient: gold for Legendary, silver for Rare, blue for Uncommon (static).
+
+### Libraries added
+| Library | Why |
+| --- | --- |
+| Navigation 3 (`navigation3-runtime`, `navigation3-ui`, `lifecycle-viewmodel-navigation3`) | Detail pages with per-entry view models |
+| ML Kit Subject Segmentation (Play services, beta) | On-device photo cutouts, as DESIGN.md specifies |

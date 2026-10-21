@@ -98,7 +98,7 @@ private class Geometry(val w: Float, val h: Float, p: Profile) {
 
 private fun DrawScope.drawShadow(p: Profile, wave: Float) {
     val g = Geometry(size.width, size.height, p)
-    val center = Offset(size.width / 2f, g.bottom + g.fh * 1.2f)
+    val center = Offset(size.width / 2f, g.bottom + g.fh * 0.95f)
     val r = size.width * p.length * 0.42f * (1f - wave * 0.03f)
     drawOval(
         Brush.radialGradient(listOf(Color.Black.copy(alpha = 0.45f), Color.Transparent), center, r),
@@ -143,9 +143,20 @@ private fun finPath(g: Geometry, p: Profile): Path = Path().apply {
     close()
 }
 
-private fun DrawScope.drawEngine(center: Offset, length: Float, height: Float, color: Color, far: Boolean) {
+private fun DrawScope.drawEngine(center: Offset, length: Float, height: Float, color: Color, far: Boolean, pylonTo: Float? = null) {
     val shade = if (far) 0.55f else 1f
     val body = lerp(Color.Black, color, shade)
+    // Pylon up to the wing or fuselage, so the nacelle doesn't float.
+    if (pylonTo != null) {
+        val pylon = Path().apply {
+            moveTo(center.x - length * 0.35f, center.y - height * 0.3f)
+            lineTo(center.x + length * 0.15f, center.y - height * 0.3f)
+            lineTo(center.x - length * 0.05f, pylonTo)
+            lineTo(center.x - length * 0.5f, pylonTo)
+            close()
+        }
+        drawPath(pylon, lerp(body, Color.Black, 0.2f))
+    }
     val rect = Rect(center.x - length / 2, center.y - height / 2, center.x + length / 2, center.y + height / 2)
     val path = Path().apply {
         moveTo(rect.left + length * 0.08f, rect.top + height * 0.12f)
@@ -266,12 +277,12 @@ private fun DrawScope.drawAircraft(p: Profile, l: Livery, tail: Painter?) {
     }
     drawPath(wing, wingColor)
     when (p.engines) {
-        EngineLayout.UnderWing -> drawEngine(Offset(wingRoot - g.w * 0.05f, g.bottom + engH * 0.42f), engL, engH, l.engines, far = false)
+        EngineLayout.UnderWing -> drawEngine(Offset(wingRoot - g.w * 0.05f, g.bottom + engH * 0.42f), engL, engH, l.engines, far = false, pylonTo = g.bottom - g.fh * 0.05f)
         EngineLayout.UnderWingQuad -> {
-            drawEngine(Offset(wingRoot - g.w * 0.05f, g.bottom + engH * 0.42f), engL, engH, l.engines, far = false)
-            drawEngine(Offset(wingRoot - g.w * 0.165f, g.bottom + engH * 0.6f), engL * 0.95f, engH * 0.95f, l.engines, far = false)
+            drawEngine(Offset(wingRoot - g.w * 0.05f, g.bottom + engH * 0.42f), engL, engH, l.engines, far = false, pylonTo = g.bottom - g.fh * 0.05f)
+            drawEngine(Offset(wingRoot - g.w * 0.165f, g.bottom + engH * 0.6f), engL * 0.95f, engH * 0.95f, l.engines, far = false, pylonTo = g.bottom + g.fh * 0.12f)
         }
-        EngineLayout.Rear -> drawEngine(Offset(g.x0 + g.tailcone * 1.25f, g.cy - g.fh * 0.12f), engL, engH, l.engines, far = false)
+        EngineLayout.Rear -> drawEngine(Offset(g.x0 + g.tailcone * 1.25f, g.cy - g.fh * 0.12f), engL, engH, l.engines, far = false, pylonTo = g.cy + g.fh * 0.05f)
         EngineLayout.Tail -> {
             drawEngine(Offset(wingRoot - g.w * 0.05f, g.bottom + engH * 0.42f), engL, engH, l.engines, far = false)
             drawEngine(Offset(g.x0 + p.finChord * g.w * 0.75f, g.top - engH * 0.15f), engL * 0.95f, engH * 0.9f, l.engines, far = false)
