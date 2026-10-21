@@ -94,7 +94,8 @@ Checked against the OpenAPI spec, the terms (Sept 3, 2026) and live probes with 
   - Airline and route data: logostream stats (permanent cache) and routes (weekly cache).
   - Live movements: the board and mini-radar come from ADS-B around the airport, polled every 10 s while the page is open.
   - Destinations map: a MapLibre snapshot with a camera we compute ourselves, so the Web Mercator projection of each arc is exact.
-- **The live board is ADS-B based until AeroDataBox has a key.** It shows aircraft climbing out or descending in within 60 km, plus any whose callsign route starts or ends here, labelled "from ADS-B · route from callsign".
+- **The live board is built from ADS-B.** It shows aircraft climbing out or descending in within 60 km, plus any whose callsign route starts or ends here, labelled "from ADS-B · route from callsign".
+- **AeroDataBox is removed (Oct 21, 2026).** You confirmed it no longer has a free tier, so it's gone from DESIGN.md, Settings and the build. Scheduled boards would need a paid source, so the ADS-B board is the board. A free route stays open for later: FlightAware AeroAPI (planned for Trips in Stage 3) could optionally power boards within its $5 monthly cap. That's left off by default so the budget goes to your own flights.
 - **logostream's route data has ambiguous airline codes.** IATA codes are shared (RV is Rouge, Reeve Aleutian and Caspian) and some routes carry the wrong ICAO (Rouge as CPN). Airlines served are grouped by IATA and named from our curated table first, and a logostream profile is used only when its IATA matches.
 - **Aircraft page "recent flights" are Contrail's own sightings** (`sighting` table). OpenSky's historical flights need an account (HTTP 403 anonymously).
 - **Settings is reachable from the gear on the Airports tab.** Keys are AES-GCM encrypted with a non-exportable Android Keystore key and stored in DataStore.

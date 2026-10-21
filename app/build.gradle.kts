@@ -20,7 +20,7 @@ val localProperties = Properties().apply {
     if (f.exists()) f.inputStream().use { load(it) }
 }
 fun debugKey(name: String): String = "\"" + (localProperties.getProperty(name) ?: "").trim() + "\""
-val apiKeyNames = listOf("LOGOSTREAM_API_KEY", "AERODATABOX_API_KEY")
+val apiKeyNames = listOf("LOGOSTREAM_API_KEY")
 
 android {
     namespace = "com.contrail.contrail"

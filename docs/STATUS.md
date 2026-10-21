@@ -6,12 +6,7 @@ Last updated Oct 21, 2026.
 
 **1. Your logostream key on the phone.** Release builds never embed keys. On the phone: Airports tab → gear (top right) → logostream → **Add key**, paste the key from `local.properties`, **Save**. Debug builds read it from `local.properties` automatically.
 
-**2. Free AeroDataBox key, for real departure and arrival boards.** Until then, airport boards are built from live ADS-B (labelled as such).
-1. Sign up at https://rapidapi.com/aedbx-aedbx/api/aerodatabox and subscribe to the **Basic** plan (free, hard stop with no overage).
-2. Copy your `X-RapidAPI-Key`.
-3. Add `AERODATABOX_API_KEY=<key>` to `local.properties`, and on the phone enter it under Airports → gear → AeroDataBox.
-
-**3. Optional:**
+**2. Optional:**
 - A free **OpenSky Network** account (https://opensky-network.org), for an aircraft's flights over the last few days. Without it, the aircraft page shows the flights Contrail itself has seen.
 - **airplanes.live** now needs approval by email (contact@airplanes.live). adsb.fi and adsb.lol cover live positions without it.
 
@@ -52,7 +47,7 @@ Releases: signing secrets are set and every push to `master` publishes a signed 
 
 ## Next (Stage 3)
 - Trips: add a flight by number and date or boarding-pass scan, glass flight cards, flight detail with a self-drawing route, aircraft rotation and the cockpit-visit planner. FlightAware AeroAPI goes behind the spend-cap guard and needs your free AeroAPI key.
-- Real airport boards from AeroDataBox once its key is in.
+- Airport boards stay ADS-B based (AeroDataBox no longer has a free tier). AeroAPI could optionally feed them within its free monthly credit.
 
 ## Known limits
 - Radar coverage is 250 nm around the map centre per query (API cap). Zoomed far out, the HUD says "zoom in for more".

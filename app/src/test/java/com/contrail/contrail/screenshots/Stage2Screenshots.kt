@@ -169,7 +169,6 @@ class Stage2Screenshots {
             SettingsUiState(
                 keys = listOf(
                     KeyStatus(ApiService.Logostream, KeySource.LocalProperties, "FREE••••02"),
-                    KeyStatus(ApiService.AeroDataBox, KeySource.Missing, null),
                 ),
                 usage = LogostreamUsage(20_000, 19_874, "2026-11-01", 126, NOW),
             ),

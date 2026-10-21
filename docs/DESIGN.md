@@ -155,7 +155,7 @@ This panel shows your aircraft's whole day so you can judge whether the crew wil
 ### Airport page
 
 - Header: airport logo (or a styled code monogram), name, city, live local time.
-- Live departure and arrival boards with split-flap animation.
+- Live departure and arrival boards with split-flap animation, built from live ADS-B: aircraft climbing out of or descending into the airport, with routes from their callsigns. (No free schedule API is left: AeroDataBox dropped its free tier.)
 - Terminals, airlines served and a destinations map of every nonstop route.
 - Nearby traffic on a mini-radar.
 - Decoded weather (METAR and TAF) with a flight-category badge (VFR, MVFR, IFR, LIFR).
@@ -195,7 +195,6 @@ Everything except trip details comes from free, keyless community sources. Your 
 | [adsbdb](https://www.adsbdb.com/) | Callsign → route, hex → registration and type | Free | None |
 | [Planespotters photo API](https://planespotters.net/photo/api) | Aircraft photos | Free, credit and link back required | None |
 | [FlightAware AeroAPI](https://flightaware.com/commercial/aeroapi/) (Personal) | Your flights, tail assignment, inbound and next legs | Up to $5 of queries a month free | Free key |
-| [AeroDataBox](https://aerodatabox.com/) (RapidAPI Basic) | Airport boards, schedule backup | About 600 units a month, hard stop with no overage | Free key |
 | [AviationStack](https://aviationstack.com/pricing) | Last-resort flight status | 100 requests a month | Free key |
 | [aviationweather.gov](https://aviationweather.gov/data/api/) | METAR and TAF | Free | None |
 | [OurAirports](https://ourairports.com/data/) | Airports, runways, frequencies (bundled in the app) | Public domain | None |
@@ -210,7 +209,7 @@ How the AeroAPI budget is spent:
 
 - Rotation data is fetched only for flights departing within the next 48 hours, plus whenever you open that flight.
 - Every response is cached in the phone's database, so revisiting a flight costs nothing.
-- A spend meter in Settings shows this month's estimated cost against your cap. At the cap, the app falls back to AeroDataBox and the free live feeds.
+- A spend meter in Settings shows this month's estimated cost against your cap. At the cap, the app falls back to the free live feeds.
 - Once your aircraft is airborne, live tracking switches to adsb.lol, which is free.
 
 Callsign-based routes from free databases are sometimes wrong, especially for airlines that change callsigns daily, so the app labels them as "route from callsign" rather than confirmed.
@@ -252,7 +251,7 @@ The biggest gap in free data is the aircraft rotation before a tail is assigned.
 | Risk | What you'd notice | Mitigation |
 | --- | --- | --- |
 | Tail number assigned late | Rotation panel empty until about a day before | Clear "not assigned yet" state, automatic recheck |
-| AeroAPI free credit used up | Rotation and status stop refreshing for the month | Hard spend cap, cache everything, fall back to AeroDataBox and live feeds |
+| AeroAPI free credit used up | Rotation and status stop refreshing for the month | Hard spend cap, cache everything, fall back to the free live feeds |
 | No ADS-B coverage over oceans and remote areas | Plane disappears mid-flight (e.g. over the Arabian Sea or Bay of Bengal) | Show an estimated position along the route, clearly marked "estimated" |
 | Community APIs change or throttle | Radar slows or shows gaps | Three live providers behind one interface, switch automatically |
 | Wrong routes from callsign databases | Odd origin or destination on the radar | Labelled "route from callsign", corrected once AeroAPI confirms |

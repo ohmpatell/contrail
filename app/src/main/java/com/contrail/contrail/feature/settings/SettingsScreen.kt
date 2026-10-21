@@ -63,9 +63,8 @@ class SettingsViewModel @Inject constructor(
 ) : ViewModel() {
     val state: StateFlow<SettingsUiState> = combine(
         apiKeys.status(ApiService.Logostream),
-        apiKeys.status(ApiService.AeroDataBox),
         usage.logostream,
-    ) { ls, adb, u -> SettingsUiState(listOf(ls, adb), u) }
+    ) { ls, u -> SettingsUiState(listOf(ls), u) }
         .stateIn(viewModelScope, SharingStarted.WhileSubscribed(5_000), SettingsUiState())
 
     fun save(service: ApiService, key: String?) {

@@ -5,7 +5,7 @@ Personal Android flight tracking app for one aviation enthusiast (me). Flighty-g
 ## Non-negotiables
 
 - **Free only.** Only free APIs and free tiers (see the Data sources table in `docs/DESIGN.md`). No paid services, no Firebase, no backend server.
-- **No secrets in the repo.** In release builds, API keys are entered by me in the app's Settings screen and stored encrypted on device (DataStore + Android Keystore). Debug builds may read them from the git-ignored `local.properties` (e.g. `LOGOSTREAM_API_KEY`, `AERODATABOX_API_KEY`) via BuildConfig. Never hardcode keys, never commit them, and never put them in a release BuildConfig.
+- **No secrets in the repo.** In release builds, API keys are entered by me in the app's Settings screen and stored encrypted on device (DataStore + Android Keystore). Debug builds may read them from the git-ignored `local.properties` (e.g. `LOGOSTREAM_API_KEY`) via BuildConfig. Never hardcode keys, never commit them, and never put them in a release BuildConfig.
 - **Design is the top priority.** This app should look and feel stunning: smooth 120 Hz motion, shared-element transitions, spring physics, frosted glass, split-flap text. No default Material look, no placeholder-quality UI left behind. If a screen works but looks plain, it isn't done.
 - **No login, no accounts, no analytics, no ads.**
 - **Offline first.** Screens read from the Room database; repositories refresh it from the network.

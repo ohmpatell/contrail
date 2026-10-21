@@ -24,7 +24,6 @@ import javax.inject.Singleton
 /** The services that need a key. */
 enum class ApiService(val title: String, val signUpUrl: String) {
     Logostream("logostream", "https://airline.logostream.dev"),
-    AeroDataBox("AeroDataBox", "https://rapidapi.com/aedbx-aedbx/api/aerodatabox"),
 }
 
 /** Encrypts small strings with an AES-GCM key that never leaves the Android Keystore. */
@@ -81,7 +80,6 @@ class ApiKeys @Inject constructor(
 
     private fun buildConfigKey(service: ApiService): String = when (service) {
         ApiService.Logostream -> BuildConfig.LOGOSTREAM_API_KEY
-        ApiService.AeroDataBox -> BuildConfig.AERODATABOX_API_KEY
     }
 
     fun status(service: ApiService): Flow<KeyStatus> = store.data.map { p ->
