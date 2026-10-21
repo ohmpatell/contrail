@@ -53,6 +53,7 @@ object NetworkModule {
     @Provides @Singleton
     fun liveTraffic(client: HttpClient): LiveTrafficSource = FailoverLiveTrafficSource(
         listOf(ReadsbApiSource.adsbLol(client), ReadsbApiSource.adsbFi(client)),
+        onProviderFailed = { name, e -> android.util.Log.w("ContrailTraffic", "$name failed: $e") },
     )
 
     @Provides @Singleton

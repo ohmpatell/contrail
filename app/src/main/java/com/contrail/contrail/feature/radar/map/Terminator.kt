@@ -39,6 +39,8 @@ object Terminator {
         val sun = subSolarPoint(timeMs)
         val decl = Geo.toRad(sun.lat)
         val sinH = sin(Geo.toRad(sunAltitudeDeg))
+        // Night covers the pole that is tilted away from the sun.
+        val pole = if (sun.lat >= 0) -89.9 else 89.9
         val edge = ArrayList<Pair<Double, Double>>(360 / stepDeg + 4)
         var lon = -180.0
         while (lon <= 180.0) {
@@ -48,15 +50,21 @@ object Terminator {
             val b = cos(decl) * cos(hourAngle)
             val r = sqrt(a * a + b * b)
             val alpha = atan2(b, a)
-            val ratio = (sinH / r).coerceIn(-1.0, 1.0)
-            // Two solutions; the one we want borders the pole that is in polar night.
-            val raw = if (sun.lat >= 0) asin(ratio) - alpha else PI - asin(ratio) - alpha
-            val lat = Geo.toDeg(atan2(sin(raw), cos(raw)))
+            val ratio = sinH / r
+            val lat = when {
+                // The sun never gets this low on this meridian: the band shrinks to the night pole.
+                ratio < -1.0 -> pole
+                // The sun is always below this altitude here: the band covers the whole meridian.
+                ratio > 1.0 -> -pole
+                else -> {
+                    // Two solutions; the one we want borders the pole that is in polar night.
+                    val raw = if (sun.lat >= 0) asin(ratio) - alpha else PI - asin(ratio) - alpha
+                    Geo.toDeg(atan2(sin(raw), cos(raw)))
+                }
+            }
             edge += lon to lat.coerceIn(-89.9, 89.9)
             lon += stepDeg
         }
-        // Night covers the pole that is tilted away from the sun.
-        val pole = if (sun.lat >= 0) -89.9 else 89.9
         return buildList {
             addAll(edge)
             add(180.0 to pole)

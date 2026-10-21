@@ -41,10 +41,12 @@ android {
 
     buildTypes {
         release {
+            // Whole-app R8. A package-scoped pass broke OkHttp's access to rewritten kotlin.* classes.
             optimization {
                 enable = true
-                packageScope = setOf("androidx.**", "kotlin.**", "kotlinx.**")
             }
+            // Phones are arm64; x86_64 keeps the release testable on the emulator.
+            ndk { abiFilters += setOf("arm64-v8a", "x86_64") }
             if (releaseKeystore != null) {
                 signingConfig = signingConfigs.getByName("release")
             }
@@ -63,6 +65,12 @@ android {
             isIncludeAndroidResources = true
             all { test ->
                 test.maxHeapSize = "3g"
+                // Robolectric reaches into JDK internals that newer JDKs no longer open by default.
+                test.jvmArgs(
+                    "--add-opens=java.base/jdk.internal.access=ALL-UNNAMED",
+                    "--add-opens=java.base/java.io=ALL-UNNAMED",
+                    "--add-opens=java.base/java.lang=ALL-UNNAMED",
+                )
                 test.systemProperty("robolectric.pixelCopyRenderMode", "hardware")
             }
         }

@@ -31,6 +31,7 @@ class FailoverLiveTrafficSource(
     private val providers: List<LiveTrafficSource>,
     private val coolDownMs: Long = 60_000,
     private val clock: () -> Long = System::currentTimeMillis,
+    private val onProviderFailed: (provider: String, error: Throwable) -> Unit = { _, _ -> },
 ) : LiveTrafficSource {
     private val failedUntil = mutableMapOf<String, Long>()
 
@@ -49,7 +50,7 @@ class FailoverLiveTrafficSource(
                 throw e
             } catch (e: Throwable) {
                 errors += e
-                android.util.Log.w("ContrailTraffic", "${provider.name} failed: $e")
+                onProviderFailed(provider.name, e)
                 val wait = (e as? LiveTrafficException)?.retryAfterMs?.coerceAtLeast(coolDownMs) ?: coolDownMs
                 failedUntil[provider.name] = clock() + wait
             }
