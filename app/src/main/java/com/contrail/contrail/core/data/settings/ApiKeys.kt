@@ -24,6 +24,8 @@ import javax.inject.Singleton
 /** The services that need a key. */
 enum class ApiService(val title: String, val signUpUrl: String) {
     Logostream("logostream", "https://airline.logostream.dev"),
+    OpenSkyClientId("OpenSky client ID", "https://opensky-network.org/my-opensky/account"),
+    OpenSkyClientSecret("OpenSky client secret", "https://opensky-network.org/my-opensky/account"),
 }
 
 /** Encrypts small strings with an AES-GCM key that never leaves the Android Keystore. */
@@ -80,6 +82,8 @@ class ApiKeys @Inject constructor(
 
     private fun buildConfigKey(service: ApiService): String = when (service) {
         ApiService.Logostream -> BuildConfig.LOGOSTREAM_API_KEY
+        ApiService.OpenSkyClientId -> BuildConfig.OPENSKY_CLIENT_ID
+        ApiService.OpenSkyClientSecret -> BuildConfig.OPENSKY_CLIENT_SECRET
     }
 
     fun status(service: ApiService): Flow<KeyStatus> = store.data.map { p ->
@@ -150,6 +154,27 @@ class UsageTracker @Inject constructor(@Named("usage") private val store: DataSt
 
     suspend fun current(): LogostreamUsage = logostream.first()
 
+    private val openSkyRemaining = stringPreferencesKey("opensky.remaining")
+    private val openSkyDay = stringPreferencesKey("opensky.day")
+    private val openSkyMade = longPreferencesKey("opensky.made")
+
+    /** OpenSky's credits left today (from `X-Rate-Limit-Remaining`) and requests Contrail made today. */
+    val openSky: Flow<OpenSkyUsage> = store.data.map { p ->
+        OpenSkyUsage(p[openSkyRemaining]?.toIntOrNull(), p[openSkyMade] ?: 0, p[openSkyDay])
+    }
+
+    suspend fun recordOpenSky(remaining: Int?, dayKey: String) {
+        store.edit { p ->
+            if (p[openSkyDay] != dayKey) {
+                p[openSkyDay] = dayKey
+                p[openSkyMade] = 0
+                p.remove(openSkyRemaining)
+            }
+            p[openSkyMade] = (p[openSkyMade] ?: 0) + 1
+            remaining?.let { p[openSkyRemaining] = it.toString() }
+        }
+    }
+
     /** Records one logostream response. [monthKey] is e.g. "2026-10" so the local count resets monthly. */
     suspend fun recordLogostream(limitHeader: String?, remainingHeader: String?, resetHeader: String?, monthKey: String, nowMs: Long) {
         store.edit { p ->
@@ -163,5 +188,14 @@ class UsageTracker @Inject constructor(@Named("usage") private val store: DataSt
             resetHeader?.let { p[reset] = it }
             p[updated] = nowMs
         }
+    }
+}
+
+data class OpenSkyUsage(val remaining: Int?, val madeToday: Long, val day: String?) {
+    /** Keep a reserve so the radar's anonymous track lookups and tomorrow's refresh still work. */
+    val exhausted: Boolean get() = remaining != null && remaining < RESERVE
+
+    companion object {
+        const val RESERVE = 200
     }
 }

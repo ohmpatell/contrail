@@ -20,10 +20,15 @@ import com.contrail.contrail.core.data.repository.SightingEntity
         NewsItemEntity::class,
         CachedResponseEntity::class,
         SightingEntity::class,
+        TripEntity::class,
+        SegmentEntity::class,
+        ConnectionPrefEntity::class,
+        LoungeEntity::class,
+        LoungeVisitEntity::class,
     ],
-    version = 2,
+    version = 3,
     exportSchema = true,
-    autoMigrations = [AutoMigration(from = 1, to = 2)],
+    autoMigrations = [AutoMigration(from = 1, to = 2), AutoMigration(from = 2, to = 3)],
 )
 abstract class ContrailDatabase : RoomDatabase() {
     abstract fun liveAircraftDao(): LiveAircraftDao
@@ -35,4 +40,6 @@ abstract class ContrailDatabase : RoomDatabase() {
     abstract fun newsDao(): NewsDao
     abstract fun cacheDao(): CacheDao
     abstract fun sightingDao(): SightingDao
+    abstract fun tripDao(): TripDao
+    abstract fun loungeDao(): LoungeDao
 }

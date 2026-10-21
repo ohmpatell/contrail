@@ -73,6 +73,22 @@ class OverpassSource(private val client: HttpClient) {
         }
         return if (r.status.isSuccess()) r.bodyAsText() else null
     }
+
+    /** Lounges mapped in OpenStreetMap (`amenity=lounge`) around an airport, as raw JSON. */
+    suspend fun lounges(lat: Double, lon: Double, radiusM: Int = 4_500): String? {
+        val query = String.format(
+            Locale.US,
+            """[out:json][timeout:25];nwr["amenity"="lounge"](around:%d,%.5f,%.5f);out tags center;""",
+            radiusM, lat, lon,
+        )
+        val r = client.submitForm("https://overpass-api.de/api/interpreter", parameters { append("data", query) }) {
+            timeout {
+                requestTimeoutMillis = 45_000
+                socketTimeoutMillis = 45_000
+            }
+        }
+        return if (r.status.isSuccess()) r.bodyAsText() else null
+    }
 }
 
 @Serializable

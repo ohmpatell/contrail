@@ -71,3 +71,30 @@ internal data class AdsbdbAirport(
 ) {
     fun toRef() = AirportRef(iata, icao, name, municipality, countryIso, latitude, longitude)
 }
+
+/** Registration → transponder hex and type, from adsbdb. */
+data class AircraftRecord(val registration: String, val hex: String, val typeCode: String?, val owner: String?)
+
+class AdsbdbAircraftSource(
+    private val client: HttpClient,
+    private val json: Json,
+    private val baseUrl: String = "https://api.adsbdb.com",
+) {
+    suspend fun byRegistration(registration: String): AircraftRecord? {
+        val response = client.get("$baseUrl/v0/aircraft/${registration.trim().uppercase().encodeURLPathPart()}")
+        if (response.status == HttpStatusCode.NotFound) return null
+        if (!response.status.isSuccess()) error("adsbdb returned HTTP ${response.status.value}")
+        val obj = response.body<AdsbdbEnvelope>().response as? JsonObject ?: return null
+        val a = obj["aircraft"]?.let { json.decodeFromJsonElement<AdsbdbAircraft>(it) } ?: return null
+        val hex = a.modeS?.lowercase() ?: return null
+        return AircraftRecord(a.registration ?: registration.uppercase(), hex, a.icaoType, a.registeredOwner)
+    }
+}
+
+@Serializable
+internal data class AdsbdbAircraft(
+    @SerialName("mode_s") val modeS: String? = null,
+    val registration: String? = null,
+    @SerialName("icao_type") val icaoType: String? = null,
+    @SerialName("registered_owner") val registeredOwner: String? = null,
+)

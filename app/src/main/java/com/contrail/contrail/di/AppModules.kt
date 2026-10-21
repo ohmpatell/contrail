@@ -33,6 +33,16 @@ import com.contrail.contrail.core.network.track.OpenSkyTrackSource
 import com.contrail.contrail.core.network.track.TrackSource
 import com.contrail.contrail.core.network.weather.RainViewerSource
 import com.contrail.contrail.core.network.weather.WeatherRadarSource
+import com.contrail.contrail.core.data.settings.ApiKeys
+import com.contrail.contrail.core.data.settings.ApiService
+import com.contrail.contrail.core.data.settings.UsageTracker
+import com.contrail.contrail.core.network.opensky.FlightHistorySource
+import com.contrail.contrail.core.network.opensky.OpenSkyCredentials
+import com.contrail.contrail.core.network.opensky.OpenSkyHistorySource
+import com.contrail.contrail.core.network.route.AdsbdbAircraftSource
+import com.contrail.contrail.core.network.traffic.AircraftLookupSource
+import com.contrail.contrail.core.network.traffic.FailoverLookupSource
+import com.contrail.contrail.core.network.traffic.ReadsbLookupSource
 import dagger.Binds
 import dagger.Module
 import dagger.Provides
@@ -48,6 +58,7 @@ import javax.inject.Singleton
 private val Context.radarDataStore: DataStore<Preferences> by preferencesDataStore(name = "radar")
 private val Context.secureDataStore: DataStore<Preferences> by preferencesDataStore(name = "secure")
 private val Context.usageDataStore: DataStore<Preferences> by preferencesDataStore(name = "usage")
+private val Context.tripsDataStore: DataStore<Preferences> by preferencesDataStore(name = "trips")
 
 @Module
 @InstallIn(SingletonComponent::class)
@@ -91,6 +102,28 @@ object NetworkModule {
 
     @Provides @Singleton
     fun overpass(client: HttpClient): OverpassSource = OverpassSource(client)
+
+    @Provides @Singleton
+    fun aircraftLookup(client: HttpClient): AircraftLookupSource = FailoverLookupSource(
+        listOf(ReadsbLookupSource.adsbFi(client), ReadsbLookupSource.adsbLol(client)),
+    )
+
+    @Provides @Singleton
+    fun adsbdbAircraft(client: HttpClient, json: Json): AdsbdbAircraftSource = AdsbdbAircraftSource(client, json)
+
+    @Provides @Singleton
+    fun flightHistory(client: HttpClient, keys: ApiKeys, usage: UsageTracker, clock: Clock): FlightHistorySource = OpenSkyHistorySource(
+        client,
+        credentials = {
+            val id = keys.get(ApiService.OpenSkyClientId)
+            val secret = keys.get(ApiService.OpenSkyClientSecret)
+            if (id != null && secret != null) OpenSkyCredentials(id, secret) else null
+        },
+        onCredits = { remaining ->
+            val day = java.time.Instant.ofEpochMilli(clock.nowMs()).atZone(java.time.ZoneOffset.UTC).toLocalDate().toString()
+            usage.recordOpenSky(remaining, day)
+        },
+    )
 }
 
 @Module
@@ -114,6 +147,9 @@ object StorageModule {
 
     @Provides @Singleton
     fun cipher(): SecretCipher = KeystoreCipher()
+
+    @Provides @Singleton @Named("trips")
+    fun tripsStore(@ApplicationContext context: Context): DataStore<Preferences> = context.tripsDataStore
 
     @Provides
     fun airportsAsset(@ApplicationContext context: Context): AirportsAsset = AirportsAsset { context.assets.open("airports.json") }

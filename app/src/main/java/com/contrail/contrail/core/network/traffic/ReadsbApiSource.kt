@@ -1,6 +1,7 @@
 package com.contrail.contrail.core.network.traffic
 
 import com.contrail.contrail.core.data.model.LiveAircraft
+import com.contrail.contrail.core.network.HostThrottles
 import com.contrail.contrail.core.network.RequestThrottle
 import io.ktor.client.HttpClient
 import io.ktor.client.call.body
@@ -26,7 +27,7 @@ class ReadsbApiSource(
     override val name: String,
     private val client: HttpClient,
     private val urlFor: (lat: String, lon: String, radiusNm: Int) -> String,
-    private val throttle: RequestThrottle = RequestThrottle(minIntervalMs = 1_100),
+    private val throttle: RequestThrottle = HostThrottles.of(name),
     private val clock: () -> Long = System::currentTimeMillis,
 ) : LiveTrafficSource {
 

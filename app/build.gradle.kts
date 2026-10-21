@@ -20,7 +20,7 @@ val localProperties = Properties().apply {
     if (f.exists()) f.inputStream().use { load(it) }
 }
 fun debugKey(name: String): String = "\"" + (localProperties.getProperty(name) ?: "").trim() + "\""
-val apiKeyNames = listOf("LOGOSTREAM_API_KEY")
+val apiKeyNames = listOf("LOGOSTREAM_API_KEY", "OPENSKY_CLIENT_ID", "OPENSKY_CLIENT_SECRET")
 
 android {
     namespace = "com.contrail.contrail"
@@ -146,6 +146,12 @@ dependencies {
     implementation(libs.androidx.navigation3.ui)
     implementation(libs.androidx.lifecycle.viewmodel.navigation3)
     implementation(libs.mlkit.subject.segmentation)
+    implementation(libs.mlkit.barcode)
+    implementation(libs.mlkit.text)
+    implementation(libs.androidx.camera.camera2)
+    implementation(libs.androidx.camera.lifecycle)
+    implementation(libs.androidx.camera.view)
+    implementation(libs.androidx.camera.mlkit)
     implementation(libs.haze)
     implementation(libs.haze.blur)
 

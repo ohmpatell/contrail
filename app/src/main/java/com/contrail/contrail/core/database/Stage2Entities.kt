@@ -147,6 +147,9 @@ interface AirportDao {
     @Query("SELECT * FROM airport WHERE iata = :iata ORDER BY size LIMIT 1")
     suspend fun byIata(iata: String): AirportEntity?
 
+    @Query("SELECT * FROM airport WHERE iata != ''")
+    suspend fun allWithIata(): List<AirportEntity>
+
     @Query("SELECT * FROM airport WHERE iata IN (:iatas)")
     suspend fun byIatas(iatas: List<String>): List<AirportEntity>
 

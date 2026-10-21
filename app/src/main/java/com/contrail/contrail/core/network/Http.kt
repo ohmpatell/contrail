@@ -65,3 +65,14 @@ class RequestThrottle(
         block()
     }
 }
+
+/**
+ * One throttle per host, shared by every caller (the radar, flight lookups, airport boards),
+ * so the per-host request rate holds no matter how many features poll it.
+ */
+object HostThrottles {
+    private val throttles = java.util.concurrent.ConcurrentHashMap<String, RequestThrottle>()
+
+    fun of(host: String, minIntervalMs: Long = 1_100): RequestThrottle =
+        throttles.getOrPut(host) { RequestThrottle(minIntervalMs) }
+}

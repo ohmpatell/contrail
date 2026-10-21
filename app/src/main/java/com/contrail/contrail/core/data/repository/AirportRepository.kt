@@ -24,7 +24,12 @@ import kotlinx.serialization.json.intOrNull
 import kotlinx.serialization.json.jsonArray
 import kotlinx.serialization.json.jsonObject
 import kotlinx.serialization.json.jsonPrimitive
+import com.contrail.contrail.core.data.ticket.AirportCodes
+import com.contrail.contrail.core.data.ticket.AirportDirectory
+import com.contrail.contrail.core.data.ticket.AirportInfo
 import java.io.InputStream
+import java.time.ZoneId
+import java.time.ZoneOffset
 import javax.inject.Inject
 import javax.inject.Singleton
 
@@ -94,6 +99,43 @@ class AirportRepository @Inject constructor(
         return iatas.map { it.uppercase() }.distinct().chunked(500)
             .flatMap { dao.byIatas(it) }
             .associateBy { it.iata }
+    }
+
+    @Volatile private var directoryCache: Map<String, AirportInfo>? = null
+
+    /** Every airport by IATA code, in memory, for ticket import and trip maths. */
+    suspend fun directory(): AirportDirectory {
+        val map = directoryCache ?: run {
+            ensureImported()
+            withContext(Dispatchers.IO) {
+                dao.allWithIata()
+                    // Several entries can share a code; the biggest airport wins.
+                    .sortedByDescending { when (it.size) { "L" -> 2; "M" -> 1; else -> 0 } }
+                    .distinctBy { it.iata }
+                    .associate { a ->
+                        a.iata to AirportInfo(
+                            a.iata, a.icao, a.city.ifBlank { a.name }, a.countryIso,
+                            runCatching { ZoneId.of(a.timezone) }.getOrDefault(ZoneOffset.UTC), a.lat, a.lon,
+                        )
+                    }
+            }.also { directoryCache = it }
+        }
+        return AirportDirectory { map[it.uppercase()] }
+    }
+
+    /** IATA code for an ICAO code (OpenSky reports ICAO), from the same in-memory table. */
+    suspend fun iataForIcao(icao: String?): String? {
+        if (icao == null) return null
+        directory()
+        val byIcao = icaoIndex ?: directoryCache.orEmpty().values.associate { it.icao to it.iata }.also { icaoIndex = it }
+        return byIcao[icao.uppercase()]
+    }
+
+    @Volatile private var icaoIndex: Map<String, String>? = null
+
+    suspend fun codes(): AirportCodes {
+        val dir = directory()
+        return AirportCodes { dir.find(it) != null }
     }
 
     suspend fun setFavourite(icao: String, favourite: Boolean) = updateUser(icao) { it.copy(favourite = favourite) }
