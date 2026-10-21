@@ -22,6 +22,8 @@ import com.contrail.contrail.core.network.route.RouteSource
 import com.contrail.contrail.core.network.traffic.FailoverLiveTrafficSource
 import com.contrail.contrail.core.network.traffic.LiveTrafficSource
 import com.contrail.contrail.core.network.traffic.ReadsbApiSource
+import com.contrail.contrail.core.network.track.OpenSkyTrackSource
+import com.contrail.contrail.core.network.track.TrackSource
 import com.contrail.contrail.core.network.weather.RainViewerSource
 import com.contrail.contrail.core.network.weather.WeatherRadarSource
 import dagger.Binds
@@ -33,6 +35,8 @@ import dagger.hilt.components.SingletonComponent
 import io.ktor.client.HttpClient
 import kotlinx.serialization.json.Json
 import okhttp3.OkHttpClient
+import java.io.InputStream
+import javax.inject.Named
 import javax.inject.Singleton
 
 private val Context.radarDataStore: DataStore<Preferences> by preferencesDataStore(name = "radar")
@@ -52,7 +56,7 @@ object NetworkModule {
 
     @Provides @Singleton
     fun liveTraffic(client: HttpClient): LiveTrafficSource = FailoverLiveTrafficSource(
-        listOf(ReadsbApiSource.adsbLol(client), ReadsbApiSource.adsbFi(client)),
+        listOf(ReadsbApiSource.adsbFi(client), ReadsbApiSource.adsbLol(client)),
         onProviderFailed = { name, e -> android.util.Log.w("ContrailTraffic", "$name failed: $e") },
     )
 
@@ -64,6 +68,9 @@ object NetworkModule {
 
     @Provides @Singleton
     fun weather(client: HttpClient): WeatherRadarSource = RainViewerSource(client)
+
+    @Provides @Singleton
+    fun tracks(client: HttpClient): TrackSource = OpenSkyTrackSource(client)
 }
 
 @Module
@@ -78,6 +85,9 @@ object StorageModule {
 
     @Provides @Singleton
     fun clock(): Clock = Clock.System
+
+    @Provides @Named("airportsAsset")
+    fun airportsAsset(@ApplicationContext context: Context): () -> InputStream = { context.assets.open("airports.json") }
 }
 
 @Module

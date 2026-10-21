@@ -12,6 +12,8 @@ import com.contrail.contrail.core.data.reference.Rarity
 import com.contrail.contrail.core.data.repository.RadarLayers as LayerToggles
 import com.contrail.contrail.core.data.repository.DefaultLiveTrafficRepository
 import com.contrail.contrail.core.network.weather.WeatherTiles
+import com.contrail.contrail.core.data.model.Watchlist
+import com.contrail.contrail.feature.radar.RouteOverlay
 import com.contrail.contrail.feature.radar.Viewport
 import com.google.gson.JsonObject
 import org.maplibre.android.camera.CameraUpdateFactory
@@ -64,6 +66,11 @@ class RadarMapController(
     private val trailSource = GeoJsonSource(RadarLayers.SRC_TRAILS, GeoJsonOptions().withTolerance(0.3f))
     private val nightSource = GeoJsonSource(RadarLayers.SRC_NIGHT)
     private val meSource = GeoJsonSource(RadarLayers.SRC_ME)
+    private val routeSource = GeoJsonSource(RadarLayers.SRC_ROUTE)
+    private var route: RouteOverlay? = null
+    private var routeStatic: List<Feature> = emptyList()
+    private var lastRouteUpdate = 0L
+    private var watchlist = Watchlist(emptyList())
 
     private var selectedHex: String? = null
     private var following = false
@@ -84,9 +91,14 @@ class RadarMapController(
         style.addSource(trailSource)
         style.addSource(aircraftSource)
         style.addSource(meSource)
+        style.addSource(routeSource)
         addBelowLabels(RadarLayers.night())
         style.addLayer(RadarLayers.trails())
         style.addLayer(RadarLayers.trailHeads())
+        style.addLayer(RadarLayers.routeGlow())
+        style.addLayer(RadarLayers.routeRemaining())
+        style.addLayer(RadarLayers.routeFlown())
+        style.addLayer(RadarLayers.watchRing())
         style.addLayer(RadarLayers.rareGlow())
         style.addLayer(RadarLayers.emergency())
         style.addLayer(RadarLayers.selected())
@@ -94,6 +106,8 @@ class RadarMapController(
         style.addLayer(RadarLayers.aircraft())
         style.addLayer(RadarLayers.labels())
         style.addLayer(RadarLayers.me())
+        style.addLayer(RadarLayers.routeEnds())
+        style.addLayer(RadarLayers.routeLabels())
         updateNight(System.currentTimeMillis())
 
         map.uiSettings.isRotateGesturesEnabled = true
@@ -177,6 +191,58 @@ class RadarMapController(
             PropertyFactory.rasterFadeDuration(300f),
         )
         addBelowLabels(layer, below = RadarLayers.L_NIGHT)
+    }
+
+    /** Watched aircraft get a glowing ring. */
+    fun setWatchlist(list: Watchlist) {
+        watchlist = list
+        motion.hexes.forEach { h -> motion.fix(h)?.let { props[h] = staticProps(it) } }
+        dirty = true
+        if (!running) renderFrame()
+    }
+
+    /**
+     * Draws the selected aircraft's whole route: flown part solid, the rest dashed to the
+     * destination. Null clears it.
+     */
+    fun setRoute(overlay: RouteOverlay?) {
+        route = overlay
+        if (overlay == null) {
+            routeStatic = emptyList()
+            routeSource.setGeoJson(FeatureCollection.fromFeatures(emptyList()))
+            return
+        }
+        val flown = Feature.fromGeometry(
+            LineString.fromLngLats(overlay.flown.map { Point.fromLngLat(it.lon, it.lat) }),
+            JsonObject().apply { addProperty(RadarLayers.P_PART, "flown") },
+        )
+        val ends = listOf(overlay.origin, overlay.destination).map { ap ->
+            Feature.fromGeometry(
+                Point.fromLngLat(ap.lon, ap.lat),
+                JsonObject().apply {
+                    addProperty(RadarLayers.P_PART, "end")
+                    addProperty(RadarLayers.P_LABEL, ap.code)
+                },
+            )
+        }
+        routeStatic = listOf(flown) + ends
+        lastRouteUpdate = 0L
+        updateRoute(System.currentTimeMillis())
+    }
+
+    /** Re-draws the remaining arc from wherever the aircraft is now. */
+    private fun updateRoute(now: Long) {
+        val overlay = route ?: return
+        val hex = selectedHex ?: return
+        val start = if (motion.sample(hex, now, sample)) LatLon(sample.lat, sample.lon) else overlay.flown.lastOrNull() ?: return
+        val dest = LatLon(overlay.destination.lat, overlay.destination.lon)
+        val segments = (Geo.distanceM(start, dest) / 60_000).toInt().coerceIn(8, 96)
+        val remaining = Feature.fromGeometry(
+            LineString.fromLngLats(Geo.greatCircle(start, dest, segments).map { Point.fromLngLat(it.lon, it.lat) }),
+            JsonObject().apply { addProperty(RadarLayers.P_PART, "remaining") },
+        )
+        routeSource.setGeoJson(FeatureCollection.fromFeatures(routeStatic + remaining))
+        lastRouteUpdate = now
     }
 
     fun setUserLocation(location: LatLon?) {
@@ -271,6 +337,7 @@ class RadarMapController(
         }
         aircraftSource.setGeoJson(FeatureCollection.fromFeatures(features))
         if (hasEmergency && animate) pulseEmergencies(now)
+        if (route != null && now - lastRouteUpdate > ROUTE_UPDATE_MS) updateRoute(now)
         if (now - lastNightUpdate > 60_000) updateNight(now)
     }
 
@@ -288,9 +355,11 @@ class RadarMapController(
     private fun staticProps(a: LiveAircraft): JsonObject = JsonObject().apply {
         addProperty(RadarLayers.P_HEX, a.hex)
         addProperty(RadarLayers.P_ICON, AircraftIcons.imageName(a.silhouette))
+        addProperty(RadarLayers.P_SCALE, a.iconScale)
         addProperty(RadarLayers.P_GROUND, a.onGround)
         addProperty(RadarLayers.P_SELECTED, a.hex == selectedHex)
         addProperty(RadarLayers.P_EMERGENCY, a.isEmergency)
+        addProperty(RadarLayers.P_WATCHED, watchlist.matches(a))
         addProperty(
             RadarLayers.P_RARITY,
             when (a.rarity) {
@@ -392,6 +461,7 @@ class RadarMapController(
 
     private companion object {
         const val TRAIL_CHUNKS = 6
+        const val ROUTE_UPDATE_MS = 500L
         const val TAP_RADIUS_DP = 22f
         const val FOLLOW_MIN_ZOOM = 9.0
         /** Fraction of the remaining distance the follow camera covers each frame. */

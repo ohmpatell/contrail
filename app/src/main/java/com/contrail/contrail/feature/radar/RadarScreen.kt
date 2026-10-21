@@ -34,6 +34,8 @@ import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.graphics.graphicsLayer
 import androidx.compose.ui.platform.LocalDensity
+import com.contrail.contrail.core.data.model.WatchItem
+import com.contrail.contrail.core.data.model.WatchKind
 import com.contrail.contrail.core.data.repository.RadarLayers
 import com.contrail.contrail.core.designsystem.component.GlassIconButton
 import com.contrail.contrail.core.designsystem.component.LocalBackdropHaze
@@ -59,6 +61,9 @@ data class RadarActions(
     val onToggleFollow: () -> Unit = {},
     val onLocate: () -> Unit = {},
     val onSheetHeightChanged: (Int) -> Unit = {},
+    val onWatch: (WatchItem) -> Unit = {},
+    val onUnwatch: (WatchKind, String) -> Unit = { _, _ -> },
+    val onOpenAircraft: (String) -> Unit = {},
 )
 
 /**
@@ -121,6 +126,10 @@ fun RadarScreen(
                                 totalCount = state.totalCount,
                                 onChange = actions.onFiltersChange,
                                 onClear = actions.onClearFilters,
+                                watchlist = state.watchlist,
+                                watchedCount = state.watchedCount,
+                                onWatch = actions.onWatch,
+                                onUnwatch = actions.onUnwatch,
                                 maxHeight = panelMaxHeight,
                             )
                             RadarPanel.Layers -> LayersPanel(state.layers, actions.onLayersChange)
@@ -154,6 +163,10 @@ fun RadarScreen(
                 following = state.following,
                 onFollow = actions.onToggleFollow,
                 onDismiss = actions.onDismissAircraft,
+                watchlist = state.watchlist,
+                onWatch = actions.onWatch,
+                onUnwatch = actions.onUnwatch,
+                onOpenAircraft = actions.onOpenAircraft,
                 onVisibleHeightChanged = {
                     sheetHeightPx = it
                     actions.onSheetHeightChanged(it)
@@ -168,7 +181,7 @@ fun RadarScreen(
 @Composable
 private fun Attribution(modifier: Modifier = Modifier) {
     Text(
-        "© OpenFreeMap · OpenMapTiles · OpenStreetMap · ADS-B data adsb.lol (ODbL)",
+        "© OpenFreeMap · OpenMapTiles · OpenStreetMap · ADS-B adsb.fi · adsb.lol (ODbL)",
         style = ContrailTheme.type.eyebrow.copy(letterSpacing = ContrailTheme.type.bodySmall.letterSpacing),
         color = ContrailTheme.colors.textTertiary.copy(alpha = 0.8f),
         modifier = modifier,

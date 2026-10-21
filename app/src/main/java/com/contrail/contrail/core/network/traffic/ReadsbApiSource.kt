@@ -55,12 +55,14 @@ class ReadsbApiSource(
         const val MAX_RADIUS_NM = 250
         private const val DEFAULT_RETRY_AFTER_S = 120L
 
+        /** adsb.lol: 4/s, 60/min and 500/day per client, so it is the backup feed. */
         fun adsbLol(client: HttpClient) = ReadsbApiSource("adsb.lol", client, urlFor = { lat, lon, r ->
             "https://api.adsb.lol/v2/point/$lat/$lon/$r"
         })
 
+        /** adsb.fi open data: 1 request per second, personal use, cite adsb.fi. */
         fun adsbFi(client: HttpClient) = ReadsbApiSource("adsb.fi", client, urlFor = { lat, lon, r ->
-            "https://opendata.adsb.fi/api/v2/lat/$lat/lon/$lon/dist/$r"
+            "https://opendata.adsb.fi/api/v3/lat/$lat/lon/$lon/dist/$r"
         })
 
         /** Needs approval from airplanes.live since 2026 (HTTP 403 otherwise); kept for later. */

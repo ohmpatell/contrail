@@ -54,6 +54,12 @@ import coil3.compose.AsyncImage
 import com.contrail.contrail.core.data.model.AircraftPhoto
 import com.contrail.contrail.core.data.model.FlightRoute
 import com.contrail.contrail.core.data.model.LiveAircraft
+import com.contrail.contrail.core.data.model.WatchItem
+import com.contrail.contrail.core.data.model.WatchKind
+import com.contrail.contrail.core.data.model.Watchlist
+import com.contrail.contrail.core.designsystem.component.ContrailChip
+import androidx.compose.foundation.layout.ExperimentalLayoutApi
+import androidx.compose.foundation.layout.FlowRow
 import com.contrail.contrail.core.data.reference.Rarity
 import com.contrail.contrail.core.designsystem.component.Eyebrow
 import com.contrail.contrail.core.designsystem.component.GlassIconButton
@@ -88,6 +94,10 @@ fun AircraftSheet(
     onVisibleHeightChanged: (Int) -> Unit,
     modifier: Modifier = Modifier,
     startExpanded: Boolean = false,
+    watchlist: List<WatchItem> = emptyList(),
+    onWatch: (WatchItem) -> Unit = {},
+    onUnwatch: (WatchKind, String) -> Unit = { _, _ -> },
+    onOpenAircraft: (String) -> Unit = {},
 ) {
     // Keep showing the last aircraft while the sheet animates away.
     var shown by remember { mutableStateOf(selected) }
@@ -148,7 +158,7 @@ fun AircraftSheet(
                     },
                 ),
         ) {
-            SheetContent(current, progress, following, onFollow, onDismiss, expand = {
+            SheetContent(current, progress, following, onFollow, onDismiss, Watchlist(watchlist), onWatch, onUnwatch, onOpenAircraft, expand = {
                 scope.launch { offset.animateTo(anchorOffset(if (progress > 0.5f) SheetAnchor.Peek else SheetAnchor.Expanded), motion.gentle()) }
             })
         }
@@ -162,6 +172,10 @@ private fun SheetContent(
     following: Boolean,
     onFollow: () -> Unit,
     onDismiss: () -> Unit,
+    watchlist: Watchlist,
+    onWatch: (WatchItem) -> Unit,
+    onUnwatch: (WatchKind, String) -> Unit,
+    onOpenAircraft: (String) -> Unit,
     expand: () -> Unit,
 ) {
     val a = selected.aircraft
@@ -190,7 +204,9 @@ private fun SheetContent(
             ) {
                 Box(Modifier.size(width = 40.dp, height = 4.dp).clip(ContrailTheme.shapes.chip).background(colors.textTertiary.copy(alpha = 0.6f)))
             }
-            PhotoHero(selected.photo, a, accent, progress)
+            Box(Modifier.clickable(role = Role.Button) { onOpenAircraft(a.hex) }) {
+                PhotoHero(selected.photo, a, accent, progress)
+            }
             Spacer(Modifier.height(spacing.md))
             HeaderRow(a, accent, following, onFollow, onDismiss)
             Spacer(Modifier.height(spacing.md))
@@ -209,6 +225,8 @@ private fun SheetContent(
             ) {
                 VerticalSpeedCard(selected.verticalRates, a)
                 DetailsGrid(a)
+                WatchRow(a, watchlist, onWatch, onUnwatch)
+                OpenAircraftButton(accent) { onOpenAircraft(a.hex) }
             }
         }
     }
@@ -425,6 +443,51 @@ private fun DetailsGrid(a: LiveAircraft) {
                 }
             }
         }
+    }
+}
+
+@OptIn(ExperimentalLayoutApi::class)
+@Composable
+private fun WatchRow(a: LiveAircraft, watchlist: Watchlist, onWatch: (WatchItem) -> Unit, onUnwatch: (WatchKind, String) -> Unit) {
+    val spacing = ContrailTheme.spacing
+    val options = buildList {
+        a.registration?.let { add(WatchItem(WatchKind.Tail, it, it)) }
+        a.typeCode?.let { add(WatchItem(WatchKind.Type, it, a.typeName ?: it)) }
+        a.airline?.let { add(WatchItem(WatchKind.Airline, it.icao, it.name)) }
+    }
+    if (options.isEmpty()) return
+    Column(verticalArrangement = Arrangement.spacedBy(spacing.sm)) {
+        Eyebrow("Watch for")
+        FlowRow(horizontalArrangement = Arrangement.spacedBy(spacing.sm), verticalArrangement = Arrangement.spacedBy(spacing.sm)) {
+            options.forEach { item ->
+                val on = watchlist.contains(item.kind, item.value)
+                ContrailChip(
+                    label = item.label,
+                    selected = on,
+                    onClick = { if (on) onUnwatch(item.kind, item.value) else onWatch(item) },
+                    leading = { Icon(ContrailIcons.Follow, null, Modifier.size(ContrailTheme.sizes.iconSmall), tint = ContrailTheme.colors.accent) },
+                )
+            }
+        }
+    }
+}
+
+@Composable
+private fun OpenAircraftButton(accent: Color, onClick: () -> Unit) {
+    val colors = ContrailTheme.colors
+    Row(
+        Modifier
+            .fillMaxWidth()
+            .height(ContrailTheme.sizes.touchTarget)
+            .clip(ContrailTheme.shapes.chip)
+            .background(accent)
+            .clickable(role = Role.Button, onClick = onClick),
+        horizontalArrangement = Arrangement.Center,
+        verticalAlignment = Alignment.CenterVertically,
+    ) {
+        Text("Aircraft page", style = ContrailTheme.type.title, color = colors.onAccent)
+        Spacer(Modifier.width(ContrailTheme.spacing.sm))
+        Icon(ContrailIcons.ArrowRight, null, tint = colors.onAccent, modifier = Modifier.size(ContrailTheme.sizes.iconSmall))
     }
 }
 

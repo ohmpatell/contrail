@@ -67,4 +67,32 @@ object Geo {
     }
 
     fun normalizeHeading(h: Double): Double = ((h % 360.0) + 360.0) % 360.0
+
+    /**
+     * [segments] + 1 points along the great circle from [a] to [b]. Longitudes are unwrapped
+     * (they may leave -180..180) so a line crossing the antimeridian draws continuously.
+     */
+    fun greatCircle(a: LatLon, b: LatLon, segments: Int = 64): List<LatLon> {
+        val p1 = toRad(a.lat); val l1 = toRad(a.lon)
+        val p2 = toRad(b.lat); val l2 = toRad(b.lon)
+        val d = distanceM(a, b) / EARTH_RADIUS_M
+        if (d < 1e-9) return listOf(a, b)
+        val out = ArrayList<LatLon>(segments + 1)
+        var prevLon = a.lon
+        for (i in 0..segments) {
+            val f = i.toDouble() / segments
+            val sa = kotlin.math.sin((1 - f) * d) / kotlin.math.sin(d)
+            val sb = kotlin.math.sin(f * d) / kotlin.math.sin(d)
+            val x = sa * cos(p1) * cos(l1) + sb * cos(p2) * cos(l2)
+            val y = sa * cos(p1) * sin(l1) + sb * cos(p2) * sin(l2)
+            val z = sa * sin(p1) + sb * sin(p2)
+            val lat = toDeg(atan2(z, sqrt(x * x + y * y)))
+            var lon = toDeg(atan2(y, x))
+            while (lon - prevLon > 180) lon -= 360
+            while (lon - prevLon < -180) lon += 360
+            prevLon = lon
+            out += LatLon(lat, lon)
+        }
+        return out
+    }
 }

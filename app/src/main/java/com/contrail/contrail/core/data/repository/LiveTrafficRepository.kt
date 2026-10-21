@@ -6,6 +6,7 @@ import com.contrail.contrail.core.common.Geo
 import com.contrail.contrail.core.common.LatLon
 import com.contrail.contrail.core.data.model.LiveAircraft
 import com.contrail.contrail.core.data.model.TrailPoint
+import com.contrail.contrail.core.data.reference.AircraftClassifier
 import com.contrail.contrail.core.database.ContrailDatabase
 import com.contrail.contrail.core.database.TrailPointEntity
 import com.contrail.contrail.core.database.toEntity
@@ -62,7 +63,9 @@ class DefaultLiveTrafficRepository @Inject constructor(
         trailDao.observeForHex(hex, 0).map { rows -> rows.map { it.toModel() } }
 
     override suspend fun refresh(center: LatLon, radiusNm: Int): RefreshResult {
-        val snapshot = source.fetchAround(center.lat, center.lon, radiusNm)
+        val fetched = source.fetchAround(center.lat, center.lon, radiusNm)
+        // Vehicles and obstacles are not aircraft: they never reach the database.
+        val snapshot = fetched.copy(aircraft = fetched.aircraft.filterNot { AircraftClassifier.isClutter(it.category, it.typeCode, it.onGround) })
         val now = clock.nowMs()
         val points = trailMutex.withLock {
             snapshot.aircraft.mapNotNull { aircraft ->

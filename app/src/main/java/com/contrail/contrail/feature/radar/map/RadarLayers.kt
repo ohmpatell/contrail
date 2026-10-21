@@ -34,6 +34,14 @@ internal object RadarLayers {
     const val L_AIRCRAFT = "contrail-aircraft"
     const val L_LABELS = "contrail-labels"
     const val L_ME = "contrail-me"
+    const val SRC_ROUTE = "contrail-route"
+    const val L_WATCH = "contrail-watch"
+    const val L_ROUTE_GLOW = "contrail-route-glow"
+    const val L_ROUTE_FLOWN = "contrail-route-flown"
+    const val L_ROUTE_REMAINING = "contrail-route-remaining"
+    const val L_ROUTE_ENDS = "contrail-route-ends"
+    const val L_ROUTE_LABELS = "contrail-route-labels"
+    const val P_PART = "part"
 
     /** Base-style layers toggled by "airport labels". */
     val AIRPORT_LAYERS = listOf("airport-label", "airport-dot")
@@ -54,6 +62,8 @@ internal object RadarLayers {
     const val P_LABEL2 = "label2"
     const val P_AGE = "age"
     const val P_SORT = "sort"
+    const val P_SCALE = "scale"
+    const val P_WATCHED = "watch"
 
     private val colors = NightCockpitColors
     private val legendary = RarityPalette.Legendary.first().toArgb()
@@ -92,16 +102,39 @@ internal object RadarLayers {
 
     private val fresh: Expression get() = Expression.toNumber(get(P_FRESH))
 
-    /** Wraps an opacity so ground traffic fades in only once zoomed close enough to read. */
-    private fun groundFaded(inner: Expression): Expression = Expression.interpolate(
-        Expression.linear(),
-        Expression.zoom(),
-        stop(GROUND_HIDDEN_BELOW_ZOOM, Expression.product(inner, Expression.switchCase(Expression.toBool(get(P_GROUND)), literal(0f), literal(1f)))),
-        stop(GROUND_VISIBLE_FROM_ZOOM, inner),
+    private val airborneOnly: Expression
+        get() = Expression.switchCase(Expression.toBool(get(P_GROUND)), literal(0f), literal(1f))
+
+    /**
+     * Wraps an opacity so ground traffic fades in only once zoomed into an airport, or never
+     * when "Show ground traffic" is off.
+     */
+    private fun groundFaded(inner: Expression, showGround: Boolean = true): Expression =
+        if (!showGround) {
+            Expression.product(inner, airborneOnly)
+        } else {
+            Expression.interpolate(
+                Expression.linear(),
+                Expression.zoom(),
+                stop(GROUND_HIDDEN_BELOW_ZOOM, Expression.product(inner, airborneOnly)),
+                stop(GROUND_VISIBLE_FROM_ZOOM, inner),
+            )
+        }
+
+    private fun trailOpacity(showGround: Boolean) = groundFaded(
+        Expression.product(
+            Expression.interpolate(Expression.linear(), Expression.toNumber(get(P_AGE)), stop(0, 0.9f), stop(0.5, 0.4f), stop(1, 0f)),
+            Expression.switchCase(Expression.toBool(get(P_SELECTED)), literal(1f), literal(0.7f)),
+        ),
+        showGround,
     )
 
     private fun selectedScale(base: Float): Expression =
-        Expression.product(literal(base), Expression.switchCase(Expression.toBool(get(P_SELECTED)), literal(1.2f), literal(1f)))
+        Expression.product(
+            literal(base),
+            Expression.toNumber(Expression.coalesce(get(P_SCALE), literal(1f))),
+            Expression.switchCase(Expression.toBool(get(P_SELECTED)), literal(1.2f), literal(1f)),
+        )
 
     fun night(): FillLayer = FillLayer(L_NIGHT, SRC_NIGHT).withProperties(
         PropertyFactory.fillColor(Expression.color(colors.canvasSunken.toArgb())),
@@ -121,14 +154,7 @@ internal object RadarLayers {
             ),
         ),
         // Trails fade from the altitude colour to transparent as they age.
-        PropertyFactory.lineOpacity(
-            groundFaded(
-                Expression.product(
-                    Expression.interpolate(Expression.linear(), Expression.toNumber(get(P_AGE)), stop(0, 0.9f), stop(0.5, 0.4f), stop(1, 0f)),
-                    Expression.switchCase(Expression.toBool(get(P_SELECTED)), literal(1f), literal(0.7f)),
-                ),
-            ),
-        ),
+        PropertyFactory.lineOpacity(trailOpacity(showGround = true)),
     )
 
     fun trailHeads(): LineLayer = LineLayer(L_TRAIL_HEADS, SRC_AIRCRAFT).withProperties(
@@ -228,6 +254,68 @@ internal object RadarLayers {
         PropertyFactory.circleStrokeColor(Expression.color(colors.textPrimary.toArgb())),
         PropertyFactory.circleStrokeWidth(2.5f),
     )
+
+    /** Watched tails, types and airlines get an accent ring that glows. */
+    fun watchRing(): CircleLayer = CircleLayer(L_WATCH, SRC_AIRCRAFT).withProperties(
+        PropertyFactory.circleRadius(byZoom(3 to 9f, 8 to 15f, 13 to 23f)),
+        PropertyFactory.circleColor(Expression.color(colors.accent.toArgb())),
+        PropertyFactory.circleOpacity(Expression.product(literal(0.18f), fresh)),
+        PropertyFactory.circleBlur(0.6f),
+        PropertyFactory.circleStrokeColor(Expression.color(colors.accent.toArgb())),
+        PropertyFactory.circleStrokeWidth(1.6f),
+        PropertyFactory.circleStrokeOpacity(Expression.product(literal(0.9f), fresh)),
+    ).withFilter(
+        Expression.all(isPoint, Expression.toBool(get(P_WATCHED)), Expression.not(Expression.toBool(get(P_SELECTED)))),
+    )
+
+    private val isRoutePart = { part: String -> Expression.eq(get(P_PART), literal(part)) }
+
+    /** Soft glow under the flown part of the selected aircraft's route. */
+    fun routeGlow(): LineLayer = LineLayer(L_ROUTE_GLOW, SRC_ROUTE).withProperties(
+        PropertyFactory.lineColor(Expression.color(colors.accent.toArgb())),
+        PropertyFactory.lineWidth(byZoom(3 to 5f, 10 to 9f)),
+        PropertyFactory.lineBlur(4f),
+        PropertyFactory.lineOpacity(0.28f),
+        PropertyFactory.lineCap(Property.LINE_CAP_ROUND),
+        PropertyFactory.lineJoin(Property.LINE_JOIN_ROUND),
+    ).withFilter(isRoutePart("flown"))
+
+    fun routeFlown(): LineLayer = LineLayer(L_ROUTE_FLOWN, SRC_ROUTE).withProperties(
+        PropertyFactory.lineColor(Expression.color(colors.accent.toArgb())),
+        PropertyFactory.lineWidth(byZoom(3 to 1.8f, 10 to 3f)),
+        PropertyFactory.lineOpacity(0.95f),
+        PropertyFactory.lineCap(Property.LINE_CAP_ROUND),
+        PropertyFactory.lineJoin(Property.LINE_JOIN_ROUND),
+    ).withFilter(isRoutePart("flown"))
+
+    /** The rest of the trip: a dashed great circle to the destination. */
+    fun routeRemaining(): LineLayer = LineLayer(L_ROUTE_REMAINING, SRC_ROUTE).withProperties(
+        PropertyFactory.lineColor(Expression.color(colors.textPrimary.toArgb())),
+        PropertyFactory.lineWidth(byZoom(3 to 1.4f, 10 to 2.2f)),
+        PropertyFactory.lineOpacity(0.7f),
+        PropertyFactory.lineDasharray(arrayOf(1.2f, 2.4f)),
+        PropertyFactory.lineCap(Property.LINE_CAP_ROUND),
+    ).withFilter(isRoutePart("remaining"))
+
+    fun routeEnds(): CircleLayer = CircleLayer(L_ROUTE_ENDS, SRC_ROUTE).withProperties(
+        PropertyFactory.circleRadius(4.5f),
+        PropertyFactory.circleColor(Expression.color(colors.canvas.toArgb())),
+        PropertyFactory.circleStrokeColor(Expression.color(colors.accent.toArgb())),
+        PropertyFactory.circleStrokeWidth(2.2f),
+    ).withFilter(isRoutePart("end"))
+
+    fun routeLabels(): SymbolLayer = SymbolLayer(L_ROUTE_LABELS, SRC_ROUTE).withProperties(
+        PropertyFactory.textField(get(P_LABEL)),
+        PropertyFactory.textFont(arrayOf("Noto Sans Bold")),
+        PropertyFactory.textSize(13f),
+        PropertyFactory.textLetterSpacing(0.08f),
+        PropertyFactory.textAnchor(Property.TEXT_ANCHOR_TOP),
+        PropertyFactory.textOffset(arrayOf(0f, 0.8f)),
+        PropertyFactory.textColor(Expression.color(colors.textPrimary.toArgb())),
+        PropertyFactory.textHaloColor(Expression.color(colors.canvas.toArgb())),
+        PropertyFactory.textHaloWidth(1.6f),
+        PropertyFactory.textAllowOverlap(true),
+    ).withFilter(isRoutePart("end"))
 
     private fun rarityColor(): Expression = Expression.switchCase(
         Expression.gte(Expression.toNumber(get(P_RARITY)), literal(2)),

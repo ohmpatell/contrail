@@ -7,7 +7,13 @@ import com.contrail.contrail.core.common.Geo
 import com.contrail.contrail.core.data.model.FlightRoute
 import com.contrail.contrail.core.data.model.LiveAircraft
 import com.contrail.contrail.core.data.model.TrailPoint
+import com.contrail.contrail.core.common.LatLon
+import com.contrail.contrail.core.data.model.WatchItem
+import com.contrail.contrail.core.data.model.WatchKind
+import com.contrail.contrail.core.data.model.Watchlist
 import com.contrail.contrail.core.data.repository.AircraftDetailsRepository
+import com.contrail.contrail.core.data.repository.FlightTrackRepository
+import com.contrail.contrail.core.data.repository.WatchlistRepository
 import com.contrail.contrail.core.data.repository.LiveTrafficRepository
 import com.contrail.contrail.core.data.repository.RadarCamera
 import com.contrail.contrail.core.data.repository.RadarLayers
@@ -35,7 +41,6 @@ import kotlinx.coroutines.flow.first
 import kotlinx.coroutines.flow.flatMapLatest
 import kotlinx.coroutines.flow.flowOf
 import kotlinx.coroutines.flow.map
-import kotlinx.coroutines.flow.onStart
 import kotlinx.coroutines.flow.stateIn
 import kotlinx.coroutines.flow.update
 import kotlinx.coroutines.launch
@@ -49,6 +54,8 @@ class RadarViewModel @Inject constructor(
     private val details: AircraftDetailsRepository,
     private val prefs: RadarPreferencesRepository,
     private val weather: WeatherRadarSource,
+    private val tracks: FlightTrackRepository,
+    private val watchlist: WatchlistRepository,
     private val clock: Clock,
 ) : ViewModel() {
 
@@ -67,10 +74,15 @@ class RadarViewModel @Inject constructor(
     private val allTraffic: StateFlow<List<LiveAircraft>> =
         traffic.observeTraffic().stateIn(viewModelScope, SharingStarted.Eagerly, emptyList())
 
+    /** Everything on the watchlist, as a matcher the filters and map rings share. */
+    val watch: StateFlow<Watchlist> = watchlist.observe()
+        .map { Watchlist(it) }
+        .stateIn(viewModelScope, SharingStarted.Eagerly, Watchlist(emptyList()))
+
     /** Filtered contacts for the map layers. The selected aircraft always stays visible. */
     val mapTraffic: StateFlow<List<LiveAircraft>> =
-        combine(allTraffic, filters, selectedHex) { list, f, sel ->
-            if (f.isEmpty) list else list.filter { it.hex == sel || f.matches(it) }
+        combine(allTraffic, filters, selectedHex, watch) { list, f, sel, w ->
+            if (f.isEmpty && f.showGround) list else list.filter { it.hex == sel || f.matches(it, w) }
         }.stateIn(viewModelScope, SharingStarted.Eagerly, emptyList())
 
     val trails: StateFlow<Map<String, List<TrailPoint>>> =
@@ -100,18 +112,51 @@ class RadarViewModel @Inject constructor(
         val photoFlow = registration.flatMapLatest { reg ->
             lookup(details.observePhoto(hex)) { details.refreshPhoto(hex, reg) }
         }
-        val rates = traffic.observeTrail(hex).map { pts -> pts.mapNotNull { it.verticalRateFpm?.toFloat() } }
-        combine(aircraftFlow, routeFlow, photoFlow, rates) { aircraft, route, photo, vr ->
-            aircraft?.let { SelectedAircraft(it, route, photo, vr) }
+        val trail = traffic.observeTrail(hex)
+        combine(aircraftFlow, routeFlow, photoFlow, trail) { aircraft, route, photo, points ->
+            aircraft?.let {
+                SelectedAircraft(
+                    aircraft = it,
+                    route = route,
+                    photo = photo,
+                    verticalRates = points.mapNotNull { p -> p.verticalRateFpm?.toFloat() },
+                    trail = points.map { p -> LatLon(p.lat, p.lon) },
+                )
+            }
         }
     }
 
-    private val chrome = combine(filters, layers, panel, following, viewport) { f, l, p, follow, vp ->
-        Chrome(f, l, p, follow, (vp?.radiusNm ?: 0.0) > ReadsbApiSource.MAX_RADIUS_NM)
+    private val selectionState: StateFlow<SelectedAircraft?> =
+        selection.stateIn(viewModelScope, SharingStarted.Eagerly, null)
+
+    /** The flown track for the selected aircraft, refreshed every minute while it is selected. */
+    private val selectedTrack: Flow<List<LatLon>?> = selectedHex.flatMapLatest { hex ->
+        if (hex == null) {
+            flowOf(null)
+        } else {
+            flow {
+                emit(null)
+                while (true) {
+                    emit(tracks.track(hex)?.points)
+                    delay(TRACK_REFRESH_MS)
+                }
+            }
+        }
     }
 
+    /** Whole-route overlay: only when the route is known; otherwise the trail stays as it is. */
+    val routeOverlay: StateFlow<RouteOverlay?> = combine(selectionState, selectedTrack) { sel, track ->
+        val route = (sel?.route as? Lookup.Found)?.value ?: return@combine null
+        val a = sel.aircraft
+        RouteOverlay.build(route, track, sel.trail, LatLon(a.lat, a.lon))
+    }.stateIn(viewModelScope, SharingStarted.Eagerly, null)
+
+    private val chrome = combine(filters, layers, panel, following, viewport) { f, l, p, follow, vp ->
+        Chrome(f, l, p, follow, (vp?.radiusNm ?: 0.0) > ReadsbApiSource.MAX_RADIUS_NM)
+    }.combine(watch) { c, w -> c.copy(watch = w) }
+
     val uiState: StateFlow<RadarUiState> =
-        combine(feed, allTraffic, mapTraffic, chrome, selection.onStart { emit(null) }) { feed, all, shown, c, sel ->
+        combine(feed, allTraffic, mapTraffic, chrome, selectionState) { feed, all, shown, c, sel ->
             RadarUiState(
                 feed = feed,
                 shownCount = shown.size,
@@ -124,6 +169,8 @@ class RadarViewModel @Inject constructor(
                 following = c.following && sel != null,
                 radiusCapped = c.radiusCapped,
                 emergencies = all.filter { it.isEmergency },
+                watchlist = c.watch.items,
+                watchedCount = if (c.watch.isEmpty) 0 else all.count { c.watch.matches(it) },
             )
         }.stateIn(viewModelScope, SharingStarted.WhileSubscribed(5_000), RadarUiState())
 
@@ -133,6 +180,7 @@ class RadarViewModel @Inject constructor(
         val panel: RadarPanel,
         val following: Boolean,
         val radiusCapped: Boolean,
+        val watch: Watchlist = Watchlist(emptyList()),
     )
 
     init {
@@ -193,6 +241,14 @@ class RadarViewModel @Inject constructor(
 
     fun clearFilters() {
         filters.value = RadarFilters()
+    }
+
+    fun watch(item: WatchItem) {
+        viewModelScope.launch { watchlist.add(item) }
+    }
+
+    fun unwatch(kind: WatchKind, value: String) {
+        viewModelScope.launch { watchlist.remove(kind, value) }
     }
 
     fun updateLayers(transform: (RadarLayers) -> RadarLayers) {
@@ -267,9 +323,11 @@ class RadarViewModel @Inject constructor(
 
     companion object {
         private const val TAG = "ContrailRadar"
-        const val POLL_INTERVAL_MS = 4_000L
-        const val MIN_POLL_GAP_MS = 2_500L
+        /** Polite to adsb.fi (1/s) and to adsb.lol's 500/day backup budget; dead reckoning hides the gap. */
+        const val POLL_INTERVAL_MS = 5_000L
+        const val MIN_POLL_GAP_MS = 4_000L
         const val WEATHER_REFRESH_MS = 10 * 60_000L
+        const val TRACK_REFRESH_MS = 60_000L
 
         internal fun backoff(failures: Int): Long = min(30_000L, 4_000L * (1L shl (failures - 1).coerceAtMost(3)))
 

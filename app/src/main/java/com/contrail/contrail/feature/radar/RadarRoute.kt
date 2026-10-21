@@ -33,7 +33,7 @@ import kotlinx.coroutines.flow.collectLatest
 
 /** The live radar tab: wires the view model to the MapLibre controller and the overlays. */
 @Composable
-fun RadarRoute(viewModel: RadarViewModel = hiltViewModel()) {
+fun RadarRoute(onOpenAircraft: (String) -> Unit = {}, viewModel: RadarViewModel = hiltViewModel()) {
     val state by viewModel.uiState.collectAsStateWithLifecycle()
     val context = LocalContext.current
     var controller by remember { mutableStateOf<RadarMapController?>(null) }
@@ -69,6 +69,14 @@ fun RadarRoute(viewModel: RadarViewModel = hiltViewModel()) {
     LaunchedEffect(controller) {
         val c = controller ?: return@LaunchedEffect
         viewModel.weatherTiles.collectLatest { c.setWeather(it) }
+    }
+    LaunchedEffect(controller) {
+        val c = controller ?: return@LaunchedEffect
+        viewModel.routeOverlay.collectLatest { c.setRoute(it) }
+    }
+    LaunchedEffect(controller) {
+        val c = controller ?: return@LaunchedEffect
+        viewModel.watch.collectLatest { c.setWatchlist(it) }
     }
     LaunchedEffect(controller, userLocation) { controller?.setUserLocation(userLocation) }
 
@@ -113,6 +121,9 @@ fun RadarRoute(viewModel: RadarViewModel = hiltViewModel()) {
                 }
             },
             onSheetHeightChanged = { px -> controller?.setBottomPadding(px) },
+            onWatch = viewModel::watch,
+            onUnwatch = viewModel::unwatch,
+            onOpenAircraft = onOpenAircraft,
         ),
     ) { mapModifier ->
         val initial = camera

@@ -34,7 +34,18 @@ import androidx.compose.ui.semantics.Role
 import androidx.compose.ui.unit.Dp
 import androidx.compose.ui.unit.IntOffset
 import androidx.compose.ui.unit.dp
+import com.contrail.contrail.core.data.model.WatchItem
+import com.contrail.contrail.core.data.model.WatchKind
 import com.contrail.contrail.core.data.reference.Airlines
+import com.contrail.contrail.feature.radar.WatchInput
+import androidx.compose.foundation.text.BasicTextField
+import androidx.compose.foundation.text.KeyboardActions
+import androidx.compose.foundation.text.KeyboardOptions
+import androidx.compose.runtime.mutableStateOf
+import androidx.compose.runtime.setValue
+import androidx.compose.ui.graphics.SolidColor
+import androidx.compose.ui.text.input.ImeAction
+import androidx.compose.ui.text.input.KeyboardCapitalization
 import com.contrail.contrail.core.data.repository.RadarLayers
 import com.contrail.contrail.core.designsystem.component.ContrailChip
 import com.contrail.contrail.core.designsystem.component.Eyebrow
@@ -58,6 +69,10 @@ fun FilterPanel(
     onClear: () -> Unit,
     maxHeight: Dp,
     modifier: Modifier = Modifier,
+    watchlist: List<WatchItem> = emptyList(),
+    watchedCount: Int = 0,
+    onWatch: (WatchItem) -> Unit = {},
+    onUnwatch: (WatchKind, String) -> Unit = { _, _ -> },
 ) {
     val spacing = ContrailTheme.spacing
     val colors = ContrailTheme.colors
@@ -100,7 +115,21 @@ fun FilterPanel(
                     onClick = { onChange { it.copy(militaryOnly = !it.militaryOnly) } },
                     leading = { Icon(ContrailIcons.Shield, null, Modifier.size(ContrailTheme.sizes.iconSmall), tint = colors.accent) },
                 )
+                ContrailChip(
+                    label = "Watchlist · $watchedCount",
+                    selected = filters.watchlistOnly,
+                    onClick = { onChange { it.copy(watchlistOnly = !it.watchlistOnly) } },
+                    leading = { Icon(ContrailIcons.Follow, null, Modifier.size(ContrailTheme.sizes.iconSmall), tint = colors.accent) },
+                )
+                ContrailChip(
+                    label = "Show ground traffic",
+                    selected = filters.showGround,
+                    onClick = { onChange { it.copy(showGround = !it.showGround) } },
+                    leading = { Icon(ContrailIcons.Locate, null, Modifier.size(ContrailTheme.sizes.iconSmall), tint = colors.accent) },
+                )
             }
+
+            WatchlistSection(watchlist, onWatch, onUnwatch)
 
             Section("Altitude") {
                 AltitudeBand.entries.forEach { band ->
@@ -135,6 +164,82 @@ fun FilterPanel(
                             onClick = { onChange { it.toggleType(facet.key) } },
                         )
                     }
+                }
+            }
+        }
+    }
+}
+
+/**
+ * Tails, types and airlines you're watching. Type a registration, an ICAO type code or an
+ * airline code; the kind is worked out from what you type.
+ */
+@OptIn(ExperimentalLayoutApi::class)
+@Composable
+private fun WatchlistSection(
+    items: List<WatchItem>,
+    onWatch: (WatchItem) -> Unit,
+    onUnwatch: (WatchKind, String) -> Unit,
+) {
+    val spacing = ContrailTheme.spacing
+    val colors = ContrailTheme.colors
+    var draft by remember { mutableStateOf("") }
+    Column(verticalArrangement = Arrangement.spacedBy(spacing.sm)) {
+        Eyebrow("Watchlist")
+        Row(
+            Modifier
+                .fillMaxWidth()
+                .clip(ContrailTheme.shapes.chip)
+                .background(colors.glassTint)
+                .border(ContrailTheme.sizes.hairline, colors.hairline, ContrailTheme.shapes.chip)
+                .padding(start = spacing.lg, end = spacing.xs),
+            verticalAlignment = Alignment.CenterVertically,
+        ) {
+            BasicTextField(
+                value = draft,
+                onValueChange = { draft = it.take(12) },
+                singleLine = true,
+                textStyle = ContrailTheme.type.body.copy(color = colors.textPrimary),
+                cursorBrush = SolidColor(colors.accent),
+                keyboardOptions = KeyboardOptions(capitalization = KeyboardCapitalization.Characters, imeAction = ImeAction.Done),
+                keyboardActions = KeyboardActions(onDone = {
+                    WatchInput.parse(draft)?.let(onWatch)
+                    draft = ""
+                }),
+                modifier = Modifier.weight(1f).padding(vertical = spacing.md),
+                decorationBox = { inner ->
+                    if (draft.isEmpty()) {
+                        Text("Add a tail, type or airline (C-FIUA, A388, ETD)", style = ContrailTheme.type.body, color = colors.textTertiary, maxLines = 1)
+                    }
+                    inner()
+                },
+            )
+            val parsed = WatchInput.parse(draft)
+            Text(
+                parsed?.let { "Add ${it.kind.name.lowercase()}" } ?: "",
+                style = ContrailTheme.type.label,
+                color = colors.accent,
+                modifier = Modifier
+                    .clip(ContrailTheme.shapes.chip)
+                    .clickable(enabled = parsed != null, role = Role.Button) {
+                        parsed?.let(onWatch)
+                        draft = ""
+                    }
+                    .padding(horizontal = spacing.md, vertical = spacing.sm),
+            )
+        }
+        if (items.isNotEmpty()) {
+            FlowRow(
+                horizontalArrangement = Arrangement.spacedBy(spacing.sm),
+                verticalArrangement = Arrangement.spacedBy(spacing.sm),
+            ) {
+                items.forEach { item ->
+                    ContrailChip(
+                        label = item.label,
+                        selected = true,
+                        onClick = { onUnwatch(item.kind, item.value) },
+                        leading = { Icon(ContrailIcons.Close, "Remove", Modifier.size(ContrailTheme.sizes.iconSmall), tint = colors.textSecondary) },
+                    )
                 }
             }
         }

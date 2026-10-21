@@ -1,5 +1,6 @@
 package com.contrail.contrail.core.data.model
 
+import com.contrail.contrail.core.data.reference.AircraftClassifier
 import com.contrail.contrail.core.data.reference.AircraftType
 import com.contrail.contrail.core.data.reference.AircraftTypes
 import com.contrail.contrail.core.data.reference.Airline
@@ -46,7 +47,10 @@ data class LiveAircraft(
 
     val displayCallsign: String get() = callsign?.trim()?.takeIf { it.isNotEmpty() } ?: registration ?: hex.uppercase()
 
-    val typeName: String? get() = type?.name ?: typeDescription
+    val typeName: String? get() = AircraftTypes.nameFor(typeCode) ?: typeDescription
+
+    /** Relative icon size within its class (an A321 reads a little longer than an A319). */
+    val iconScale: Float get() = AircraftClassifier.scaleFor(typeCode)
 
     companion object {
         val EMERGENCY_SQUAWKS = setOf("7500", "7600", "7700")

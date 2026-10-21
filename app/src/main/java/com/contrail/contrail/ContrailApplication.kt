@@ -9,6 +9,7 @@ import coil3.disk.directory
 import coil3.network.ktor3.KtorNetworkFetcherFactory
 import coil3.request.crossfade
 import coil3.util.DebugLogger
+import com.contrail.contrail.core.data.reference.TypeDesignators
 import dagger.Lazy
 import dagger.hilt.android.HiltAndroidApp
 import io.ktor.client.HttpClient
@@ -25,6 +26,7 @@ class ContrailApplication : Application(), SingletonImageLoader.Factory {
 
     override fun onCreate() {
         super.onCreate()
+        TypeDesignators.install { assets.open("aircraft_types.json") }
         MapLibre.getInstance(this)
         // Map tiles go through the same client so they carry Contrail's User-Agent too.
         HttpRequestUtil.setOkHttpClient(okHttp.get())

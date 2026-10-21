@@ -95,7 +95,7 @@ class ReferenceDataTest {
 
     @Test
     fun `silhouette falls back to the emitter category`() {
-        assertEquals(Silhouette.Quad, AircraftTypes.silhouetteFor("A388", "A5"))
+        assertEquals(Silhouette.Jumbo, AircraftTypes.silhouetteFor("A388", "A5"))
         assertEquals(Silhouette.Helicopter, AircraftTypes.silhouetteFor("ZZZZ", "A7"))
         assertEquals(Silhouette.Generic, AircraftTypes.silhouetteFor(null, null))
     }

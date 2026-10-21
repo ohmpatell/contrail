@@ -8,9 +8,6 @@ enum class Rarity(val label: String) {
     Common("Common"),
 }
 
-/** Which map silhouette represents a type. */
-enum class Silhouette { Quad, Widebody, Narrowbody, Regional, Turboprop, Bizjet, Light, Helicopter, Generic }
-
 data class AircraftType(
     val icao: String,
     val name: String,
@@ -27,14 +24,21 @@ object AircraftTypes {
     private val all: Map<String, AircraftType> = buildList {
         fun t(icao: String, name: String, s: Silhouette, r: Rarity = Rarity.Common, mil: Boolean = false) =
             add(AircraftType(icao, name, s, r, mil))
+        val jumbo = Silhouette.Jumbo
         val quad = Silhouette.Quad
+        val tri = Silhouette.WideTri
         val wide = Silhouette.Widebody
         val narrow = Silhouette.Narrowbody
+        val rear = Silhouette.RearJet
         val regional = Silhouette.Regional
         val prop = Silhouette.Turboprop
+        val prop1 = Silhouette.TurbopropSingle
+        val prop4 = Silhouette.TurbopropQuad
         val biz = Silhouette.Bizjet
         val light = Silhouette.Light
+        val twin = Silhouette.LightTwin
         val heli = Silhouette.Helicopter
+        val fighter = Silhouette.Fighter
 
         // Legendary
         t("B748", "Boeing 747-8", quad, Rarity.Legendary)
@@ -50,22 +54,22 @@ object AircraftTypes {
         t("A337", "Airbus BelugaXL", wide, Rarity.Legendary)
         t("A124", "Antonov An-124", quad, Rarity.Legendary)
         t("IL96", "Ilyushin Il-96", quad, Rarity.Legendary)
-        t("DC10", "McDonnell Douglas DC-10", wide, Rarity.Legendary)
+        t("DC10", "McDonnell Douglas DC-10", tri, Rarity.Legendary)
         t("CONC", "Concorde", narrow, Rarity.Legendary)
 
         // Rare
-        t("A388", "Airbus A380-800", quad, Rarity.Rare)
+        t("A388", "Airbus A380-800", jumbo, Rarity.Rare)
         t("B772", "Boeing 777-200", wide, Rarity.Rare)
         t("B77L", "Boeing 777-200LR", wide, Rarity.Rare)
         t("A332", "Airbus A330-200", wide, Rarity.Rare)
         t("B762", "Boeing 767-200", wide, Rarity.Rare)
         t("B764", "Boeing 767-400", wide, Rarity.Rare)
-        t("MD11", "McDonnell Douglas MD-11", wide, Rarity.Rare)
+        t("MD11", "McDonnell Douglas MD-11", tri, Rarity.Rare)
         t("A310", "Airbus A310", wide, Rarity.Rare)
         t("B752", "Boeing 757-200", narrow, Rarity.Rare)
         t("B753", "Boeing 757-300", narrow, Rarity.Rare)
-        t("B712", "Boeing 717", narrow, Rarity.Rare)
-        t("MD88", "McDonnell Douglas MD-88", narrow, Rarity.Rare)
+        t("B712", "Boeing 717", rear, Rarity.Rare)
+        t("MD88", "McDonnell Douglas MD-88", rear, Rarity.Rare)
         t("A318", "Airbus A318", narrow, Rarity.Rare)
 
         // Uncommon
@@ -115,12 +119,12 @@ object AircraftTypes {
         t("E75S", "Embraer E175", regional)
         t("E190", "Embraer E190", regional)
         t("E195", "Embraer E195", regional)
-        t("E135", "Embraer ERJ-135", regional)
-        t("E145", "Embraer ERJ-145", regional)
-        t("CRJ2", "Bombardier CRJ200", regional)
-        t("CRJ7", "Bombardier CRJ700", regional)
-        t("CRJ9", "Bombardier CRJ900", regional)
-        t("CRJX", "Bombardier CRJ1000", regional)
+        t("E135", "Embraer ERJ-135", rear)
+        t("E145", "Embraer ERJ-145", rear)
+        t("CRJ2", "Bombardier CRJ200", rear)
+        t("CRJ7", "Bombardier CRJ700", rear)
+        t("CRJ9", "Bombardier CRJ900", rear)
+        t("CRJX", "Bombardier CRJ1000", rear)
 
         // Turboprops
         t("DH8A", "De Havilland Dash 8-100", prop)
@@ -133,14 +137,14 @@ object AircraftTypes {
         t("AT75", "ATR 72-500", prop)
         t("AT76", "ATR 72-600", prop)
         t("DHC6", "De Havilland Twin Otter", prop)
-        t("DHC7", "De Havilland Dash 7", prop, Rarity.Rare)
+        t("DHC7", "De Havilland Dash 7", prop4, Rarity.Rare)
         t("SF34", "Saab 340", prop)
         t("B190", "Beechcraft 1900", prop)
-        t("PC12", "Pilatus PC-12", prop)
-        t("C208", "Cessna Caravan", prop)
+        t("PC12", "Pilatus PC-12", prop1)
+        t("C208", "Cessna Caravan", prop1)
         t("BE20", "Beechcraft King Air 200", prop)
         t("BE9L", "Beechcraft King Air 90", prop)
-        t("TBM9", "Daher TBM 900", prop)
+        t("TBM9", "Daher TBM 900", prop1)
         t("SW4", "Fairchild Metro", prop)
 
         // Business jets
@@ -188,17 +192,17 @@ object AircraftTypes {
         t("C206", "Cessna 206", light)
         t("P28A", "Piper Cherokee", light)
         t("P28R", "Piper Arrow", light)
-        t("PA34", "Piper Seneca", light)
-        t("PA44", "Piper Seminole", light)
+        t("PA34", "Piper Seneca", twin)
+        t("PA44", "Piper Seminole", twin)
         t("SR20", "Cirrus SR20", light)
         t("SR22", "Cirrus SR22", light)
         t("SF50", "Cirrus Vision Jet", biz)
         t("DA40", "Diamond DA40", light)
-        t("DA42", "Diamond DA42", light)
+        t("DA42", "Diamond DA42", twin)
         t("DV20", "Diamond DV20", light)
         t("M20P", "Mooney M20", light)
         t("BE36", "Beechcraft Bonanza", light)
-        t("BE58", "Beechcraft Baron", light)
+        t("BE58", "Beechcraft Baron", twin)
         t("WW24", "IAI Westwind", biz)
 
         // Helicopters
@@ -218,17 +222,17 @@ object AircraftTypes {
 
         // Military
         t("C17", "Boeing C-17 Globemaster", wide, Rarity.Rare, mil = true)
-        t("C130", "Lockheed C-130 Hercules", prop, Rarity.Uncommon, mil = true)
-        t("C30J", "Lockheed C-130J Super Hercules", prop, Rarity.Uncommon, mil = true)
+        t("C130", "Lockheed C-130 Hercules", prop4, Rarity.Uncommon, mil = true)
+        t("C30J", "Lockheed C-130J Super Hercules", prop4, Rarity.Uncommon, mil = true)
         t("K35R", "Boeing KC-135 Stratotanker", quad, Rarity.Rare, mil = true)
         t("KC46", "Boeing KC-46 Pegasus", wide, Rarity.Rare, mil = true)
-        t("A400", "Airbus A400M", prop, Rarity.Rare, mil = true)
+        t("A400", "Airbus A400M", prop4, Rarity.Rare, mil = true)
         t("P8", "Boeing P-8 Poseidon", narrow, Rarity.Rare, mil = true)
         t("E3TF", "Boeing E-3 Sentry", quad, Rarity.Legendary, mil = true)
         t("H60", "Sikorsky UH-60 Black Hawk", heli, Rarity.Uncommon, mil = true)
-        t("F16", "General Dynamics F-16", biz, Rarity.Rare, mil = true)
-        t("F18S", "Boeing F/A-18 Super Hornet", biz, Rarity.Rare, mil = true)
-        t("F35", "Lockheed F-35", biz, Rarity.Rare, mil = true)
+        t("F16", "General Dynamics F-16", fighter, Rarity.Rare, mil = true)
+        t("F18S", "Boeing F/A-18 Super Hornet", fighter, Rarity.Rare, mil = true)
+        t("F35", "Lockheed F-35", fighter, Rarity.Rare, mil = true)
         t("B52", "Boeing B-52", quad, Rarity.Legendary, mil = true)
     }.associateBy { it.icao }
 
@@ -244,17 +248,21 @@ object AircraftTypes {
         return type.rarity
     }
 
-    /** Map silhouette from the type, else from the ADS-B emitter category. */
-    fun silhouetteFor(typeIcao: String?, category: String?): Silhouette {
-        byIcao(typeIcao)?.let { return it.silhouette }
-        return when (category?.uppercase()) {
-            "A1" -> Silhouette.Light
-            "A2" -> Silhouette.Bizjet
-            "A3" -> Silhouette.Narrowbody
-            "A4" -> Silhouette.Narrowbody
-            "A5" -> Silhouette.Widebody
-            "A7" -> Silhouette.Helicopter
-            else -> Silhouette.Generic
+    /** Map icon class: curated table, then the ICAO designator list, then the emitter category. */
+    fun silhouetteFor(typeIcao: String?, category: String?): Silhouette =
+        AircraftClassifier.classify(typeIcao, category)
+
+    /** Model name from the curated table, else the ICAO designator list. */
+    fun nameFor(typeIcao: String?): String? =
+        byIcao(typeIcao)?.name ?: TypeDesignators.lookup(typeIcao)?.name?.let(::titleCase)
+
+    /** "BOEING 737-800" -> "Boeing 737-800": manufacturer words are all caps in Doc 8643. */
+    internal fun titleCase(raw: String): String = raw.split(' ').joinToString(" ") { w ->
+        val letters = w.filter { it.isLetter() }
+        if (letters.length > 2 && letters.all { it.isUpperCase() } && w.none { it.isDigit() }) {
+            w.lowercase().replaceFirstChar { it.uppercase() }
+        } else {
+            w
         }
     }
 

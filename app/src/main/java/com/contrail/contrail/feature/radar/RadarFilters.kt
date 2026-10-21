@@ -1,6 +1,7 @@
 package com.contrail.contrail.feature.radar
 
 import com.contrail.contrail.core.data.model.LiveAircraft
+import com.contrail.contrail.core.data.model.Watchlist
 import com.contrail.contrail.core.data.reference.AircraftTypes
 import com.contrail.contrail.core.data.reference.Airlines
 import com.contrail.contrail.core.data.reference.Rarity
@@ -38,13 +39,22 @@ data class RadarFilters(
     val bands: Set<AltitudeBand> = emptySet(),
     val militaryOnly: Boolean = false,
     val rareOnly: Boolean = false,
+    val watchlistOnly: Boolean = false,
+    /** On: parked and taxiing aircraft appear once zoomed into an airport. Off: never. */
+    val showGround: Boolean = true,
 ) {
     val activeCount: Int
-        get() = listOf(airlines.isNotEmpty(), types.isNotEmpty(), bands.isNotEmpty(), militaryOnly, rareOnly).count { it }
+        get() = listOf(
+            airlines.isNotEmpty(), types.isNotEmpty(), bands.isNotEmpty(),
+            militaryOnly, rareOnly, watchlistOnly, !showGround,
+        ).count { it }
 
+    /** True when nothing narrows the traffic (ground visibility aside, it's the default). */
     val isEmpty: Boolean get() = activeCount == 0
 
-    fun matches(aircraft: LiveAircraft): Boolean {
+    fun matches(aircraft: LiveAircraft, watchlist: Watchlist = Watchlist(emptyList())): Boolean {
+        if (!showGround && aircraft.onGround) return false
+        if (watchlistOnly && !watchlist.matches(aircraft)) return false
         if (militaryOnly && !aircraft.military && aircraft.type?.military != true) return false
         if (rareOnly && aircraft.rarity > Rarity.Rare) return false
         if (bands.isNotEmpty() && AltitudeBand.of(aircraft) !in bands) return false
