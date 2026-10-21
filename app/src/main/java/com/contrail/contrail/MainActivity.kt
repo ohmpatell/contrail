@@ -25,7 +25,10 @@ import com.contrail.contrail.core.designsystem.theme.ContrailTheme
 import com.contrail.contrail.feature.aircraft.AircraftRoute
 import com.contrail.contrail.feature.airport.AirportRoute
 import com.contrail.contrail.feature.airports.AirportsRoute
-import com.contrail.contrail.feature.passport.PassportScreen
+import com.contrail.contrail.feature.passport.PassportRoute
+import com.contrail.contrail.feature.passport.YearInReviewRoute
+import com.contrail.contrail.feature.trips.flight.FlightRoute
+import com.contrail.contrail.feature.trips.lounge.LoungeRoute
 import com.contrail.contrail.feature.radar.RadarRoute
 import com.contrail.contrail.feature.settings.SettingsRoute
 import com.contrail.contrail.feature.sky.SkyScreen
@@ -125,7 +128,7 @@ private fun ContrailNavHost(inbox: SharedTicketInbox) {
                             TopLevelDestination.Radar -> RadarRoute(onOpenAircraft = navigator::openAircraft)
                             TopLevelDestination.Sky -> SkyScreen()
                             TopLevelDestination.Airports -> AirportsRoute()
-                            TopLevelDestination.Passport -> PassportScreen()
+                            TopLevelDestination.Passport -> PassportRoute()
                         }
                     }
                 }
@@ -134,6 +137,9 @@ private fun ContrailNavHost(inbox: SharedTicketInbox) {
                 entry<SettingsKey>(metadata = DetailOverlayStrategy.detail) { SettingsRoute() }
                 entry<TripKey>(metadata = DetailOverlayStrategy.detail) { TripDetailRoute(it.id) }
                 entry<ImportKey>(metadata = DetailOverlayStrategy.detail) { ImportRoute() }
+                entry<FlightKey>(metadata = DetailOverlayStrategy.detail) { FlightRoute(it.segmentId) }
+                entry<LoungeKey>(metadata = DetailOverlayStrategy.detail) { LoungeRoute(it.segmentId, it.phase, it.visitId) }
+                entry<YearInReviewKey>(metadata = DetailOverlayStrategy.detail) { YearInReviewRoute(it.year) }
             },
         )
     }
