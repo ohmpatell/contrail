@@ -56,3 +56,21 @@ Choices made while building, with the reason. Newest at the bottom of each stage
 - **Robolectric runs tests with a plain `Application`** (`robolectric.properties`). The real one loads MapLibre's native code, which can't run on the JVM.
 - **Screenshot tests swap the MapLibre map for a drawn backdrop** (`FakeRadarBackdrop`) and serve a painted photo through Coil's fake engine. The real map is checked on the emulator.
 - **Robolectric needs `--add-opens`** for `jdk.internal.access` on JDK 25 (set in `app/build.gradle.kts`).
+
+## Plan change before Stage 2 (Oct 20, 2026)
+
+Requested by you: Logbook tab and spotting log removed; watchlist moved into the radar filters; new Airports tab (search, favourites, visited, news); logostream added as a data source; livery renders become the main "floating plane" image; three radar fixes (type-accurate icons, ground clutter, full route on selection). DESIGN.md and CLAUDE.md were updated to match.
+
+### What logostream's free plan actually allows
+Checked against the OpenAPI spec, the terms (Sept 3, 2026) and live probes with your key:
+- **Free ("Community"):** airline logos and tail art, airline data, routes (filtered, 50 per page), airport stats (timezone, airlines served, destinations, hubs), nearby airports, countries.
+- **Startup plan only ($40/month):** aircraft liveries, airport logos, airport data, news, aircraft types, airport diagrams, route maps. Free-only is a non-negotiable, so each gets a free replacement:
+  - Airport data → bundled OurAirports (public domain); timezone, airlines served and destinations come from logostream's free airport stats and routes.
+  - Terminals and runway geometry → OpenStreetMap via the Overpass API (ODbL, credited).
+  - News → publisher RSS (Simple Flying, AeroTime, FlightGlobal, AirlineGeeks, Aviation Week) plus Google News RSS searches for airline and airport filters. Headlines link back to the source.
+  - Liveries → data-driven vector renders with the airline's free logostream tail art on the fin. The livery source sits behind an interface, so a paid plan would slot in without UI changes.
+  - Airport logos → a styled IATA monogram.
+- **Caching follows the terms, not the original request.** Free-plan logos must be fetched live on each use, so logo images use Coil's memory cache only and never touch disk. Data responses are cached as you asked: airline data and airport stats permanently, routes weekly. News refreshes at most hourly.
+- **Attribution.** "Logos by logostream", linked to https://logostream.dev, is shown in Settings → About, as the terms allow.
+- **Usage counter** reads `X-RateLimit-Remaining` and `X-RateLimit-Reset` from every response, so Settings shows the real monthly quota instead of an estimate. A guard stops calling logostream when fewer than 500 requests remain.
+- **Key handling.** Debug builds read `LOGOSTREAM_API_KEY` from `local.properties` into BuildConfig. Release builds never embed it: the key is entered in Settings and stored with DataStore, encrypted with an Android Keystore AES-GCM key.

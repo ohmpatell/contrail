@@ -5,7 +5,7 @@ Personal Android flight tracking app for one aviation enthusiast (me). Flighty-g
 ## Non-negotiables
 
 - **Free only.** Only free APIs and free tiers (see the Data sources table in `docs/DESIGN.md`). No paid services, no Firebase, no backend server.
-- **No secrets in the repo.** API keys are entered by me in the app's Settings screen and stored encrypted on device (EncryptedSharedPreferences or DataStore + Keystore). Never hardcode keys, never commit them, never put them in `local.properties` that gets committed.
+- **No secrets in the repo.** In release builds, API keys are entered by me in the app's Settings screen and stored encrypted on device (DataStore + Android Keystore). Debug builds may read them from the git-ignored `local.properties` (e.g. `LOGOSTREAM_API_KEY`, `AERODATABOX_API_KEY`) via BuildConfig. Never hardcode keys, never commit them, and never put them in a release BuildConfig.
 - **Design is the top priority.** This app should look and feel stunning: smooth 120 Hz motion, shared-element transitions, spring physics, frosted glass, split-flap text. No default Material look, no placeholder-quality UI left behind. If a screen works but looks plain, it isn't done.
 - **No login, no accounts, no analytics, no ads.**
 - **Offline first.** Screens read from the Room database; repositories refresh it from the network.
@@ -29,7 +29,7 @@ Personal Android flight tracking app for one aviation enthusiast (me). Flighty-g
 - Screens never call the network directly.
 - Each external API sits behind an interface so providers can be swapped (e.g. `LiveTrafficSource` implemented by adsb.lol, airplanes.live, OpenSky).
 - FlightAware AeroAPI calls go through a quota guard that tracks estimated monthly spend and stops at the cap set in Settings.
-- Package by feature: `feature/radar`, `feature/trips`, `feature/aircraft`, `feature/airport`, `feature/passport`, `feature/sky`, `feature/logbook`, plus `core/designsystem`, `core/data`, `core/network`, `core/database`.
+- Package by feature: `feature/radar`, `feature/trips`, `feature/aircraft`, `feature/airport`, `feature/passport`, `feature/sky`, `feature/airports`, `feature/settings`, plus `core/designsystem`, `core/data`, `core/network`, `core/database`.
 
 ## Design system
 
@@ -45,6 +45,8 @@ Personal Android flight tracking app for one aviation enthusiast (me). Flighty-g
 - Show photographer credit and link for every Planespotters photo.
 - Respect rate limits: adsb.lol and airplanes.live about 1 request per second max, OpenSky credit budget, AeroAPI spend cap. Cache aggressively.
 - Label callsign-derived routes as "route from callsign" unless confirmed by AeroAPI.
+- logostream (free plan): show "Logos by logostream" linked to https://logostream.dev, never cache logo images on disk, and track the monthly request quota from its `X-RateLimit-*` headers.
+- Credit OpenStreetMap (ODbL) wherever Overpass geometry is drawn, and link every news item back to its source.
 
 ## How to work with me (autonomous mode)
 

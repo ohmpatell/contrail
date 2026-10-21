@@ -31,7 +31,7 @@ Contrail is a native Android app in Kotlin with Jetpack Compose, using MapLibre 
 | Networking | Ktor client + kotlinx.serialization | Lightweight, coroutine-native |
 | Images | Coil 3 | Fast loading, disk cache, crossfades |
 | Image cutouts | ML Kit Subject Segmentation (on-device) | Turns aircraft photos into floating cutouts |
-| Storage | Room (SQLite) | Your flights, logbook, caches, all offline |
+| Storage | Room (SQLite) | Your flights, watchlist, favourite airports, caches, all offline |
 | Background work | WorkManager | Rotation refresh, proximity checks |
 | Widgets | Jetpack Glance | Next-flight countdown, plane-overhead widget |
 | Sensors and camera | Rotation-vector sensor + CameraX | Sky View: point at a plane to identify it |
@@ -75,7 +75,10 @@ Contrail uses four kinds of aircraft image. Each one falls back to the next when
 2. **Floating cutouts (the "PNG plane" look).** The app runs Google's [ML Kit Subject Segmentation](https://developers.google.com/ml-kit/vision/subject-segmentation/android) on the photo, entirely on the phone, to lift the aircraft off its background. The result is a transparent image of the real tail, in its real livery, that floats over the glass UI with a shadow. It takes about 200 ms per photo and is cached forever.
    - Works best on side-on shots against sky. Busy ramp photos can leave rough edges, so you can tap to try the next photo or switch to the livery render.
    - A cutout changes the photographer's image, so it stays on your phone only, always with the credit shown.
-3. **Livery profile renders.** Clean side-view vector drawings, one per aircraft type (A350, A380, 777, 787, A330, A320 family, 737, E-Jets and more). Each drawing has paint zones (fuselage, belly, cheatline, tail, engines, winglets), and a small livery file per airline fills them with colours and a tail logo. These give perfectly consistent "floating plane" images for flight cards, the Passport and the collection. I'd build detailed liveries for the airlines you fly most (Etihad, Cathay Pacific) and use a tinted generic scheme for the rest.
+3. **Livery profile renders.** One consistent vector side-profile style per aircraft type (A380, 747, 777, 787, A350, A330, A320 family, 737, E-Jets, CRJ, turboprops, business jets and more). Each drawing has paint zones (fuselage, belly, cheatline, tail, engines, winglets). For the "floating plane" images on flight cards, aircraft pages, the Passport and the collection, the livery comes from, in order:
+   1. A logostream livery image, where the plan includes it.
+   2. A data-driven livery: airline colours, a cheatline and the airline's logostream tail art on the fin. Etihad, Cathay Pacific and Air Canada get hand-tuned schemes; every other airline gets a tinted scheme from its brand colours.
+   3. The photo cutout, as the last fallback.
 4. **3D models (later).** Free, openly licensed 3D aircraft models rendered with Filament, so you can spin your next aircraft in your hand. This is a stretch goal, because good free models with accurate liveries are rare.
 
 **Rarity and "I flew on something special".** Every aircraft type gets a rarity tier from a curated table in the app, based on how many are still flying with passengers:
@@ -91,7 +94,7 @@ The tiers are a starting point you can edit. The table only goes stale slowly, s
 
 ## Screens and features
 
-Contrail has five tabs: Trips, Radar, Sky, Passport and Logbook. Aircraft and airport pages open from anywhere.
+Contrail has five tabs: Trips, Radar, Sky, Airports and Passport. Aircraft and airport pages open from anywhere.
 
 ### Trips (home)
 
@@ -125,7 +128,11 @@ This panel shows your aircraft's whole day so you can judge whether the crew wil
 
 - Full-screen dark map of live aircraft, coloured by altitude, gliding smoothly with fading trails.
 - Tap a plane for a bottom sheet: photo or cutout, callsign, route, type, registration, altitude, speed, squawk, vertical-speed sparkline.
-- Filters: airline, type, altitude band, military only, rare types only.
+- Type-accurate icons: every ICAO type code maps to an icon class with the right shape, engine count and relative size (A380 and 747 large four-engined, 777/A350/787/A330 widebody twins, A320/737 narrowbodies, regional jets, turboprops, business jets, helicopters, light aircraft). The ADS-B emitter category is the fallback when the type is unknown.
+- Ground clutter: ground vehicles and obstacles (emitter categories C1–C3, and ground targets with no aircraft type) are never drawn. Parked aircraft show only once you zoom into an airport, unless "Show ground traffic" is on in the filters.
+- Full route on selection: the selected aircraft's whole route is drawn, the flown part from its track and the rest as a dashed great-circle arc to the destination. Without route data, its trail is shown as usual.
+- Filters: airline, type, altitude band, military only, rare types only, watchlist only, show ground traffic.
+- **Watchlist** (in the filters): tail numbers, types or airlines you care about. Matches get a glowing ring on the map and, later, a notification when they go airborne or come near.
 - Layers: airport labels, weather radar, day/night terminator line.
 - Highlights: emergency squawks (7700, 7600, 7500) pulse red; rare types and your watchlist get a glowing ring.
 - Follow mode: lock the camera on one aircraft, with a cockpit-style heading and altitude readout.
@@ -140,14 +147,17 @@ This panel shows your aircraft's whole day so you can judge whether the crew wil
 
 ### Aircraft page
 
-- Hero photo or cutout, with photographer credit.
+- Hero: the floating aircraft (livery render or cutout) over its real photo, with the photographer's credit, airline logo and rarity badge.
 - Registration, type, operator, transponder hex, and today's route.
 - Its flights over the last few days, from the free data.
 - Your history with it: flown on it, spotted it, or on your watchlist.
 
 ### Airport page
 
+- Header: airport logo (or a styled code monogram), name, city, live local time.
 - Live departure and arrival boards with split-flap animation.
+- Terminals, airlines served and a destinations map of every nonstop route.
+- Nearby traffic on a mini-radar.
 - Decoded weather (METAR and TAF) with a flight-category badge (VFR, MVFR, IFR, LIFR).
 - Runway diagram with the likely active runway, and a mini-radar of nearby traffic.
 - Quick link to LiveATC for that airport's tower and approach audio.
@@ -161,11 +171,11 @@ This panel shows your aircraft's whole day so you can judge whether the crew wil
 - Year in Review: a swipeable story of the year's flying.
 - Import past flights by boarding pass scan or by flight number and date.
 
-### Logbook (spotter tools)
+### Airports
 
-- **Spotting log:** take or import a photo and the app uses its time and location to suggest which aircraft it was, from live and recent positions.
-- **Watchlist:** tail numbers, types or airlines that trigger a notification when they go airborne or come near.
-- Stats for spotted types and airlines, separate from flown ones.
+- Search every airport with scheduled service by code, name or city, instantly and offline.
+- Favourites and visited airports, one tap from the list.
+- Aviation news feed, filterable by airline and airport (your favourites appear as quick filters).
 
 ### Home-screen widgets
 
@@ -179,7 +189,8 @@ Everything except trip details comes from free, keyless community sources. Your 
 | Source | Used for | Free allowance | Key |
 | --- | --- | --- | --- |
 | [adsb.lol](https://api.adsb.lol/) | Radar, Sky, proximity alerts | Free, open data (ODbL), throttles heavy bursts | None |
-| [airplanes.live](https://airplanes.live/) | Backup live positions | Free for non-commercial use, about 1 request per second | None |
+| [adsb.fi](https://github.com/adsbfi/opendata) | Backup live positions | Free open data for personal use, 1 request per second | None |
+| [airplanes.live](https://airplanes.live/) | Optional third live provider | Now requires approval by email | Approval |
 | [OpenSky Network](https://openskynetwork.github.io/opensky-api/rest.html) | Backup positions, recent airport flights, flight tracks | 400 credits a day anonymous, 4,000 with a free account | Free account |
 | [adsbdb](https://www.adsbdb.com/) | Callsign → route, hex → registration and type | Free | None |
 | [Planespotters photo API](https://planespotters.net/photo/api) | Aircraft photos | Free, credit and link back required | None |
@@ -188,6 +199,10 @@ Everything except trip details comes from free, keyless community sources. Your 
 | [AviationStack](https://aviationstack.com/pricing) | Last-resort flight status | 100 requests a month | Free key |
 | [aviationweather.gov](https://aviationweather.gov/data/api/) | METAR and TAF | Free | None |
 | [OurAirports](https://ourairports.com/data/) | Airports, runways, frequencies (bundled in the app) | Public domain | None |
+| [logostream](https://airline.logostream.dev/) (Community) | Airline logos and tail art, airline data, routes, airport stats (timezone, airlines served, destinations) | 20,000 requests a month; logos can't be cached; "Logos by logostream" attribution required. Liveries, airport logos, airport data and news need a paid plan | Free key |
+| [OpenStreetMap Overpass](https://overpass-api.de/) | Terminal and runway geometry for airport diagrams | Free, fair use, ODbL attribution | None |
+| Aviation RSS (Simple Flying, AeroTime, FlightGlobal, AirlineGeeks, Aviation Week, Google News) | News feed, filtered by airline and airport | Free; headlines and links back to the source | None |
+| [RainViewer](https://www.rainviewer.com/api.html) | Weather radar layer | Free for personal use | None |
 | [OpenFreeMap](https://openfreemap.org/) | Map tiles | Free | None |
 | [Open-Meteo](https://open-meteo.com/) | Winds and weather layers | Free for non-commercial use | None |
 
@@ -206,7 +221,7 @@ Screens never call the network directly. They read from the on-phone database, a
 
 &#91;embedded content: app architecture · 4 layers plus on-device stores\]
 
-- **Offline first:** your trips, Passport, logbook and cached aircraft pages all work in airplane mode.
+- **Offline first:** your trips, Passport, favourite airports and cached aircraft pages all work in airplane mode.
 - **No server:** a native app can call every API directly, so there's no proxy, no Firebase and nothing to host.
 - **Swappable providers:** each source sits behind one interface, so a dead API can be replaced without touching the screens.
 
