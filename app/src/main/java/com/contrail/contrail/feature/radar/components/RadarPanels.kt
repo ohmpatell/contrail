@@ -32,6 +32,7 @@ import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.graphics.vector.ImageVector
 import androidx.compose.ui.semantics.Role
 import androidx.compose.ui.unit.Dp
+import androidx.compose.ui.unit.IntOffset
 import androidx.compose.ui.unit.dp
 import com.contrail.contrail.core.data.reference.Airlines
 import com.contrail.contrail.core.data.repository.RadarLayers
@@ -220,7 +221,7 @@ fun GlassToggle(checked: Boolean, modifier: Modifier = Modifier) {
     ) {
         Box(
             Modifier
-                .offset(x = knob, y = 3.dp)
+                .offset { IntOffset(knob.roundToPx(), 3.dp.roundToPx()) }
                 .size(20.dp)
                 .clip(CircleShape)
                 .background(knobColor),

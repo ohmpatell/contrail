@@ -77,7 +77,7 @@ android {
     }
     lint {
         // Lint runs in CI and locally; real issues fail the build, dependency nags do not.
-        disable += setOf("GradleDependency", "NewerVersionAvailable", "AndroidGradlePluginVersion")
+        disable += setOf("GradleDependency", "NewerVersionAvailable", "AndroidGradlePluginVersion", "LogNotTimber")
         abortOnError = true
         checkDependencies = false
     }

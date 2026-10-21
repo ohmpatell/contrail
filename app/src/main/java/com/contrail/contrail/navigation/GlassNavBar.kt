@@ -39,6 +39,7 @@ import androidx.compose.ui.platform.LocalHapticFeedback
 import androidx.compose.ui.semantics.Role
 import androidx.compose.ui.semantics.selected
 import androidx.compose.ui.semantics.semantics
+import androidx.compose.ui.unit.IntOffset
 import androidx.compose.ui.unit.dp
 import com.contrail.contrail.core.designsystem.component.GlassLevel
 import com.contrail.contrail.core.designsystem.component.GlassSurface
@@ -74,7 +75,7 @@ fun GlassNavBar(
             val accent = colors.accent
             Box(
                 Modifier
-                    .offset(x = indicatorX)
+                    .offset { IntOffset(indicatorX.roundToPx(), 0) }
                     .width(itemWidth)
                     .fillMaxHeight()
                     .clip(ContrailTheme.shapes.chip)

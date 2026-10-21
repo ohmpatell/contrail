@@ -6,6 +6,7 @@ import android.graphics.Matrix
 import android.graphics.Paint
 import android.graphics.Path
 import android.graphics.RectF
+import androidx.core.graphics.createBitmap
 import com.contrail.contrail.core.data.reference.Silhouette
 
 /**
@@ -37,7 +38,7 @@ object AircraftIcons {
         val pad = (7f * density).toInt() + 2
         val inner = (logicalDp * density).toInt()
         val size = inner + pad * 2
-        val mask = Bitmap.createBitmap(size, size, Bitmap.Config.ALPHA_8)
+        val mask = createBitmap(size, size, Bitmap.Config.ALPHA_8)
         val canvas = Canvas(mask)
         val matrix = Matrix().apply {
             setRectToRect(RectF(0f, 0f, 100f, 100f), RectF(pad.toFloat(), pad.toFloat(), (pad + inner).toFloat(), (pad + inner).toFloat()), Matrix.ScaleToFit.CENTER)

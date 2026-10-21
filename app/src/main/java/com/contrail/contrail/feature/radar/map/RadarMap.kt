@@ -8,6 +8,7 @@ import androidx.compose.runtime.rememberUpdatedState
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.graphics.toArgb
 import androidx.compose.ui.platform.LocalContext
+import androidx.compose.ui.platform.LocalDensity
 import androidx.compose.ui.viewinterop.AndroidView
 import androidx.lifecycle.Lifecycle
 import androidx.lifecycle.LifecycleEventObserver
@@ -35,6 +36,7 @@ fun RadarMap(
     val lifecycle = LocalLifecycleOwner.current.lifecycle
     val canvas = ContrailTheme.colors.canvas.toArgb()
     val reduced = ContrailTheme.motion.reduced
+    val density = LocalDensity.current.density
     val latestCallbacks = rememberUpdatedState(callbacks)
     val latestOnReady = rememberUpdatedState(onReady)
     val holder = remember { ControllerHolder() }
@@ -78,7 +80,7 @@ fun RadarMap(
                 val controller = RadarMapController(
                     map = map,
                     style = style,
-                    density = context.resources.displayMetrics.density,
+                    density = density,
                     reducedMotion = reduced,
                     callbacks = object : RadarMapController.Callbacks {
                         override fun onAircraftTapped(hex: String) = latestCallbacks.value.onAircraftTapped(hex)
