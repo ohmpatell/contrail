@@ -48,7 +48,7 @@ object AircraftNames {
     )
 
     private val labelled = Regex(
-        "(?:Aircraft|Equipment|Aircraft type|Plane)\\s*(?:type)?\\s*[:\\-]?\\s*([A-Za-z0-9 \\-]{3,30})",
+        "(?:Aircraft|Equipment|Aircraft type|Plane)\\s*(?:type)?\\s*[\\-:]?\\s*([A-Za-z0-9 \\-]{3,30})",
         RegexOption.IGNORE_CASE,
     )
     private val maker = Regex("(Airbus|Boeing|Embraer|De Havilland|Bombardier|ATR)\\s+([A-Za-z0-9 \\-]{2,20})", RegexOption.IGNORE_CASE)

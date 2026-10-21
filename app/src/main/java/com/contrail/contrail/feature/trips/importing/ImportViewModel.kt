@@ -230,6 +230,7 @@ class ImportViewModel @Inject constructor(
         _state.update { it.copy(stage = ImportStage.Working, working = label, message = null) }
         viewModelScope.launch {
             val result = runCatching { block() }
+            result.exceptionOrNull()?.let { android.util.Log.w("ContrailImport", "Import failed", it) }
             val draft = result.getOrNull()
             if (draft == null || draft.segments.isEmpty()) {
                 _state.update {

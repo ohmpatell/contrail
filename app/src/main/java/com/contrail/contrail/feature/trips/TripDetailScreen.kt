@@ -173,8 +173,11 @@ private fun TripMap(trip: Trip, places: Map<String, AirportInfo>) {
         }
         legs.forEachIndexed { i, (s, a, b) ->
             val color = airlineAccentRaw(s.airlineIata) ?: colors.accent
-            if (i == 0) markers.drawCode(this, s.origin, fit.project(a), color, false)
-            markers.drawCode(this, s.destination, fit.project(b), color, i % 2 == 0)
+            val pa = fit.project(a)
+            val pb = fit.project(b)
+            // Each code sits on the side away from the airport it's connected to, so close pairs don't collide.
+            if (i == 0) markers.drawCode(this, s.origin, pa, color, pa.y > pb.y)
+            markers.drawCode(this, s.destination, pb, color, pb.y >= pa.y)
         }
     }
 }
@@ -252,7 +255,7 @@ private fun ConnectionCard(
                 Row(verticalAlignment = Alignment.CenterVertically, horizontalArrangement = Arrangement.spacedBy(spacing.md)) {
                     Icon(if (c.kind == ConnectionKind.Stopover) ContrailIcons.Bed else ContrailIcons.Clock, null, tint = tint, modifier = Modifier.size(ContrailTheme.sizes.icon))
                     Column(Modifier.weight(1f)) {
-                        Eyebrow("${if (c.kind == ConnectionKind.Stopover) "Stopover" else "Connection"} in ${TripFormat.city(c.airport, places)}")
+                        Eyebrow("In ${TripFormat.city(c.airport, places)}")
                         Text(TripFormat.duration(c.duration), style = ContrailTheme.type.numericLarge, color = colors.textPrimary)
                     }
                     Tag(c.length.label, colors.length(c.length), filled = true)
@@ -284,7 +287,7 @@ private fun reason(c: Connection): String = when {
     c.duration > Duration.ofHours(24) -> "over 24 hours on the ground"
     c.kind == ConnectionKind.Stopover -> "overnight with a hotel"
     c.hotel -> "a hotel, but not overnight"
-    else -> "under 24 hours, staying airside"
+    else -> "under 24 hours with no hotel"
 }
 
 /** Layover | Stopover, with a sliding pill. */
@@ -307,7 +310,7 @@ private fun KindToggle(kind: ConnectionKind, onToggle: () -> Unit) {
         val tint = if (pos > 0.5f) colors.passport else colors.accent
         Box(
             Modifier
-                .offset(x = half * pos)
+                .offset { androidx.compose.ui.unit.IntOffset((half * pos).roundToPx(), 0) }
                 .width(half)
                 .fillMaxHeight()
                 .padding(3.dp)

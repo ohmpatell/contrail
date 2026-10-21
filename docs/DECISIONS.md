@@ -124,3 +124,28 @@ Checked against the OpenAPI spec, the terms (Sept 3, 2026) and live probes with 
 
 ### Lounges
 - **Source: a curated list plus OpenStreetMap.** No free lounge database has an API (LoungeBuddy, Priority Pass and LoungeReview are all closed). OSM tags lounges as `amenity=lounge`; a live check found 15 named lounges at HKG and 13 at MNL, but one at YYZ and none at DEL, so OSM alone isn't enough. The curated list covers YYZ, AUH, HKG, MNL, DEL and BOM, OSM fills in everywhere else (credited under ODbL), and lounges you add by hand are stored and suggested next time.
+
+### Ticket import
+- **Parsing is token-based, not template-based.** The text parser finds flight numbers, airport codes, dates, times, terminals, seats and cabins, then gives each flight a window that starts at its flight number or its route (whichever comes first). That one rule reads Etihad's table layout, Cathay Pacific's block layout and Air Canada's route-first layout, plus OCR'd boarding passes, without per-airline templates. Tested against made-up samples of all four.
+- **Times are printed local times; the arrival day comes from time zones.** When a ticket has no "+1", the arrival is the first day (0 to 2 days after departure) that gives a plausible flight time once both airports' zones are applied.
+- **Round trips split into two trips.** A segment that heads back toward the trip's origin after more than a day on the ground starts a new trip (YYZ → YVR, then YVR → YYZ five days later, is "Toronto to Vancouver" and "Vancouver to Toronto"). A stopover on the way keeps heading away from home, so it stays in the trip. Two weeks on the ground always splits. The review screen lets you join or split anywhere.
+- **PDFs: the PDF's own text layer first, OCR as well.** Android 15+ exposes PdfRenderer page text, which keeps table rows intact; pages are also rendered at 2,000 px for barcodes and OCR, and the results are merged. OCR lines are re-assembled into rows by their vertical position so tables don't come out column by column.
+- **Barcode first, text second.** When both exist (a PDF with a boarding pass), the BCBP barcode supplies the exact flight, date and seat, and the text adds times, terminals and aircraft.
+- **ML Kit bundled models** (barcode 17.3.0, Latin text 16.0.1) so import works offline from the first launch, with no model download.
+- **Android's regex engine differs from the JVM's.** ICU reads `[:` as the start of a POSIX class, so `[:h]` crashed on the phone while every JVM test passed. Character classes never start with `:` now; the emulator check caught it.
+- **Contrail is a single-task activity** so "Share to Contrail" always lands in the one running app instead of starting a second copy whose import screen raced the first.
+- **Typing a flight number fills in its usual route** from adsbdb (labelled "Route from callsign"); times stay yours to enter, since no free schedule API exists.
+
+### Rotation, live tracking and OpenSky
+- **OpenSky uses OAuth client credentials.** Accounts made since 2025 get an API client (ID and secret) instead of a password. The token is cached for its 30 minutes. `X-Rate-Limit-Remaining` is recorded and the planner stops at 200 credits left.
+- **Turnaround method:** for each of the last 7 days, OpenSky arrivals at your destination within 3 hours of the scheduled arrival, matched by ICAO callsign, then that aircraft's next departure within 18 hours. The median ground time sets the badge; if it usually stays 18 hours or more, that's "Relaxed" (overnight). Each settled day is cached forever.
+- **Sample history until OpenSky is set up.** The panel shows realistic sample turnarounds (widebody about 2h 45m, narrowbody about 50m) with a "Sample data" tag and a link to Settings. Live positions are never faked: your aircraft and your flight are looked up on adsb.fi/adsb.lol, which need no key.
+- **One shared throttle per host.** Radar, flight lookups and boards now share a single 1.1 s throttle per ADS-B host, so opening a flight while the radar polls can't exceed 1 request per second.
+- **Takeoff and landing are always estimates**: takeoff from OpenSky's first-seen time (or a 15-minute taxi), landing from live ground speed (or an 8-minute taxi-in). Gate times come from the ticket.
+- **Seat map link is a web search** for "airline + aircraft + seat map". SeatGuru is gone and there's no free seat-map API.
+
+### Maps, globe and Passport
+- **Dotted globe from Natural Earth.** `tools/gen_land_dots.py` turns Natural Earth's public-domain 110m land into 3,363 dots (13 KB). The Passport globe, Year in Review and the map fallbacks draw it in Compose, so they work offline and in screenshot tests.
+- **Trip and flight maps are MapLibre snapshots** (one static render, no live GL view) with the route, codes and the live plane drawn in Compose on the same Web Mercator projection. Routes crossing the antimeridian (Toronto–Hong Kong over the pole) are unwrapped along the path before fitting.
+- **Passport counts only flights that have landed.** Future trips show as "upcoming".
+- **The collection is 42 passenger types** (A380 down to the ATR 72), plus any other type you fly. Flown types are drawn in the livery of the airline you first flew them with; Legendary and Rare ones get a holographic sweep.

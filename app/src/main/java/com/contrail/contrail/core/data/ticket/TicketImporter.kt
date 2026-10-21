@@ -7,6 +7,7 @@ import android.graphics.ImageDecoder
 import android.graphics.pdf.PdfRenderer
 import android.net.Uri
 import android.os.Build
+import androidx.core.graphics.createBitmap
 import com.contrail.contrail.core.common.Clock
 import com.contrail.contrail.core.data.repository.AirportRepository
 import com.google.android.gms.tasks.Task
@@ -65,7 +66,11 @@ class TicketImporter @Inject constructor(
     fun fromBarcode(raw: String): TicketDraft? = BcbpParser.parse(raw, today)
 
     suspend fun fromUri(uri: Uri, mime: String?): TicketDraft {
-        val type = mime ?: context.contentResolver.getType(uri)
+        val type = context.contentResolver.getType(uri) ?: mime
+        if (type?.startsWith("text/") == true) {
+            val text = withContext(Dispatchers.IO) { context.contentResolver.openInputStream(uri)?.use { it.bufferedReader().readText() } }.orEmpty()
+            return fromText(text)
+        }
         return if (type == "application/pdf" || uri.toString().endsWith(".pdf", ignoreCase = true)) fromPdf(uri) else fromImage(uri)
     }
 
@@ -97,7 +102,7 @@ class TicketImporter @Inject constructor(
                             }
                             // Render about 2,000 px wide: sharp enough for small PDF417 codes and fine print.
                             val scale = PDF_RENDER_WIDTH.toFloat() / page.width
-                            val bmp = Bitmap.createBitmap((page.width * scale).toInt(), (page.height * scale).toInt(), Bitmap.Config.ARGB_8888)
+                            val bmp = createBitmap((page.width * scale).toInt(), (page.height * scale).toInt())
                             bmp.eraseColor(Color.WHITE)
                             page.render(bmp, null, android.graphics.Matrix().apply { setScale(scale, scale) }, PdfRenderer.Page.RENDER_MODE_FOR_DISPLAY)
                             bitmaps += bmp

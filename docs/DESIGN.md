@@ -237,7 +237,7 @@ Everything comes from free sources, and nothing needs a payment card. Your fligh
 
 How the free budgets are spent:
 
-- OpenSky history is fetched only for your flights departing within the next 7 days, plus whenever you open that flight, and every answer is cached on the phone. Its data is published the day after, so a day's result never changes once stored.
+- OpenSky history is fetched only when you open a flight, about 15 small requests the first time, and every answer is cached on the phone. Its data is published the day after, so a day's result never changes once stored and is never fetched twice.
 - Live lookups of your flight and your aircraft run only while you have the flight open, at most every 15 seconds, through the same polite throttles as the radar.
 
 Callsign-based routes from free databases are sometimes wrong, especially for airlines that change callsigns daily, so the app labels them as "route from callsign" rather than confirmed. Your own flights use the route on your ticket.

@@ -114,7 +114,7 @@ class AirportRepository @Inject constructor(
                     .distinctBy { it.iata }
                     .associate { a ->
                         a.iata to AirportInfo(
-                            a.iata, a.icao, a.city.ifBlank { a.name }, a.countryIso,
+                            a.iata, a.icao, a.city.substringBefore(" (").ifBlank { a.name }, a.countryIso,
                             runCatching { ZoneId.of(a.timezone) }.getOrDefault(ZoneOffset.UTC), a.lat, a.lon,
                         )
                     }

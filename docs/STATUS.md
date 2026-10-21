@@ -4,54 +4,57 @@ Last updated Oct 21, 2026.
 
 ## Waiting on you
 
-**1. Your logostream key on the phone.** Release builds never embed keys. On the phone: Airports tab → gear (top right) → logostream → **Add key**, paste the key from `local.properties`, **Save**. Debug builds read it from `local.properties` automatically.
+**1. A free OpenSky Network account** (for the cockpit-visit planner's real history). Until then it shows clearly labelled sample data; everything else works.
+1. Go to https://opensky-network.org → **Login** (top right) → **Register**. Accounts are free; there's no plan to pick. Confirm the email.
+2. Log in and open **My OpenSky → Account** (https://opensky-network.org/my-opensky/account).
+3. In **API Client**, click **Create** (or **Reset Credential**) and download `credentials.json`. It has a `clientId` and a `clientSecret`.
+4. For debug builds, add two lines at the bottom of `local.properties` in the project root (Android Studio: **Project** view → `local.properties`):
+   ```
+   OPENSKY_CLIENT_ID=your-client-id
+   OPENSKY_CLIENT_SECRET=your-client-secret
+   ```
+5. On the phone (release build): **Airports → gear → OpenSky client ID → Add key**, paste, **Save**; then the same for **OpenSky client secret**.
 
-**2. Optional:**
-- A free **OpenSky Network** account (https://opensky-network.org), for an aircraft's flights over the last few days. Without it, the aircraft page shows the flights Contrail itself has seen.
-- **airplanes.live** now needs approval by email (contact@airplanes.live). adsb.fi and adsb.lol cover live positions without it.
+Tell me when it's done and I'll check the planner against real data.
 
-Releases: signing secrets are set and every push to `master` publishes a signed APK to GitHub Releases for Obtainium. Keep `C:\Users\ohm20\contrail-signing\contrail-release.jks` and its password backed up.
+**2. Your logostream key on the phone** (from Stage 2, if not done yet): **Airports → gear → logostream → Add key**.
+
+**Optional:** airplanes.live needs approval by email (contact@airplanes.live). adsb.fi and adsb.lol already cover live positions.
+
+Releases: every push to `master` publishes a signed APK to GitHub Releases for Obtainium. Keep `C:\Users\ohm20\contrail-signing\contrail-release.jks` and its password backed up.
 
 ## Done
 
 ### Stage 1: foundation and live radar
-- Project structure, version catalog, Hilt, Room, DataStore, Ktor, Coil, MapLibre.
-- Night-cockpit design system: tokens, bundled fonts, spring motion that respects "remove animations", AGSL aurora, Haze frosted glass, split-flap text, custom icons.
-- Floating glass tab bar and styled placeholder tabs.
-- Live radar: interpolated motion in MapLibre, altitude colours, fading trails, filters, layers, follow mode, aircraft sheet with Planespotters photos and callsign routes.
-- GitHub Actions: tests, lint, signed release APK on every push.
+- Project structure, night-cockpit design system, glass tab bar, live radar with interpolated motion, aircraft sheet, GitHub Actions release pipeline.
 
 ### Stage 2: aircraft, airports, logostream, liveries
-- Radar:
-  - Type-accurate icons for every ICAO type (17 classes with the right engines, layout and relative size; emitter category as fallback).
-  - Vehicles and obstacles removed; parked aircraft only when zoomed into an airport, plus a "Show ground traffic" toggle.
-  - The selected aircraft's whole route: flown track solid (OpenSky), the rest a dashed great circle to its destination.
-  - Watchlist (tails, types, airlines) in the filters, with glowing rings on the map.
-  - adsb.fi primary feed with adsb.lol as backup; airline logos in the sheet; a livery render when there's no photo.
-- Airports tab (replaces Logbook): offline search over 5,332 airports, favourites with live local time, visited airports, and an aviation news feed filterable by your airports and airlines.
-- Airport page:
-  - Monogram and live local time.
-  - METAR/TAF with flight-category badge.
-  - OpenStreetMap airfield diagram with terminals and the likely active runway.
-  - Live ADS-B departures and arrivals board, and nearby-traffic scope.
-  - Airlines served with logostream logos, and a destinations map of every nonstop route.
-  - Radio frequencies and a LiveATC link.
-- Aircraft page:
-  - Floating livery render with the airline's real tail art, or an ML Kit cutout, over the blurred photo with credit.
-  - Holographic rarity badge, today's route with progress, sightings, and watch toggles.
-- Settings: encrypted API keys, the live logostream quota (read from its headers), and every source's credit including "Logos by logostream".
-- 101 unit tests and 19 Roborazzi screenshots, lint clean. Verified on the Pixel 9 emulator.
+- Type-accurate radar icons, ground clutter rules, full route on selection, watchlist.
+- Airports tab, airport page (weather, OSM diagram, ADS-B boards, destinations), aircraft page (livery render or cutout, rarity), encrypted Settings, logostream with live quota.
+
+### Stage 3: trips, ticket import, lounges, flight detail, Passport
+- **Trips are journeys of segments.** Connections show time, terminal change, and a tight / comfortable / long badge. Layover or stopover is guessed (over 24 h, or overnight with a hotel) and switched with one tap. Stopovers get their own section: when you land and leave, live local time, weather (METAR), and a countdown.
+- **Trips tab** (now the start tab): next-flight hero with the floating livery, split-flap codes, self-drawing arc and countdown; trip cards; past trips.
+- **Ticket import, all on the phone:** live barcode scan (CameraX + ML Kit), screenshot or photo, PDF (PdfRenderer text layer + OCR + barcodes), pasted email text, or by hand (typing a flight number fills its route). **Share to Contrail** from any app's share sheet. Always a review screen first, with missing fields flagged, connections previewed, and trip splits you can change.
+- Parsers tested against made-up Etihad e-ticket, Cathay Pacific email, Air Canada email and Cathay boarding-pass OCR samples, plus IATA BCBP barcodes.
+- **Flight detail:** route over the real night map (live plane once airborne), status, gate-to-gate timeline with labelled estimates, aircraft card with hand-entered tail and "times flown on this tail", booking card, lounges.
+- **Cockpit-visit planner (free sources only):** your flight live on adsb.fi/adsb.lol by ICAO callsign (EY 141 → ETD141); your aircraft live by tail, flagged as your inbound with an ETA when it's heading to your departure airport; earlier legs and a 7-day turnaround estimate from OpenSky with relaxed / maybe / tight badges (thresholds in Settings). Every estimate is labelled.
+- **Lounges:** log a visit on any flight or connection (lounge, terminal, date, times, access, 1–5 stars, note). Suggestions from a curated list for YYZ, AUH, HKG, MNL, DEL and BOM plus OpenStreetMap; lounges you add are remembered.
+- **Passport:** dotted globe you can spin with every route, odometer totals, visited vs transited airports, records, the 42-type livery collection with holographic rare cards, a Lounges section (visits, hours, ratings, favourites, collection) and a swipeable **Year in Review**.
+- FlightAware AeroAPI removed from the plan and docs (no card-required services).
+- 132 unit and screenshot tests, lint clean. Verified on the Pixel 9 emulator, including a real share-sheet import.
 
 ## In progress
-- Nothing. Stage 2 is complete.
+- Nothing. Stage 3 is complete.
 
-## Next (Stage 3)
-- Trips: add a flight by number and date or boarding-pass scan, glass flight cards, flight detail with a self-drawing route, aircraft rotation and the cockpit-visit planner. FlightAware AeroAPI goes behind the spend-cap guard and needs your free AeroAPI key.
-- Airport boards stay ADS-B based (AeroDataBox no longer has a free tier). AeroAPI could optionally feed them within its free monthly credit.
+## Next (Stage 4)
+- Sky tab: closest plane now, overhead list, Sky View (camera + compass), proximity alerts.
+- Home-screen widgets (next-flight countdown, plane overhead).
 
 ## Known limits
-- Radar coverage is 250 nm around the map centre per query (API cap). Zoomed far out, the HUD says "zoom in for more".
-- adsb.lol caps clients at 500 requests a day, so it's only the backup feed.
-- logostream's free plan has no liveries, airport logos, airport data or news; free sources fill each gap (see DECISIONS.md). Its logos can't be cached, so they load live each session.
-- RainViewer weather tiles stop at zoom 7 and are stretched beyond that.
-- The ML Kit cutout model downloads through Play services on first use; the first cutout may need a second tap.
+- No free schedule API: flight times come from your ticket and only update once the flight is seen on ADS-B. Tail numbers are entered by hand.
+- OpenSky publishes history the day after, so the turnaround uses the last 7 completed days.
+- Lounge lists go stale; correct them by adding lounges by hand. OSM coverage is uneven (good at HKG and MNL, thin at YYZ and DEL).
+- Radar coverage is 250 nm around the map centre per query; adsb.lol caps clients at 500 requests a day, so it's the backup feed.
+- logostream's free plan has no liveries, airport logos, airport data or news; free sources fill each gap. Its logos load live each session.
+- The ML Kit cutout model downloads through Play services on first use.

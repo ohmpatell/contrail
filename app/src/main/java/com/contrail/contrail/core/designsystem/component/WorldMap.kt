@@ -158,7 +158,16 @@ class MercatorFit(points: List<LatLon>, val widthPx: Float, val heightPx: Float,
     private val scalePx: Double
 
     init {
-        val lons = points.map { it.lon }
+        // Unwrap along the path (each point within 180° of the one before), so routes across
+        // the antimeridian, like Toronto to Hong Kong over the pole, stay in one piece.
+        var prev = points.firstOrNull()?.lon ?: 0.0
+        val lons = points.map { p ->
+            var l = p.lon
+            while (l - prev > 180) l -= 360
+            while (l - prev < -180) l += 360
+            prev = l
+            l
+        }
         centerLon = if (lons.isEmpty()) 0.0 else (lons.max() + lons.min()) / 2
         val xs = points.map { x(unwrap(it.lon)) }
         val ys = points.map { y(it.lat) }

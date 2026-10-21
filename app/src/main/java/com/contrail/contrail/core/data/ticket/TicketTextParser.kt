@@ -387,8 +387,8 @@ class TicketTextParser(private val airports: AirportCodes) {
 
     private companion object {
         val FLIGHT = Regex("(?<![A-Za-z0-9])([A-Z][A-Z0-9]|[0-9][A-Z]) ?(\\d{1,4})(?![0-9A-Za-z:])")
-        val FLIGHT_LABEL = Regex("(?i)flight\\s*(no\\.?|number)?\\s*[:#]?\\s*$")
-        val MAKER_BEFORE = Regex("(?i)(airbus|boeing|embraer|aircraft|equipment)[:\\s]*$")
+        val FLIGHT_LABEL = Regex("(?i)flight\\s*(no\\.?|number)?\\s*[#:]?\\s*$")
+        val MAKER_BEFORE = Regex("(?i)(airbus|boeing|embraer|aircraft|equipment)[\\s:]*$")
         val BRACKETED_CODE = Regex("\\(([A-Z]{3})\\)")
         val BARE_CODE = Regex("(?<![A-Za-z])([A-Z]{3})(?![A-Za-z])")
         val STOPWORDS = setOf(
@@ -407,22 +407,22 @@ class TicketTextParser(private val airports: AirportCodes) {
         val DATE_ISO = Regex("(?<![0-9])(\\d{4})-(\\d{2})-(\\d{2})(?![0-9])")
         val DATE_SLASH = Regex("(?<![0-9/])(\\d{1,2})/(\\d{1,2})/(\\d{4}|\\d{2})(?![0-9/])")
 
-        val TIME = Regex("(?<![\\d:])([01]?\\d|2[0-3])[:h]([0-5]\\d)(?![\\d:])\\s?([AaPp]\\.?\\s?[Mm]\\.?)?(?:\\s?\\(?\\+\\s?(\\d)(?:\\s?days?)?\\)?)?")
+        val TIME = Regex("(?<![\\d:])([01]?\\d|2[0-3])[h:]([0-5]\\d)(?![\\d:])\\s?([AaPp]\\.?\\s?[Mm]\\.?)?(?:\\s?\\(?\\+\\s?(\\d)(?:\\s?days?)?\\)?)?")
         val NOT_FLIGHT_TIME = Regex("(?i)(board|check-?in|gate clos|closes|duration|flight time|travel time|journey|layover|connection|total|issued|printed|generated|sent)")
 
-        val TERMINAL = Regex("(?i)\\b(?:terminal|term\\.)[ \\t]*[:\\-]?[ \\t]*([A-Z0-9]{1,2})\\b")
+        val TERMINAL = Regex("(?i)\\b(?:terminal|term\\.)[ \\t]*[\\-:]?[ \\t]*([A-Z0-9]{1,2})\\b")
         val TERMINAL_SHORT = Regex("(?<![A-Za-z0-9])T([1-9][A-Z]?)(?![A-Za-z0-9])")
-        val SEAT = Regex("(?i)\\bseats?(?:\\s*(?:number|no\\.?|#))?\\s*[:\\-]?\\s*(\\d{1,2}[A-K])\\b")
-        val GATE = Regex("(?i)\\bgate(?!\\s*clos)[ \\t]*[:\\-]?\\s*([A-Z]?\\d{1,3}[A-Z]?)(?![\\w:])")
+        val SEAT = Regex("(?i)\\bseats?(?:\\s*(?:number|no\\.?|#))?\\s*[\\-:]?\\s*(\\d{1,2}[A-K])\\b")
+        val GATE = Regex("(?i)\\bgate(?!\\s*clos)[ \\t]*[\\-:]?\\s*([A-Z]?\\d{1,3}[A-Z]?)(?![\\w:])")
         val CABIN = Regex("(?i)\\b(premium economy|business studio|business|economy space|economy|signature class|first apartment|the residence|first)\\b")
         val CLASS_IN_BRACKETS = Regex("\\s?\\(([A-Z])\\)")
-        val FARE_CLASS = Regex("(?i)\\b(?:booking class|fare class|class of service|reservation class|rbd|class)[ \\t]*[:\\-]?[ \\t]*([A-Z])\\b")
+        val FARE_CLASS = Regex("(?i)\\b(?:booking class|fare class|class of service|reservation class|rbd|class)[ \\t]*[\\-:]?[ \\t]*([A-Z])\\b")
         val STATUS_CLASS = Regex("(?<![A-Za-z0-9])([A-Z])\\s+(?:OK|HK|KK|TK|RR)(?![A-Za-z])")
         val HOTEL = Regex("(?i)\\b(hotel|stopover)\\b")
 
-        val PNR = Regex("(?i)(?:booking\\s+reference|booking\\s+ref\\.?|booking\\s+code|booking\\s+number|reservation\\s+(?:code|number)|confirmation\\s+(?:code|number)|record\\s+locator|\\bPNR\\b)\\s*(?:\\(PNR\\))?\\s*(?:number|no\\.?)?\\s*[:#\\-]?\\s*([A-Z0-9]{6})(?![A-Z0-9])")
-        val PASSENGER = Regex("(?i)(?:passenger\\s+name|passengers?(?:\\(s\\))?|traveller(?:\\s+name)?|traveler(?:\\s+name)?|name\\s+of\\s+passenger|\\bname)\\s*(?:[:\\-]|\\n)\\s*([^\\n]+)")
-        val TICKET = Regex("(?i)(?:e-?ticket|ticket)\\s*(?:number|no\\.?|#)?\\s*[:\\-]?\\s*(\\d{3})[\\s-]?(\\d{10})")
-        val OPERATED_BY = Regex("(?i)operated\\s+by\\s*[:\\-]?\\s*([A-Za-z][A-Za-z .&'-]{2,40})")
+        val PNR = Regex("(?i)(?:booking\\s+reference|booking\\s+ref\\.?|booking\\s+code|booking\\s+number|reservation\\s+(?:code|number)|confirmation\\s+(?:code|number)|record\\s+locator|\\bPNR\\b)\\s*(?:\\(PNR\\))?\\s*(?:number|no\\.?)?\\s*[#\\-:]?\\s*([A-Z0-9]{6})(?![A-Z0-9])")
+        val PASSENGER = Regex("(?i)(?:passenger\\s+name|passengers?(?:\\(s\\))?|traveller(?:\\s+name)?|traveler(?:\\s+name)?|name\\s+of\\s+passenger|\\bname)\\s*(?:[\\-:]|\\n)\\s*([^\\n]+)")
+        val TICKET = Regex("(?i)(?:e-?ticket|ticket)\\s*(?:number|no\\.?|#)?\\s*[\\-:]?\\s*(\\d{3})[\\s-]?(\\d{10})")
+        val OPERATED_BY = Regex("(?i)operated\\s+by\\s*[\\-:]?\\s*([A-Za-z][A-Za-z .&'-]{2,40})")
     }
 }
