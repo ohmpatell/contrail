@@ -35,6 +35,10 @@ data class SelectedAircraft(
     val verticalRates: List<Float>,
     /** Recent positions from our own polling, oldest first. */
     val trail: List<LatLon> = emptyList(),
+    /** logostream airline profile: logo and tail-art URLs (never cached on disk) and brand colour. */
+    val airlineLogoUrl: String? = null,
+    val tailArtUrl: String? = null,
+    val brandColorHex: String? = null,
 )
 
 /** The selected aircraft's whole journey: flown so far, then the rest to its destination. */

@@ -13,6 +13,8 @@ import com.contrail.contrail.core.data.model.WatchKind
 import com.contrail.contrail.core.data.model.Watchlist
 import com.contrail.contrail.core.data.repository.AircraftDetailsRepository
 import com.contrail.contrail.core.data.repository.FlightTrackRepository
+import com.contrail.contrail.core.data.repository.LogostreamRepository
+import com.contrail.contrail.core.data.reference.Airlines
 import com.contrail.contrail.core.data.repository.WatchlistRepository
 import com.contrail.contrail.core.data.repository.LiveTrafficRepository
 import com.contrail.contrail.core.data.repository.RadarCamera
@@ -55,6 +57,7 @@ class RadarViewModel @Inject constructor(
     private val prefs: RadarPreferencesRepository,
     private val weather: WeatherRadarSource,
     private val tracks: FlightTrackRepository,
+    private val logostream: LogostreamRepository,
     private val watchlist: WatchlistRepository,
     private val clock: Clock,
 ) : ViewModel() {
@@ -113,7 +116,15 @@ class RadarViewModel @Inject constructor(
             lookup(details.observePhoto(hex)) { details.refreshPhoto(hex, reg) }
         }
         val trail = traffic.observeTrail(hex)
-        combine(aircraftFlow, routeFlow, photoFlow, trail) { aircraft, route, photo, points ->
+        val airlineFlow = callsignFlow.map { Airlines.icaoFromCallsign(it) }.distinctUntilChanged().flatMapLatest { icao ->
+            if (icao == null) {
+                flowOf(null)
+            } else {
+                viewModelScope.launch { logostream.refreshAirline(icao) }
+                logostream.observeAirline(icao)
+            }
+        }
+        combine(aircraftFlow, routeFlow, photoFlow, trail, airlineFlow) { aircraft, route, photo, points, airline ->
             aircraft?.let {
                 SelectedAircraft(
                     aircraft = it,
@@ -121,6 +132,9 @@ class RadarViewModel @Inject constructor(
                     photo = photo,
                     verticalRates = points.mapNotNull { p -> p.verticalRateFpm?.toFloat() },
                     trail = points.map { p -> LatLon(p.lat, p.lon) },
+                    airlineLogoUrl = airline?.logo?.logoWhite ?: airline?.logo?.logo,
+                    tailArtUrl = airline?.logo?.tail,
+                    brandColorHex = airline?.colors,
                 )
             }
         }

@@ -3,6 +3,8 @@ package com.contrail.contrail.core.database
 import androidx.room.AutoMigration
 import androidx.room.Database
 import androidx.room.RoomDatabase
+import com.contrail.contrail.core.data.repository.SightingDao
+import com.contrail.contrail.core.data.repository.SightingEntity
 
 @Database(
     entities = [
@@ -17,6 +19,7 @@ import androidx.room.RoomDatabase
         WatchItemEntity::class,
         NewsItemEntity::class,
         CachedResponseEntity::class,
+        SightingEntity::class,
     ],
     version = 2,
     exportSchema = true,
@@ -31,4 +34,5 @@ abstract class ContrailDatabase : RoomDatabase() {
     abstract fun watchDao(): WatchDao
     abstract fun newsDao(): NewsDao
     abstract fun cacheDao(): CacheDao
+    abstract fun sightingDao(): SightingDao
 }

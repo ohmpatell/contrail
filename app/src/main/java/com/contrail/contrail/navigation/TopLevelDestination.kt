@@ -8,8 +8,8 @@ enum class TopLevelDestination(val label: String, val icon: () -> ImageVector) {
     Trips("Trips", { ContrailIcons.Trips }),
     Radar("Radar", { ContrailIcons.Radar }),
     Sky("Sky", { ContrailIcons.Sky }),
+    Airports("Airports", { ContrailIcons.Airports }),
     Passport("Passport", { ContrailIcons.Passport }),
-    Logbook("Logbook", { ContrailIcons.Logbook }),
     ;
 
     companion object {

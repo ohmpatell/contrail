@@ -58,6 +58,10 @@ import com.contrail.contrail.core.data.model.WatchItem
 import com.contrail.contrail.core.data.model.WatchKind
 import com.contrail.contrail.core.data.model.Watchlist
 import com.contrail.contrail.core.designsystem.component.ContrailChip
+import com.contrail.contrail.core.designsystem.component.LiveLogo
+import com.contrail.contrail.core.designsystem.livery.Liveries
+import com.contrail.contrail.core.designsystem.livery.LiveryRender
+import com.contrail.contrail.core.designsystem.livery.Profiles
 import androidx.compose.foundation.layout.ExperimentalLayoutApi
 import androidx.compose.foundation.layout.FlowRow
 import com.contrail.contrail.core.data.reference.Rarity
@@ -205,10 +209,10 @@ private fun SheetContent(
                 Box(Modifier.size(width = 40.dp, height = 4.dp).clip(ContrailTheme.shapes.chip).background(colors.textTertiary.copy(alpha = 0.6f)))
             }
             Box(Modifier.clickable(role = Role.Button) { onOpenAircraft(a.hex) }) {
-                PhotoHero(selected.photo, a, accent, progress)
+                PhotoHero(selected.photo, a, accent, progress, selected.tailArtUrl, selected.brandColorHex)
             }
             Spacer(Modifier.height(spacing.md))
-            HeaderRow(a, accent, following, onFollow, onDismiss)
+            HeaderRow(a, accent, following, onFollow, onDismiss, selected.airlineLogoUrl)
             Spacer(Modifier.height(spacing.md))
             RouteRow(selected.route, accent)
             Spacer(Modifier.height(spacing.lg))
@@ -233,7 +237,7 @@ private fun SheetContent(
 }
 
 @Composable
-private fun PhotoHero(photo: Lookup<AircraftPhoto>, a: LiveAircraft, accent: Color, progress: Float) {
+private fun PhotoHero(photo: Lookup<AircraftPhoto>, a: LiveAircraft, accent: Color, progress: Float, tailArtUrl: String?, brandColorHex: String?) {
     val colors = ContrailTheme.colors
     val spacing = ContrailTheme.spacing
     val height = lerp(PHOTO_PEEK, PHOTO_EXPANDED, progress)
@@ -277,23 +281,23 @@ private fun PhotoHero(photo: Lookup<AircraftPhoto>, a: LiveAircraft, accent: Col
                         Icon(ContrailIcons.ExternalLink, "Open on Planespotters", tint = colors.textSecondary, modifier = Modifier.size(12.dp))
                     }
                 }
-                else -> SilhouettePlaceholder(a, accent, loading = state is Lookup.Loading)
+                else -> SilhouettePlaceholder(a, accent, loading = state is Lookup.Loading, tailArtUrl = tailArtUrl, brandColorHex = brandColorHex)
             }
         }
     }
 }
 
-/** No photo yet: the aircraft is still the hero, as a glowing silhouette in the airline's colour. */
+/** No photo yet: the aircraft is still the hero, as a floating livery render of its type. */
 @Composable
-private fun SilhouettePlaceholder(a: LiveAircraft, accent: Color, loading: Boolean) {
+private fun SilhouettePlaceholder(a: LiveAircraft, accent: Color, loading: Boolean, tailArtUrl: String?, brandColorHex: String?) {
     val colors = ContrailTheme.colors
     Box(Modifier.fillMaxSize()) {
         Box(Modifier.fillMaxSize().background(Brush.radialGradient(listOf(accent.copy(alpha = 0.35f), Color.Transparent))))
-        Icon(
-            ContrailIcons.Plane,
-            contentDescription = null,
-            tint = AltitudeRamp.colorFor(if (a.onGround) null else a.altitudeFt).copy(alpha = 0.9f),
-            modifier = Modifier.align(Alignment.Center).size(72.dp).graphicsLayer { rotationZ = 90f },
+        LiveryRender(
+            profile = Profiles.forType(a.typeCode, a.category),
+            livery = Liveries.forAirline(a.airline?.icao, brandColorHex, a.airline?.accentArgb),
+            tailArtUrl = tailArtUrl,
+            modifier = Modifier.align(Alignment.Center).fillMaxWidth(0.82f),
         )
         Text(
             if (loading) "Finding a photo…" else "No photo of this airframe yet",
@@ -305,13 +309,14 @@ private fun SilhouettePlaceholder(a: LiveAircraft, accent: Color, loading: Boole
 }
 
 @Composable
-private fun HeaderRow(a: LiveAircraft, accent: Color, following: Boolean, onFollow: () -> Unit, onDismiss: () -> Unit) {
+private fun HeaderRow(a: LiveAircraft, accent: Color, following: Boolean, onFollow: () -> Unit, onDismiss: () -> Unit, logoUrl: String?) {
     val colors = ContrailTheme.colors
     val spacing = ContrailTheme.spacing
     Row(verticalAlignment = Alignment.CenterVertically) {
         Column(Modifier.weight(1f), verticalArrangement = Arrangement.spacedBy(spacing.xs + spacing.xxs)) {
             Row(verticalAlignment = Alignment.CenterVertically, horizontalArrangement = Arrangement.spacedBy(spacing.sm)) {
                 SplitFlapText(a.displayCallsign.take(8), style = ContrailTheme.type.flap, haptics = true)
+                logoUrl?.let { LiveLogo(it, a.airline?.name, Modifier.height(20.dp).width(64.dp)) }
                 when (a.rarity) {
                     Rarity.Legendary -> RarityBadge("Legendary", RarityPalette.Legendary)
                     Rarity.Rare -> RarityBadge("Rare", RarityPalette.Rare)

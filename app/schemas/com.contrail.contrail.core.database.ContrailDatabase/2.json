@@ -2,7 +2,7 @@
   "formatVersion": 1,
   "database": {
     "version": 2,
-    "identityHash": "57d027dcdecbd7dcdd6f203aa17eeda8",
+    "identityHash": "6a76794adca23b2fd123793cc5ef3759",
     "entities": [
       {
         "tableName": "live_aircraft",
@@ -794,11 +794,75 @@
             "key"
           ]
         }
+      },
+      {
+        "tableName": "sighting",
+        "createSql": "CREATE TABLE IF NOT EXISTS `${TABLE_NAME}` (`hex` TEXT NOT NULL, `callsign` TEXT NOT NULL, `day` TEXT NOT NULL, `registration` TEXT, `typeCode` TEXT, `originIata` TEXT, `destinationIata` TEXT, `firstSeenMs` INTEGER NOT NULL, `lastSeenMs` INTEGER NOT NULL, PRIMARY KEY(`hex`, `callsign`, `day`))",
+        "fields": [
+          {
+            "fieldPath": "hex",
+            "columnName": "hex",
+            "affinity": "TEXT",
+            "notNull": true
+          },
+          {
+            "fieldPath": "callsign",
+            "columnName": "callsign",
+            "affinity": "TEXT",
+            "notNull": true
+          },
+          {
+            "fieldPath": "day",
+            "columnName": "day",
+            "affinity": "TEXT",
+            "notNull": true
+          },
+          {
+            "fieldPath": "registration",
+            "columnName": "registration",
+            "affinity": "TEXT"
+          },
+          {
+            "fieldPath": "typeCode",
+            "columnName": "typeCode",
+            "affinity": "TEXT"
+          },
+          {
+            "fieldPath": "originIata",
+            "columnName": "originIata",
+            "affinity": "TEXT"
+          },
+          {
+            "fieldPath": "destinationIata",
+            "columnName": "destinationIata",
+            "affinity": "TEXT"
+          },
+          {
+            "fieldPath": "firstSeenMs",
+            "columnName": "firstSeenMs",
+            "affinity": "INTEGER",
+            "notNull": true
+          },
+          {
+            "fieldPath": "lastSeenMs",
+            "columnName": "lastSeenMs",
+            "affinity": "INTEGER",
+            "notNull": true
+          }
+        ],
+        "primaryKey": {
+          "autoGenerate": false,
+          "columnNames": [
+            "hex",
+            "callsign",
+            "day"
+          ]
+        }
       }
     ],
     "setupQueries": [
       "CREATE TABLE IF NOT EXISTS room_master_table (id INTEGER PRIMARY KEY,identity_hash TEXT)",
-      "INSERT OR REPLACE INTO room_master_table (id,identity_hash) VALUES(42, '57d027dcdecbd7dcdd6f203aa17eeda8')"
+      "INSERT OR REPLACE INTO room_master_table (id,identity_hash) VALUES(42, '6a76794adca23b2fd123793cc5ef3759')"
     ]
   }
 }

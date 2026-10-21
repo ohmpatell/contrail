@@ -1,3 +1,5 @@
+import java.util.Properties
+
 plugins {
     alias(libs.plugins.android.application)
     alias(libs.plugins.kotlin.compose)
@@ -10,6 +12,15 @@ plugins {
 // CI passes the run number so every release APK upgrades the previous one (Obtainium).
 val ciVersionCode = providers.environmentVariable("CONTRAIL_VERSION_CODE").orNull?.toIntOrNull()
 val releaseKeystore = providers.environmentVariable("CONTRAIL_KEYSTORE_PATH").orNull
+
+// Debug builds may read API keys from the git-ignored local.properties. Release builds never
+// embed keys: they are entered in Settings and stored encrypted on the phone.
+val localProperties = Properties().apply {
+    val f = rootProject.file("local.properties")
+    if (f.exists()) f.inputStream().use { load(it) }
+}
+fun debugKey(name: String): String = "\"" + (localProperties.getProperty(name) ?: "").trim() + "\""
+val apiKeyNames = listOf("LOGOSTREAM_API_KEY", "AERODATABOX_API_KEY")
 
 android {
     namespace = "com.contrail.contrail"
@@ -40,7 +51,11 @@ android {
     }
 
     buildTypes {
+        debug {
+            apiKeyNames.forEach { buildConfigField("String", it, debugKey(it)) }
+        }
         release {
+            apiKeyNames.forEach { buildConfigField("String", it, "\"\"") }
             // Whole-app R8. A package-scoped pass broke OkHttp's access to rewritten kotlin.* classes.
             optimization {
                 enable = true
@@ -127,6 +142,10 @@ dependencies {
     implementation(libs.coil.compose)
     implementation(libs.coil.network.ktor3)
     implementation(libs.maplibre.android)
+    implementation(libs.androidx.navigation3.runtime)
+    implementation(libs.androidx.navigation3.ui)
+    implementation(libs.androidx.lifecycle.viewmodel.navigation3)
+    implementation(libs.mlkit.subject.segmentation)
     implementation(libs.haze)
     implementation(libs.haze.blur)
 

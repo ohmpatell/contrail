@@ -62,6 +62,54 @@ object ContrailIcons {
         )
     }
 
+    val Airports: ImageVector by lazy {
+        strokeIcon(
+            "Airports",
+            // Control tower: cab, shaft, base.
+            "M7.5 5.5h9l-1.2 4.5H8.7z",
+            "M10 10v8.5M14 10v8.5",
+            "M4 21h16M8 21l1.2-2.5h5.6L16 21",
+            "M12 3.2v2.3",
+        )
+    }
+
+    val Settings: ImageVector by lazy {
+        strokeIcon(
+            "Settings",
+            "M12 9a3 3 0 1 1 0 6 3 3 0 0 1 0-6z",
+            "M12 2.8l1.6 2.3 2.7-.7.8 2.7 2.6 1-.6 2.7L21 12.3l-1.9 2 .6 2.7-2.6 1-.8 2.7-2.7-.7L12 22.2l-1.6-2.2-2.7.7-.8-2.7-2.6-1 .6-2.7L3 12.3l1.9-1.6-.6-2.7 2.6-1 .8-2.7 2.7.7z",
+        )
+    }
+
+    val Search: ImageVector by lazy { strokeIcon("Search", "M10.5 4a6.5 6.5 0 1 1 0 13 6.5 6.5 0 0 1 0-13z", "M15.4 15.4L20 20") }
+
+    val Star: ImageVector by lazy {
+        strokeIcon("Star", "M12 3.5l2.6 5.4 5.9.8-4.3 4.1 1 5.8L12 16.8l-5.2 2.8 1-5.8-4.3-4.1 5.9-.8z")
+    }
+
+    val StarFilled: ImageVector by lazy {
+        strokeIcon("StarFilled", filled = listOf("M12 3.5l2.6 5.4 5.9.8-4.3 4.1 1 5.8L12 16.8l-5.2 2.8 1-5.8-4.3-4.1 5.9-.8z"))
+    }
+
+    val Check: ImageVector by lazy { strokeIcon("Check", "M5 12.5l4.5 4.5L19 7.5") }
+
+    val News: ImageVector by lazy {
+        strokeIcon(
+            "News",
+            "M5 4.5h11.5a1.5 1.5 0 0 1 1.5 1.5v13.5H6.5A2 2 0 0 1 4.5 17.5V5a.5.5 0 0 1 .5-.5z",
+            "M18 9h1.5a1 1 0 0 1 1 1v8a1.5 1.5 0 0 1-3 0",
+            "M7.5 8h7.5M7.5 11.5h7.5M7.5 15h4.5",
+        )
+    }
+
+    val Back: ImageVector by lazy { strokeIcon("Back", "M14.5 5.5L8 12l6.5 6.5") }
+
+    val Clock: ImageVector by lazy { strokeIcon("Clock", "M12 3.5a8.5 8.5 0 1 1 0 17 8.5 8.5 0 0 1 0-17z", "M12 7.5V12l3 2") }
+
+    val Headset: ImageVector by lazy {
+        strokeIcon("Headset", "M4.5 14v-2a7.5 7.5 0 0 1 15 0v2", "M4.5 14h2.5v5H5.5a1 1 0 0 1-1-1zM19.5 14H17v5h1.5a1 1 0 0 0 1-1z")
+    }
+
     val Filter: ImageVector by lazy {
         strokeIcon(
             "Filter",

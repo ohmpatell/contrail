@@ -1,0 +1,244 @@
+package com.contrail.contrail.feature.settings
+
+import androidx.compose.foundation.background
+import androidx.compose.foundation.border
+import androidx.compose.foundation.clickable
+import androidx.compose.foundation.layout.Arrangement
+import androidx.compose.foundation.layout.Box
+import androidx.compose.foundation.layout.Column
+import androidx.compose.foundation.layout.Row
+import androidx.compose.foundation.layout.fillMaxWidth
+import androidx.compose.foundation.layout.height
+import androidx.compose.foundation.layout.padding
+import androidx.compose.foundation.text.BasicTextField
+import androidx.compose.foundation.text.KeyboardOptions
+import androidx.compose.material3.Text
+import androidx.compose.runtime.Composable
+import androidx.compose.runtime.getValue
+import androidx.compose.runtime.mutableStateOf
+import androidx.compose.runtime.remember
+import androidx.compose.runtime.setValue
+import androidx.compose.ui.Alignment
+import androidx.compose.ui.Modifier
+import androidx.compose.ui.draw.clip
+import androidx.compose.ui.graphics.SolidColor
+import androidx.compose.ui.platform.LocalUriHandler
+import androidx.compose.ui.semantics.Role
+import androidx.compose.ui.text.input.KeyboardType
+import androidx.compose.ui.text.input.PasswordVisualTransformation
+import androidx.hilt.lifecycle.viewmodel.compose.hiltViewModel
+import androidx.lifecycle.ViewModel
+import androidx.lifecycle.compose.collectAsStateWithLifecycle
+import androidx.lifecycle.viewModelScope
+import com.contrail.contrail.BuildConfig
+import com.contrail.contrail.core.data.settings.ApiKeys
+import com.contrail.contrail.core.data.settings.ApiService
+import com.contrail.contrail.core.data.settings.KeySource
+import com.contrail.contrail.core.data.settings.KeyStatus
+import com.contrail.contrail.core.data.settings.LogostreamUsage
+import com.contrail.contrail.core.data.settings.UsageTracker
+import com.contrail.contrail.core.designsystem.component.DetailScaffold
+import com.contrail.contrail.core.designsystem.component.Eyebrow
+import com.contrail.contrail.core.designsystem.component.SectionCard
+import com.contrail.contrail.core.designsystem.theme.ContrailTheme
+import com.contrail.contrail.navigation.LocalNavigator
+import dagger.hilt.android.lifecycle.HiltViewModel
+import kotlinx.coroutines.flow.SharingStarted
+import kotlinx.coroutines.flow.StateFlow
+import kotlinx.coroutines.flow.combine
+import kotlinx.coroutines.flow.stateIn
+import kotlinx.coroutines.launch
+import java.util.Locale
+import javax.inject.Inject
+
+data class SettingsUiState(
+    val keys: List<KeyStatus> = emptyList(),
+    val usage: LogostreamUsage? = null,
+)
+
+@HiltViewModel
+class SettingsViewModel @Inject constructor(
+    private val apiKeys: ApiKeys,
+    usage: UsageTracker,
+) : ViewModel() {
+    val state: StateFlow<SettingsUiState> = combine(
+        apiKeys.status(ApiService.Logostream),
+        apiKeys.status(ApiService.AeroDataBox),
+        usage.logostream,
+    ) { ls, adb, u -> SettingsUiState(listOf(ls, adb), u) }
+        .stateIn(viewModelScope, SharingStarted.WhileSubscribed(5_000), SettingsUiState())
+
+    fun save(service: ApiService, key: String?) {
+        viewModelScope.launch { apiKeys.save(service, key) }
+    }
+}
+
+@Composable
+fun SettingsRoute(viewModel: SettingsViewModel = hiltViewModel()) {
+    val state by viewModel.state.collectAsStateWithLifecycle()
+    SettingsScreen(state, onSave = viewModel::save, onBack = LocalNavigator.current::back)
+}
+
+@Composable
+fun SettingsScreen(state: SettingsUiState, onSave: (ApiService, String?) -> Unit, onBack: () -> Unit) {
+    DetailScaffold(title = "Settings", eyebrow = "Contrail ${BuildConfig.VERSION_NAME}", onBack = onBack) {
+        SectionCard("API keys") {
+            Text(
+                "Keys are stored encrypted on this phone and never leave it except to call their service.",
+                style = ContrailTheme.type.bodySmall,
+                color = ContrailTheme.colors.textTertiary,
+            )
+            state.keys.forEach { KeyRow(it, onSave) }
+        }
+        SectionCard("logostream usage this month") { UsageMeter(state.usage) }
+        Credits()
+    }
+}
+
+@Composable
+private fun KeyRow(status: KeyStatus, onSave: (ApiService, String?) -> Unit) {
+    val colors = ContrailTheme.colors
+    val spacing = ContrailTheme.spacing
+    var editing by remember { mutableStateOf(false) }
+    var draft by remember { mutableStateOf("") }
+    val uri = LocalUriHandler.current
+    Column(verticalArrangement = Arrangement.spacedBy(spacing.xs)) {
+        Row(verticalAlignment = Alignment.CenterVertically) {
+            Column(Modifier.weight(1f)) {
+                Text(status.service.title, style = ContrailTheme.type.title, color = colors.textPrimary)
+                val (label, tint) = when (status.source) {
+                    KeySource.Settings -> "Saved on this phone · ${status.masked}" to colors.statusOnTime
+                    KeySource.LocalProperties -> "From local.properties (debug) · ${status.masked}" to colors.statusAirborne
+                    KeySource.Missing -> "Not set" to colors.statusDelayed
+                }
+                Text(label, style = ContrailTheme.type.bodySmall, color = tint)
+            }
+            Text(
+                if (editing) "Cancel" else if (status.source == KeySource.Settings) "Change" else "Add key",
+                style = ContrailTheme.type.label,
+                color = colors.accent,
+                modifier = Modifier
+                    .clip(ContrailTheme.shapes.chip)
+                    .clickable(role = Role.Button) { editing = !editing; draft = "" }
+                    .padding(horizontal = spacing.md, vertical = spacing.sm),
+            )
+        }
+        if (editing) {
+            Row(
+                Modifier
+                    .fillMaxWidth()
+                    .clip(ContrailTheme.shapes.chip)
+                    .background(colors.glassTint)
+                    .border(ContrailTheme.sizes.hairline, colors.hairline, ContrailTheme.shapes.chip)
+                    .padding(start = spacing.lg, end = spacing.xs),
+                verticalAlignment = Alignment.CenterVertically,
+            ) {
+                BasicTextField(
+                    value = draft,
+                    onValueChange = { draft = it.trim() },
+                    singleLine = true,
+                    visualTransformation = PasswordVisualTransformation(),
+                    keyboardOptions = KeyboardOptions(keyboardType = KeyboardType.Password),
+                    textStyle = ContrailTheme.type.numeric.copy(color = colors.textPrimary),
+                    cursorBrush = SolidColor(colors.accent),
+                    modifier = Modifier.weight(1f).padding(vertical = spacing.md),
+                )
+                Text(
+                    "Save",
+                    style = ContrailTheme.type.label,
+                    color = colors.accent,
+                    modifier = Modifier
+                        .clip(ContrailTheme.shapes.chip)
+                        .clickable(enabled = draft.isNotBlank(), role = Role.Button) {
+                            onSave(status.service, draft)
+                            editing = false
+                        }
+                        .padding(horizontal = spacing.md, vertical = spacing.sm),
+                )
+            }
+            Text(
+                "Get a free key at ${status.service.signUpUrl}",
+                style = ContrailTheme.type.bodySmall,
+                color = colors.textTertiary,
+                modifier = Modifier.clickable { uri.openUri(status.service.signUpUrl) },
+            )
+        }
+    }
+}
+
+@Composable
+private fun UsageMeter(usage: LogostreamUsage?) {
+    val colors = ContrailTheme.colors
+    val spacing = ContrailTheme.spacing
+    val fraction = usage?.usedFraction
+    Column(verticalArrangement = Arrangement.spacedBy(spacing.sm)) {
+        Row(verticalAlignment = Alignment.Bottom) {
+            Text(
+                usage?.remaining?.let { String.format(Locale.US, "%,d", it) } ?: "—",
+                style = ContrailTheme.type.numericLarge,
+                color = if (usage?.exhausted == true) colors.statusDelayed else colors.textPrimary,
+            )
+            Text(
+                usage?.limit?.let { " of ${String.format(Locale.US, "%,d", it)} left" } ?: " requests left",
+                style = ContrailTheme.type.body,
+                color = colors.textSecondary,
+                modifier = Modifier.padding(bottom = spacing.xxs),
+            )
+        }
+        Box(
+            Modifier
+                .fillMaxWidth()
+                .height(spacing.sm)
+                .clip(ContrailTheme.shapes.chip)
+                .background(colors.glassTint),
+        ) {
+            Box(
+                Modifier
+                    .fillMaxWidth(fraction ?: 0f)
+                    .height(spacing.sm)
+                    .clip(ContrailTheme.shapes.chip)
+                    .background(if (usage?.exhausted == true) colors.statusDelayed else colors.accent),
+            )
+        }
+        Text(
+            buildString {
+                append("${usage?.made ?: 0} requests from Contrail this month")
+                usage?.resetsOn?.let { append(" · resets $it") }
+                if (usage?.exhausted == true) append(" · paused to keep a reserve")
+            },
+            style = ContrailTheme.type.bodySmall,
+            color = colors.textTertiary,
+        )
+    }
+}
+
+/** Every source's credit, as their terms ask. logostream's free plan requires this exact line. */
+@Composable
+private fun Credits() {
+    val uri = LocalUriHandler.current
+    val credits = listOf(
+        "Logos by logostream" to "https://logostream.dev",
+        "Aircraft photos: Planespotters.net photographers" to "https://www.planespotters.net",
+        "Map: OpenFreeMap · © OpenMapTiles · © OpenStreetMap contributors" to "https://openfreemap.org",
+        "Live positions: adsb.fi open data" to "https://adsb.fi",
+        "Live positions: adsb.lol (ODbL)" to "https://adsb.lol",
+        "Flight tracks: The OpenSky Network" to "https://opensky-network.org",
+        "Routes and callsigns: adsbdb" to "https://www.adsbdb.com",
+        "Weather: NOAA aviationweather.gov · RainViewer" to "https://aviationweather.gov",
+        "Airports: OurAirports (public domain)" to "https://ourairports.com",
+        "Airport diagrams: © OpenStreetMap contributors (ODbL)" to "https://www.openstreetmap.org/copyright",
+        "News: Simple Flying, AeroTime, FlightGlobal, AirlineGeeks, Aviation Week, Google News" to "https://news.google.com",
+        "Aircraft types: ICAO Doc 8643 via Mictronics" to "https://www.mictronics.de/aircraft-database/",
+    )
+    SectionCard("Data and credits") {
+        credits.forEach { (label, url) ->
+            Text(
+                label,
+                style = ContrailTheme.type.bodySmall,
+                color = if (label.startsWith("Logos by logostream")) ContrailTheme.colors.accent else ContrailTheme.colors.textSecondary,
+                modifier = Modifier.fillMaxWidth().clickable(role = Role.Button) { uri.openUri(url) },
+            )
+        }
+        Eyebrow("No accounts, no ads, no tracking")
+    }
+}

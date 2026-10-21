@@ -18,6 +18,8 @@ okhttp = "5.5.0"
 coil = "3.6.3"
 maplibre = "13.7.1"
 haze = "2.0.1"
+navigation3 = "1.2.0"
+mlkitSegmentation = "16.0.0-beta1"
 junit = "4.13.2"
 robolectric = "4.17"
 roborazzi = "1.76.0"
@@ -69,6 +71,10 @@ coil-network-ktor3 = { group = "io.coil-kt.coil3", name = "coil-network-ktor3", 
 coil-test = { group = "io.coil-kt.coil3", name = "coil-test", version.ref = "coil" }
 
 maplibre-android = { group = "org.maplibre.gl", name = "android-sdk", version.ref = "maplibre" }
+androidx-navigation3-runtime = { group = "androidx.navigation3", name = "navigation3-runtime", version.ref = "navigation3" }
+androidx-navigation3-ui = { group = "androidx.navigation3", name = "navigation3-ui", version.ref = "navigation3" }
+androidx-lifecycle-viewmodel-navigation3 = { group = "androidx.lifecycle", name = "lifecycle-viewmodel-navigation3", version.ref = "lifecycle" }
+mlkit-subject-segmentation = { group = "com.google.android.gms", name = "play-services-mlkit-subject-segmentation", version.ref = "mlkitSegmentation" }
 haze = { group = "dev.chrisbanes.haze", name = "haze", version.ref = "haze" }
 haze-blur = { group = "dev.chrisbanes.haze", name = "haze-blur", version.ref = "haze" }
 
