@@ -53,6 +53,11 @@ object Airlines {
         Airline("ELY", "LY", "El Al", 0xFF6F8FF0),
         Airline("ETH", "ET", "Ethiopian Airlines", 0xFF46C46B),
         Airline("AIC", "AI", "Air India", 0xFFE8475F),
+        Airline("AXB", "IX", "Air India Express", 0xFFE8475F),
+        Airline("IGO", "6E", "IndiGo", 0xFF4A62F0),
+        Airline("PAL", "PR", "Philippine Airlines", 0xFF4A78E8),
+        Airline("CEB", "5J", "Cebu Pacific", 0xFFFFC533),
+        Airline("HKE", "UO", "HK Express", 0xFFC04FA8),
         Airline("SIA", "SQ", "Singapore Airlines", 0xFFFFB347),
         Airline("ANA", "NH", "All Nippon Airways", 0xFF5A8CF0),
         Airline("JAL", "JL", "Japan Airlines", 0xFFF04747),
@@ -114,4 +119,14 @@ object Airlines {
     }
 
     fun fromCallsign(callsign: String?): Airline? = byIcao(icaoFromCallsign(callsign))
+
+    /**
+     * The ATC callsign for a marketed flight number: EY 141 → ETD141, AC 015 → ACA15.
+     * Leading zeros are dropped, as ATC callsigns do. Null when the airline isn't in the table.
+     */
+    fun callsignFor(iata: String, flightNumber: String): String? {
+        val icao = byIata(iata)?.icao ?: return null
+        val number = flightNumber.trim().uppercase().trimStart('0').ifEmpty { return null }
+        return icao + number
+    }
 }
