@@ -133,6 +133,13 @@ class AirportRepository @Inject constructor(
 
     @Volatile private var icaoIndex: Map<String, String>? = null
 
+    /** ICAO → IATA as a plain function, for parsers that run off the main thread. */
+    suspend fun icaoResolver(): (String) -> String? {
+        directory()
+        val byIcao = icaoIndex ?: directoryCache.orEmpty().values.associate { it.icao to it.iata }.also { icaoIndex = it }
+        return { byIcao[it.uppercase()] }
+    }
+
     suspend fun codes(): AirportCodes {
         val dir = directory()
         return AirportCodes { dir.find(it) != null }

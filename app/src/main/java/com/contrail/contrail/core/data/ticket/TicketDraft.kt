@@ -12,6 +12,7 @@ enum class ImportSource(val label: String) {
     Image("Screenshot or photo"),
     Text("Pasted text"),
     Manual("Entered by hand"),
+    FlightLog("Flight log import"),
 }
 
 /** Everything an import found, before you review it. Every field may be missing. */

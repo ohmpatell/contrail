@@ -99,12 +99,61 @@ object Airlines {
         Airline("CKS", "K4", "Kalitta Air", 0xFFF0475A, cargo = true),
     ).associateBy { it.icao }
 
-    fun byIcao(icao: String?): Airline? = icao?.let { all[it.uppercase()] }
+    fun byIcao(icao: String?): Airline? = icao?.uppercase()?.let { all[it] ?: directory.byIcao[it] }
 
     private val byIataCode = all.values.filter { it.iata.isNotBlank() }.groupBy { it.iata }
 
-    /** The curated airline for an IATA code. IATA codes are reused, so the first listed wins. */
-    fun byIata(iata: String?): Airline? = iata?.let { byIataCode[it.uppercase()]?.firstOrNull() }
+    /**
+     * The airline for an IATA code: the curated list first, then the wider directory. IATA
+     * codes are reused, so the first listed (or the one still flying) wins.
+     */
+    fun byIata(iata: String?): Airline? = iata?.uppercase()?.let { byIataCode[it]?.firstOrNull() ?: directory.byIata[it] }
+
+    /** The airline's name, or the code when nobody knows it. */
+    fun nameFor(iata: String?, fallback: String? = null): String = byIata(iata)?.name ?: fallback ?: iata.orEmpty()
+
+    private class Directory(val byIcao: Map<String, Airline>, val byIata: Map<String, Airline>)
+
+    @Volatile private var source: (() -> java.io.InputStream)? = null
+    private val directory: Directory by lazy { loadDirectory() }
+
+    /**
+     * The wider OpenFlights airline list (bundled, ODbL), so imported flight logs on any airline
+     * get a name and a callsign. Each gets a steady accent hue from its code; the curated list
+     * above keeps the hand-picked livery colours.
+     */
+    fun install(open: () -> java.io.InputStream) {
+        source = open
+    }
+
+    private fun loadDirectory(): Directory {
+        val open = source ?: return Directory(emptyMap(), emptyMap())
+        val rows = runCatching {
+            open().bufferedReader().use { kotlinx.serialization.json.Json.parseToJsonElement(it.readText()) } as kotlinx.serialization.json.JsonArray
+        }.getOrNull() ?: return Directory(emptyMap(), emptyMap())
+        val list = rows.map { r ->
+            val a = r as kotlinx.serialization.json.JsonArray
+            fun str(i: Int) = (a[i] as kotlinx.serialization.json.JsonPrimitive).content
+            Airline(str(0), str(1), str(2), hueAccent(str(0)))
+        }
+        return Directory(list.associateBy { it.icao }, list.filter { it.iata.isNotBlank() }.distinctBy { it.iata }.associateBy { it.iata })
+    }
+
+    /** A bright, readable accent picked from the code, so each airline keeps its own glow. */
+    internal fun hueAccent(code: String): Long {
+        val hue = (code.hashCode().toLong() and 0xFFFF) % 360
+        val hsv = floatArrayOf(hue.toFloat(), 0.55f, 0.95f)
+        // HSV → RGB without android.graphics, so it runs in unit tests.
+        val c = hsv[2] * hsv[1]
+        val x = c * (1 - kotlin.math.abs((hsv[0] / 60f) % 2 - 1))
+        val m = hsv[2] - c
+        val (r, g, b) = when ((hsv[0] / 60f).toInt()) {
+            0 -> Triple(c, x, 0f); 1 -> Triple(x, c, 0f); 2 -> Triple(0f, c, x)
+            3 -> Triple(0f, x, c); 4 -> Triple(x, 0f, c); else -> Triple(c, 0f, x)
+        }
+        fun ch(v: Float) = ((v + m) * 255).toLong().coerceIn(0, 255)
+        return (0xFFL shl 24) or (ch(r) shl 16) or (ch(g) shl 8) or ch(b)
+    }
 
     /**
      * Airline ICAO designator from an ATC callsign: three letters followed by a digit

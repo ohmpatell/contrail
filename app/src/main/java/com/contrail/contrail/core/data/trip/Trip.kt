@@ -15,6 +15,10 @@ enum class Cabin(val label: String) {
     Economy("Economy"),
 }
 
+enum class SeatType(val label: String) { Window("Window"), Middle("Middle"), Aisle("Aisle") }
+
+enum class FlightReason(val label: String) { Leisure("Leisure"), Business("Business"), Crew("Crew"), Other("Other") }
+
 /** One flight of a trip. Times are local to each airport, as printed on the ticket. */
 data class FlightSegment(
     val id: Long,
@@ -40,11 +44,18 @@ data class FlightSegment(
     /** Registration you entered by hand ("A6-BLT"). */
     val tail: String? = null,
     val operatedBy: String? = null,
+    /** The airline's name from an import, for airlines outside the curated list. */
+    val airlineName: String? = null,
+    val seatType: SeatType? = null,
+    val reason: FlightReason? = null,
+    val note: String? = null,
+    /** No times were given, so they're worked out from the distance. Shown as "estimated". */
+    val timesEstimated: Boolean = false,
 ) {
     val departure: Instant get() = departureLocal.atZone(departureZone).toInstant()
     val arrival: Instant get() = arrivalLocal.atZone(arrivalZone).toInstant()
     val duration: Duration get() = Duration.between(departure, arrival)
-    val designator: String get() = "$airlineIata $flightNumber"
+    val designator: String get() = "$airlineIata $flightNumber".trim()
 
     /** The ATC callsign ADS-B feeds use: EY 141 → ETD141. Null for airlines we can't map. */
     val icaoCallsign: String? get() = Airlines.callsignFor(airlineIata, flightNumber)

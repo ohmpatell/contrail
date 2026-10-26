@@ -7,7 +7,9 @@ import com.contrail.contrail.core.data.trip.Cabin
 import com.contrail.contrail.core.data.trip.ConnectionKind
 import com.contrail.contrail.core.data.trip.ConnectionPref
 import com.contrail.contrail.core.data.trip.ConnectionRules
+import com.contrail.contrail.core.data.trip.FlightReason
 import com.contrail.contrail.core.data.trip.FlightSegment
+import com.contrail.contrail.core.data.trip.SeatType
 import com.contrail.contrail.core.data.trip.Trip
 import com.contrail.contrail.core.database.ConnectionPrefEntity
 import com.contrail.contrail.core.database.ContrailDatabase
@@ -92,10 +94,59 @@ class TripRepository @Inject constructor(
         dao.deleteTrip(tripId)
     }
 
+    /** "date|from|to" for every flight you have, so imports can skip ones you already added. */
+    suspend fun flightKeys(): Set<String> = dao.allSegments().map { "${LocalDateTime.parse(it.departureLocal).toLocalDate()}|${it.origin}|${it.destination}" }.toSet()
+
+    /**
+     * Saves one flight. With [segmentId] it replaces that flight in place. Otherwise it joins
+     * the trip whose last flight lands at its origin up to two days before it leaves (a
+     * connection or stopover), or starts a new trip. Returns the trip id.
+     */
+    suspend fun saveFlight(flight: FlightSegment, title: String, segmentId: Long = 0): Long = db.withTransaction {
+        if (segmentId != 0L) {
+            val old = dao.segment(segmentId) ?: return@withTransaction 0L
+            dao.updateSegment(flight.copy(id = segmentId, tripId = old.tripId, ordinal = old.ordinal).toEntity())
+            renumber(old.tripId)
+            return@withTransaction old.tripId
+        }
+        val all = dao.allSegments()
+        val dep = flight.departure.toEpochMilli()
+        val joins = all.groupBy { it.tripId }.values.mapNotNull { segs -> segs.maxByOrNull { it.arrivalUtcMs } }
+            .filter { last -> last.destination == flight.origin && dep - last.arrivalUtcMs in 0..TWO_DAYS_MS }
+            .maxByOrNull { it.arrivalUtcMs }
+        if (joins != null) {
+            dao.insertSegments(listOf(flight.copy(id = 0, tripId = joins.tripId, ordinal = Int.MAX_VALUE).toEntity()))
+            renumber(joins.tripId)
+            joins.tripId
+        } else {
+            dao.insertTripWithSegments(
+                TripEntity(title = title, pnr = null, passengerName = null, source = ImportSource.Manual.name, createdAtMs = clock.nowMs()),
+                listOf(flight.copy(id = 0, ordinal = 0).toEntity()),
+                emptySet(),
+            )
+        }
+    }
+
+    /** Deletes one flight; a trip left with no flights goes too. */
+    suspend fun deleteFlight(segmentId: Long) = db.withTransaction {
+        val s = dao.segment(segmentId) ?: return@withTransaction
+        db.loungeDao().detach(listOf(segmentId))
+        dao.deleteSegment(segmentId)
+        if (dao.segmentCount(s.tripId) == 0) dao.deleteTrip(s.tripId) else renumber(s.tripId)
+    }
+
+    private suspend fun renumber(tripId: Long) {
+        dao.allSegments().filter { it.tripId == tripId }.sortedBy { it.departureUtcMs }.forEachIndexed { i, s ->
+            if (s.ordinal != i) dao.updateSegment(s.copy(ordinal = i))
+        }
+    }
+
     /** How many of your flights were on this registration. */
     suspend fun flightsOnTail(tail: String): Int = dao.segmentsWithTail(tail.uppercase()).size
 
     companion object {
+        private const val TWO_DAYS_MS = 48L * 3_600_000
+
         fun SegmentEntity.toDomain() = FlightSegment(
             id = id, tripId = tripId, ordinal = ordinal,
             airlineIata = airlineIata, flightNumber = flightNumber, origin = origin, destination = destination,
@@ -104,6 +155,10 @@ class TripRepository @Inject constructor(
             departureTerminal = departureTerminal, arrivalTerminal = arrivalTerminal, gate = gate,
             cabin = cabin?.let { c -> Cabin.entries.firstOrNull { it.name == c } },
             fareClass = fareClass, seat = seat, aircraftType = aircraftType, tail = tail, operatedBy = operatedBy,
+            airlineName = airlineName,
+            seatType = seatType?.let { v -> SeatType.entries.firstOrNull { it.name == v } },
+            reason = reason?.let { v -> FlightReason.entries.firstOrNull { it.name == v } },
+            note = note, timesEstimated = timesEstimated,
         )
 
         fun FlightSegment.toEntity() = SegmentEntity(
@@ -114,6 +169,7 @@ class TripRepository @Inject constructor(
             departureUtcMs = departure.toEpochMilli(), arrivalUtcMs = arrival.toEpochMilli(),
             departureTerminal = departureTerminal, arrivalTerminal = arrivalTerminal, gate = gate,
             cabin = cabin?.name, fareClass = fareClass, seat = seat, aircraftType = aircraftType, tail = tail, operatedBy = operatedBy,
+            airlineName = airlineName, seatType = seatType?.name, reason = reason?.name, note = note, timesEstimated = timesEstimated,
         )
 
         fun ConnectionPrefEntity.toDomain() = ConnectionPref(

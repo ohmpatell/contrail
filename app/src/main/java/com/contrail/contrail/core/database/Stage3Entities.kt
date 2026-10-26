@@ -1,5 +1,6 @@
 package com.contrail.contrail.core.database
 
+import androidx.room.ColumnInfo
 import androidx.room.Dao
 import androidx.room.Entity
 import androidx.room.ForeignKey
@@ -53,6 +54,11 @@ data class SegmentEntity(
     val aircraftType: String?,
     val tail: String?,
     val operatedBy: String?,
+    val airlineName: String? = null,
+    val seatType: String? = null,
+    val reason: String? = null,
+    val note: String? = null,
+    @ColumnInfo(defaultValue = "0") val timesEstimated: Boolean = false,
 )
 
 /** Your layover/stopover choice and hotel flag for the connection after a segment. */
@@ -114,6 +120,15 @@ interface TripDao {
 
     @Query("SELECT * FROM segment WHERE id = :id")
     suspend fun segment(id: Long): SegmentEntity?
+
+    @Query("SELECT * FROM segment")
+    suspend fun allSegments(): List<SegmentEntity>
+
+    @Query("DELETE FROM segment WHERE id = :id")
+    suspend fun deleteSegment(id: Long)
+
+    @Query("SELECT COUNT(*) FROM segment WHERE tripId = :tripId")
+    suspend fun segmentCount(tripId: Long): Int
 
     @Query("SELECT * FROM segment WHERE tail = :tail")
     suspend fun segmentsWithTail(tail: String): List<SegmentEntity>
