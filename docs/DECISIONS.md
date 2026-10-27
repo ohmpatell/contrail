@@ -149,3 +149,47 @@ Checked against the OpenAPI spec, the terms (Sept 3, 2026) and live probes with 
 - **Trip and flight maps are MapLibre snapshots** (one static render, no live GL view) with the route, codes and the live plane drawn in Compose on the same Web Mercator projection. Routes crossing the antimeridian (Toronto–Hong Kong over the pole) are unwrapped along the path before fitting.
 - **Passport counts only flights that have landed.** Future trips show as "upcoming".
 - **The collection is 42 passenger types** (A380 down to the ATR 72), plus any other type you fly. Flown types are drawn in the livery of the airline you first flew them with; Legendary and Rare ones get a holographic sweep.
+
+## Stage 4: flight logs, Passport overhaul, Sky, widgets (Oct 26, 2026)
+
+### Plan changes you asked for
+- **Ticket reading is demoted, not removed.** You found PDF/screenshot reading unreliable, so the Add screen now leads with **Add a flight** (flight number + day) and **Import a flight log**. Scanning a boarding-pass barcode, PDFs, screenshots and pasted text stay underneath as "From a ticket · Beta", always with the review screen.
+- **The Passport is the centrepiece.** It was rebuilt around your flown flights: replay globe, logbook, stamp book, achievements and insight charts (details below).
+
+### Flight-log import
+- **Formats: myFlightradar24, Flighty, OpenFlights, or any CSV with similar headers.** Columns are matched by header name, not position, so reordered or extra columns don't matter. Format detection only picks the label shown on screen.
+- **myFlightradar24's codes were checked against AirTrail's open-source importer:** seat type 1 window / 2 middle / 3 aisle; class 1 economy / 2 business / 3 first / 4 economy+; reason 1 leisure / 2 business / 3 crew / 4 other. Airports come as "City / Name (IATA/ICAO)", airlines as "Name (IATA/ICAO)", aircraft as "Name (ICAO)". Unknown times are written as 00:00:00, and dates can be month-only or year-only.
+- **Times:** a log's departure time plus its duration gives an exact arrival (time zones from the bundled airport list). With no times at all, departure is noon local and the flight time is 30 minutes plus distance at about 810 km/h, flagged `timesEstimated` and shown as "estimated" everywhere.
+- **Duplicates:** the same route on the same local day counts as the same flight, so importing a newer export later only adds new flights.
+- **Grouping into trips** reuses the ticket importer's rules (round trips split, stopovers stay in the trip, two weeks on the ground always splits).
+- **Airlines:** the 102 curated airlines keep their hand-tuned livery colours. A bundled OpenFlights airline list (1,410 airlines with an ICAO code; ODbL; `tools/gen_airlines.py`) fills in names and callsigns for everything else, with a steady accent hue from the code. This also helps the radar name airlines and convert flight numbers to callsigns.
+- **Share to Contrail** accepts CSV too, and routes it to the log importer instead of the ticket importer.
+- **Room v4** adds airline name, seat type, reason, note and `timesEstimated` to flights (auto-migration, no data loss).
+
+### Add a flight
+- **One screen, live boarding pass.** The pass at the top fills in as you type, in the airline's colour. Typing a flight number fills the route from adsbdb ("route from callsign"); airports accept a code or a city with suggestions; times are optional (estimated from distance when blank).
+- **Joining trips:** a new flight joins the trip whose last flight lands at its origin up to 48 hours earlier (a connection or stopover). Otherwise it starts a new trip. Editing keeps the flight in its trip, and deleting the last flight of a trip deletes the trip.
+- **No stock Material date picker:** a glass calendar with Yesterday / Today / Tomorrow chips.
+
+### Passport
+- **Replay:** the globe flies your history in order, about 0.65 s a flight (5 to 45 s total), with the camera easing after each plane, a split-flap year and running totals. At rest it drifts and the latest route glows.
+- **Year filter:** All time or any year. Every number, chart, stamp and medal follows it.
+- **Stamp book:** one stamp per airport, dated the first time you landed there. The first origin is stamped on the day you left, and layover-only airports get grey TRANSIT stamps. Shape, tilt and ink come from the airport code, and each country keeps one ink, so a stamp always looks the same. Ink grain is knocked out with a seeded speck pass. The book has a gold-foil cover, an identity page with a decorative machine-readable zone, and pages that turn about their spine.
+- **Achievements:** 22 medals with Bronze to Platinum tiers, including flights, distance (round the Earth, to the Moon), countries, airlines, types, continents, airports, ultra long haul, red-eye, equator, Arctic Circle, date line, A380/747, Business/First, window seats, the same tail twice, short hop, stopover, New Year aloft and lounges. A red-eye means leaving between 22:00 and 04:59 local on a flight of three hours or more, with real times only.
+- **Countries for the badge = the visited countries shown on the Passport** (origins, destinations, stopovers), so the two numbers always agree.
+- **Logbook:** every flight newest first, grouped by year in sticky glass headers, searchable by airport, city, airline, flight, aircraft, tail or year.
+
+### Sky
+- **Location without Play services:** the platform `LocationManager` (fused provider when present), the same as the radar's locate button.
+- **Alerts and the overhead widget look around "the last place you opened Sky"** (saved on your phone), so there's no background-location permission. Checks run every 15 minutes through WorkManager, only while alerts are on or an overhead widget exists, and each aircraft alerts at most once every three hours. Notification permission is asked for only when you turn alerts on.
+- **Closest approach** assumes a straight track for the next 30 minutes. Positions are dead-reckoned up to 60 s between feed updates, so labels and the scope keep moving.
+- **Sky View** projects each aircraft through the rotation-vector sensor's camera axes, not Euler angles, so it doesn't jump near straight up. The field of view is taken as 52° across a portrait screen after centre-crop. Off-screen planes get an arrow at the screen edge.
+
+### Widgets
+- **Glance 1.2.0**, three widgets: next-flight countdown (airline colour), overhead (closest plane at your spot), Passport totals. They refresh when your trips change and every 30 minutes; the overhead one also refreshes with the 15-minute check.
+
+### Libraries added
+| Library | Why |
+| --- | --- |
+| WorkManager 2.12.0 + androidx.hilt:hilt-work 1.4.0 | Background proximity checks with injected repositories |
+| Glance app-widget 1.2.0 | Home-screen widgets in Compose style |

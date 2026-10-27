@@ -330,7 +330,7 @@ private fun FlownCard(s: FlightSegment, state: FlightUiState, now: Instant, acce
                 StatTile("Speed", km?.let { String.format(Locale.US, "%,d", (it / (s.duration.toMinutes().coerceAtLeast(1) / 60.0)).toInt()) } ?: "—", Modifier.weight(1f), unit = "km/h")
             }
             if (s.timesEstimated) {
-                Text("Times are estimated from the distance: your log didn't have them. Tap edit to add them.", style = ContrailTheme.type.bodySmall, color = colors.textTertiary)
+                Text("No times were given, so they're estimated from the distance. Tap edit to add the real ones.", style = ContrailTheme.type.bodySmall, color = colors.textTertiary)
             }
         }
     }

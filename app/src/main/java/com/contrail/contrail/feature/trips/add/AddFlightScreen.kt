@@ -181,9 +181,9 @@ fun AddFlightScreen(
 
         Section("Route", accent) {
             Row(horizontalArrangement = Arrangement.spacedBy(spacing.sm), verticalAlignment = Alignment.Bottom) {
-                FormField("From", state.from, { onAirport(AirportField.From, it) }, Modifier.weight(1f), "YYZ or Toronto", caps = false, big = true, mono = false)
+                FormField("From · code or city", state.from, { onAirport(AirportField.From, it) }, Modifier.weight(1f), "YYZ", caps = false, big = true, mono = false)
                 GlassIconButton(ContrailIcons.Swap, "Swap", onSwap, size = 40.dp, modifier = Modifier.padding(bottom = spacing.sm))
-                FormField("To", state.to, { onAirport(AirportField.To, it) }, Modifier.weight(1f), "HKG or Hong Kong", caps = false, big = true, mono = false)
+                FormField("To", state.to, { onAirport(AirportField.To, it) }, Modifier.weight(1f), "HKG", caps = false, big = true, mono = false)
             }
             AnimatedVisibility(state.suggestions.isNotEmpty() && state.activeAirport != null, enter = expandVertically() + fadeIn(), exit = shrinkVertically() + fadeOut()) {
                 Column(verticalArrangement = Arrangement.spacedBy(spacing.xxs)) {

@@ -59,6 +59,9 @@ data class ParsedLog(val format: LogFormat, val flights: List<LoggedFlight>, val
  * Columns are found by name, so their order and extra columns don't matter.
  */
 object FlightLogParser {
+    /** Excel and Numbers start UTF-8 CSVs with a byte-order mark. */
+    private const val BOM = "\uFEFF"
+
     private enum class Col { Date, Flight, Airline, From, To, DepTime, ArrTime, Duration, Aircraft, Registration, Seat, SeatType, Cabin, Reason, Note, Pnr, DepTerminal, ArrTerminal, Gate, Canceled }
 
     private val aliases: Map<Col, List<String>> = mapOf(
@@ -94,7 +97,7 @@ object FlightLogParser {
     private val durationRe = Regex("^(\\d{1,3}):(\\d{2})(?::(\\d{2}))?$")
 
     fun parse(text: String): ParsedLog {
-        val rows = csv(text.removePrefix("﻿"))
+        val rows = csv(text.removePrefix(BOM))
         if (rows.isEmpty()) return ParsedLog(LogFormat.Generic, emptyList(), 0)
         val header = rows.first().map { it.trim().lowercase().replace('_', ' ') }
         val index = HashMap<Col, List<Int>>()

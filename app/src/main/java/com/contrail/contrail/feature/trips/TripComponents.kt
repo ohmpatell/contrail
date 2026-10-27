@@ -73,6 +73,7 @@ object TripFormat {
 
     fun time(t: LocalDateTime): String = time.format(t)
     fun day(t: LocalDateTime): String = day.format(t)
+    fun dayYear(t: LocalDateTime): String = dayYear.format(t)
 
     /** "12 – 15 Dec 2026", "28 Dec 2026 – 3 Jan 2027". */
     fun range(trip: Trip): String {

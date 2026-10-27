@@ -199,7 +199,7 @@ fun PassportGlobe(legs: List<GlobeLeg>, markers: List<LatLon>, modifier: Modifie
                 Column(Modifier.align(Alignment.TopStart).padding(ContrailTheme.spacing.lg)) {
                     Eyebrow("Latest", color = colors.accent)
                     Text("${latest.segment.origin} → ${latest.segment.destination}", style = ContrailTheme.type.numeric, color = colors.textPrimary)
-                    Text(TripFormat.day(latest.segment.departureLocal), style = ContrailTheme.type.numericSmall, color = colors.textTertiary)
+                    Text(TripFormat.dayYear(latest.segment.departureLocal), style = ContrailTheme.type.numericSmall, color = colors.textTertiary)
                 }
             }
         }

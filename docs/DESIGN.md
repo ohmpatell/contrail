@@ -108,7 +108,16 @@ A **trip** is a journey ("Toronto to Manila") made of one or more flight **segme
   - whether it's a **layover** (you stay airside, e.g. Hong Kong on the way to Manila) or a **stopover** (you leave the airport, e.g. Abu Dhabi on the way to India).
 - **Layover or stopover is guessed automatically:** over 24 hours, or an overnight connection with a hotel, is a stopover; everything else is a layover. One tap on the badge switches it, and the choice sticks.
 - **A stopover gets its own mini-section:** arrival and departure times, the city's live local time and weather, and a countdown to the next flight.
-- Add a trip by importing a ticket (below) or by entering a flight by number and date. Typing a flight number fills in its usual route from the free callsign database; the times come from you.
+- **Add a flight** (the main way in): flight number and day on one screen with a live boarding pass that fills in as you type. The route comes from the free callsign database ("route from callsign"); airports take a code or a city; times are optional and estimated from the distance when left blank. A flight that leaves within 48 hours of another one landing at the same airport joins that trip.
+- **Import a flight log:** your whole history from a myFlightradar24, Flighty or OpenFlights CSV export (below).
+- Ticket import (below) is still there as "From a ticket · Beta".
+
+### Flight-log import
+
+- **Sources:** myFlightradar24 (my.flightradar24.com → Settings → Export → Download CSV), Flighty (Settings → Account Data → Export Your Flights), OpenFlights, or any CSV with similar headers. Pick the file, or share it to Contrail.
+- Columns are matched by header name. Airports resolve through the bundled airport list (IATA or ICAO); airlines through the curated list plus a bundled OpenFlights airline list.
+- Missing times are estimated from the distance and labelled "estimated". Flights you already have (same route, same day) are skipped. Flights are grouped into trips with the same rules as ticket import.
+- A preview always comes first: a globe of every route, flights per year, duplicates and skipped rows, then one tap to add them all.
 
 ### Ticket import
 
@@ -170,7 +179,7 @@ This panel shows your aircraft's whole day so you can judge whether the crew wil
 - **Closest plane now:** a big card for the nearest aircraft, with distance, bearing arrow, altitude and a countdown to its closest approach.
 - **Overhead list:** everything within your chosen radius (5 to 100 km), sorted by distance.
 - **Sky View:** point the camera at the sky and labels pin to each aircraft using GPS, compass and live positions.
-- **Proximity alerts:** a notification when something worth looking up passes within your radius: a rare type, military, an emergency squawk, a watched tail, or anything below an altitude you set. You choose which.
+- **Proximity alerts:** a notification when something worth looking up passes within your radius: a rare type, military, an emergency squawk, a watched tail, or anything below 3,000 ft. You choose which. Checks run about every 15 minutes around the last place you opened Sky, so no background-location permission is needed.
 - **Approach watch:** at an airport, it shows the next arrivals lining up and which runway is likely in use from the wind.
 
 ### Aircraft page
@@ -192,6 +201,14 @@ This panel shows your aircraft's whole day so you can judge whether the crew wil
 
 ### Passport
 
+The Passport is the heart of the app: everything you've flown, made beautiful.
+
+- **Year filter:** All time or any single year; everything below follows it.
+- **Replay:** the globe flies your history in order, the camera following each plane, with a split-flap year and running totals.
+- **Logbook:** every flight as a slim ticket, grouped by year, searchable by airport, city, airline, flight, aircraft, tail or year. Tap one for its flight page (a "Flown" keepsake with its boarding pass, notes and an Edit button).
+- **Stamp book:** a passport you swipe through: gold-foil cover, an identity page (home airport, favourite aircraft and airline, totals, flags, a machine-readable strip), then an inked stamp for every airport in the order you first landed, each with its own shape, tilt and country ink.
+- **Achievements:** 22 medals in Bronze, Silver, Gold and Platinum, such as Around the world, Polar route, Date line, Double decker, Red-eye and Five continents, with progress rings on the ones still to earn.
+- **Insights:** flights per year, a flying calendar (years × months heatmap), top airlines, airports, routes and aircraft, how you fly (cabin, seat, international vs domestic, red-eyes, continents), the edges of your map (furthest north, south, east and west), and every country as a flag.
 - Lifetime globe of every route flown, drawn as glowing arcs on a dotted globe you can spin.
 - Totals: flights, distance, hours aloft, airports, countries, airlines, aircraft types and individual tails.
 - **Visited and transited are separate.** Airports where you only made a layover count as "transited". Origins, destinations and stopover cities count as "visited".
@@ -209,8 +226,9 @@ This panel shows your aircraft's whole day so you can judge whether the crew wil
 
 ### Home-screen widgets
 
-- Next-flight countdown with the floating aircraft.
-- Plane-overhead widget showing the closest aircraft right now.
+- Next-flight countdown in the airline's colour.
+- Plane-overhead widget showing the closest aircraft at your spot.
+- Passport widget with lifetime flights, distance and countries.
 
 ## Data sources and free budget
 
@@ -229,6 +247,7 @@ Everything comes from free sources, and nothing needs a payment card. Your fligh
 | [logostream](https://airline.logostream.dev/) (Community) | Airline logos and tail art, airline data, routes, airport stats (timezone, airlines served, destinations) | 20,000 requests a month; logos can't be cached; "Logos by logostream" attribution required. Liveries, airport logos, airport data and news need a paid plan | Free key |
 | [OpenStreetMap Overpass](https://overpass-api.de/) | Terminal and runway geometry for airport diagrams, lounge suggestions | Free, fair use, ODbL attribution | None |
 | Google ML Kit (on device) | Boarding-pass barcodes, text in tickets and screenshots, photo cutouts | Free, runs offline | None |
+| [OpenFlights airlines](https://openflights.org/data) (bundled) | Airline names and ICAO codes for imported logs and callsigns | ODbL | None |
 | [Natural Earth](https://www.naturalearthdata.com/) (bundled) | Land outline for the Passport globe | Public domain | None |
 | Aviation RSS (Simple Flying, AeroTime, FlightGlobal, AirlineGeeks, Aviation Week, Google News) | News feed, filtered by airline and airport | Free; headlines and links back to the source | None |
 | [RainViewer](https://www.rainviewer.com/api.html) | Weather radar layer | Free for personal use | None |

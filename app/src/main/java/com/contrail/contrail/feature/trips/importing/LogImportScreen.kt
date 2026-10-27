@@ -304,7 +304,7 @@ private fun Preview(p: LogPreview, state: LogImportState, onSave: () -> Unit, on
                             listOfNotNull(s.designator.ifBlank { null }, Airlines.byIata(s.airlineIata)?.name ?: s.airlineName).joinToString(" · "),
                             style = ContrailTheme.type.bodySmall, color = colors.textTertiary, maxLines = 1, modifier = Modifier.weight(1f),
                         )
-                        Text(TripFormat.day(s.departureLocal), style = ContrailTheme.type.numericSmall, color = colors.textTertiary)
+                        Text(TripFormat.dayYear(s.departureLocal), style = ContrailTheme.type.numericSmall, color = colors.textTertiary)
                     }
                 }
                 if (p.flights.size > 6) Text("…and ${p.flights.size - 6} more", style = ContrailTheme.type.bodySmall, color = colors.textTertiary)
