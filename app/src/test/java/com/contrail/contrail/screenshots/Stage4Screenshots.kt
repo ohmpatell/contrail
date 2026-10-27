@@ -151,5 +151,7 @@ class Stage4Screenshots {
         com.contrail.contrail.feature.sky.SkyViewScreen(skyState, o, camera = false, onBack = {}, onAircraft = {})
     }
 
+    @Test fun shareCard() = snap("share_card") { com.contrail.contrail.feature.passport.ShareCardScreen(historyState, onBack = {}) }
+
     @Test fun importHub() = snap("import_hub") { ImportScreen(ImportUiState(), onBack = {}) }
 }

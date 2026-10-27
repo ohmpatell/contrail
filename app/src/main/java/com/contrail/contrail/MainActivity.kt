@@ -34,6 +34,8 @@ import com.contrail.contrail.feature.settings.SettingsRoute
 import com.contrail.contrail.feature.sky.SkyRoute
 import com.contrail.contrail.feature.sky.SkyViewRoute
 import com.contrail.contrail.navigation.SkyViewKey
+import com.contrail.contrail.navigation.ShareCardKey
+import com.contrail.contrail.feature.passport.ShareCardRoute
 import com.contrail.contrail.feature.trips.TripDetailRoute
 import com.contrail.contrail.feature.trips.TripsRoute
 import com.contrail.contrail.feature.trips.importing.ImportRoute
@@ -124,6 +126,7 @@ private fun ContrailNavHost(inbox: SharedTicketInbox) {
             override fun openLogbook() = push(LogbookKey)
             override fun openStampBook() = push(StampBookKey)
             override fun openSkyView() = push(SkyViewKey)
+            override fun openShareCard() = push(ShareCardKey)
             override fun back() {
                 if (backStack.size > 1) backStack.removeAt(backStack.lastIndex)
             }
@@ -176,6 +179,7 @@ private fun ContrailNavHost(inbox: SharedTicketInbox) {
                 entry<LogbookKey>(metadata = DetailOverlayStrategy.detail) { LogbookRoute() }
                 entry<StampBookKey>(metadata = DetailOverlayStrategy.detail) { StampBookRoute() }
                 entry<SkyViewKey>(metadata = DetailOverlayStrategy.detail) { SkyViewRoute() }
+                entry<ShareCardKey>(metadata = DetailOverlayStrategy.detail) { ShareCardRoute() }
             },
         )
     }

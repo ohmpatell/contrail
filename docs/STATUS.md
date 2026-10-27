@@ -42,11 +42,12 @@ Releases: every push to `master` publishes a signed APK to GitHub Releases for O
   - **Sky View** (camera and compass labels, with arrows to off-screen planes);
   - **proximity alerts** (rare, military, emergency, watchlist, below 3,000 ft).
 - **Home-screen widgets:** next-flight countdown, plane overhead, Passport totals.
+- **Share your Passport:** a story-sized card (globe, totals, flags, latest stamps) sent through the share sheet.
 - 153 unit and screenshot tests green, lint clean. Verified on the Pixel 9 emulator: a real myFlightradar24-format CSV imported through the file picker, the Passport replay, Add a flight with live route lookup, a flown-flight page, and Sky with live ADS-B traffic.
 
 ## Next
 - Feedback from your phone.
-- Optional extras: a shareable Passport card image, Filament 3D aircraft.
+- Optional extra: Filament 3D aircraft.
 
 ## Known limits
 - No free schedule API: flight times come from your ticket or log, or are estimated from distance (always labelled). Tail numbers are entered by hand.

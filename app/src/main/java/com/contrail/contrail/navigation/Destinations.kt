@@ -63,6 +63,9 @@ data object StampBookKey : NavKey
 @Serializable
 data object SkyViewKey : NavKey
 
+@Serializable
+data object ShareCardKey : NavKey
+
 /** How any screen opens a detail page or goes back. */
 interface Navigator {
     fun openAircraft(hex: String)
@@ -78,6 +81,7 @@ interface Navigator {
     fun openLogbook()
     fun openStampBook()
     fun openSkyView()
+    fun openShareCard()
     fun back()
 }
 
@@ -96,6 +100,7 @@ val LocalNavigator = staticCompositionLocalOf<Navigator> {
         override fun openLogbook() = Unit
         override fun openStampBook() = Unit
         override fun openSkyView() = Unit
+        override fun openShareCard() = Unit
         override fun back() = Unit
     }
 }

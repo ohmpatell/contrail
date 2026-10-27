@@ -97,6 +97,7 @@ fun PassportRoute(viewModel: PassportViewModel = hiltViewModel()) {
             onFlight = nav::openFlight,
             onAirport = nav::openAirport,
             onSelectYear = viewModel::selectYear,
+            onShare = nav::openShareCard,
         ),
     )
 }
@@ -111,6 +112,7 @@ data class PassportActions(
     val onFlight: (Long) -> Unit = {},
     val onAirport: (String) -> Unit = {},
     val onSelectYear: (Int?) -> Unit = {},
+    val onShare: () -> Unit = {},
 )
 
 @Composable
@@ -138,6 +140,7 @@ fun PassportScreen(state: PassportUiState, actions: PassportActions, modifier: M
                 Text("Passport", style = ContrailTheme.type.displayLarge, color = colors.textPrimary)
             }
             Row(horizontalArrangement = Arrangement.spacedBy(spacing.sm)) {
+                if (s.flights > 0) GlassIconButton(ContrailIcons.Share, "Share your Passport", actions.onShare)
                 GlassIconButton(ContrailIcons.List, "Logbook", actions.onLogbook)
                 GlassIconButton(ContrailIcons.Plus, "Add a flight", actions.onAdd)
             }
