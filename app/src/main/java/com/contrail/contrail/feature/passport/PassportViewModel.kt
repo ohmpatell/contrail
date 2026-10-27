@@ -11,7 +11,10 @@ import dagger.assisted.Assisted
 import dagger.assisted.AssistedFactory
 import dagger.assisted.AssistedInject
 import dagger.hilt.android.lifecycle.HiltViewModel
+import kotlinx.coroutines.ExperimentalCoroutinesApi
 import kotlinx.coroutines.flow.Flow
+import kotlinx.coroutines.flow.MutableStateFlow
+import kotlinx.coroutines.flow.flatMapLatest
 import kotlinx.coroutines.flow.SharingStarted
 import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.flow.combine
@@ -24,6 +27,8 @@ data class PassportUiState(
     val stats: PassportStats = PassportStats(),
     val places: Map<String, AirportInfo> = emptyMap(),
     val upcomingFlights: Int = 0,
+    /** The year the Passport is filtered to; null is all time. */
+    val selectedYear: Int? = null,
 )
 
 private fun passportFlow(
@@ -42,9 +47,11 @@ private fun passportFlow(
         stats = PassportCalculator.compute(t, places, visits, stored.filter { it.favourite }.map { it.key }.toSet(), now, year),
         places = places,
         upcomingFlights = t.sumOf { trip -> trip.segments.count { it.arrival.isAfter(now) } },
+        selectedYear = year,
     )
 }
 
+@OptIn(ExperimentalCoroutinesApi::class)
 @HiltViewModel
 class PassportViewModel @Inject constructor(
     trips: TripRepository,
@@ -52,8 +59,12 @@ class PassportViewModel @Inject constructor(
     airports: AirportRepository,
     clock: Clock,
 ) : ViewModel() {
-    val state: StateFlow<PassportUiState> = passportFlow(trips, lounges, airports, clock, null)
+    private val year = MutableStateFlow<Int?>(null)
+
+    val state: StateFlow<PassportUiState> = year.flatMapLatest { y -> passportFlow(trips, lounges, airports, clock, y) }
         .stateIn(viewModelScope, SharingStarted.WhileSubscribed(5_000), PassportUiState())
+
+    fun selectYear(y: Int?) { year.value = y }
 }
 
 @HiltViewModel(assistedFactory = YearInReviewViewModel.Factory::class)

@@ -28,6 +28,10 @@ import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.layout.statusBars
 import androidx.compose.foundation.layout.windowInsetsPadding
 import androidx.compose.foundation.rememberScrollState
+import androidx.compose.foundation.horizontalScroll
+import com.contrail.contrail.core.designsystem.component.AccentButton
+import com.contrail.contrail.core.designsystem.component.ContrailChip
+import com.contrail.contrail.core.designsystem.component.GlassIconButton
 import androidx.compose.foundation.verticalScroll
 import androidx.compose.material3.Icon
 import androidx.compose.material3.Text
@@ -82,14 +86,40 @@ import java.util.Locale
 fun PassportRoute(viewModel: PassportViewModel = hiltViewModel()) {
     val state by viewModel.state.collectAsStateWithLifecycle()
     val nav = LocalNavigator.current
-    PassportScreen(state, onYear = nav::openYearInReview, onFlightsTab = nav::openImport)
+    PassportScreen(
+        state,
+        actions = PassportActions(
+            onYearInReview = nav::openYearInReview,
+            onImport = nav::openLogImport,
+            onAdd = { nav.openAddFlight() },
+            onLogbook = nav::openLogbook,
+            onStamps = nav::openStampBook,
+            onFlight = nav::openFlight,
+            onAirport = nav::openAirport,
+            onSelectYear = viewModel::selectYear,
+        ),
+    )
 }
 
+/** Everything the Passport can open. */
+data class PassportActions(
+    val onYearInReview: (Int) -> Unit = {},
+    val onImport: () -> Unit = {},
+    val onAdd: () -> Unit = {},
+    val onLogbook: () -> Unit = {},
+    val onStamps: () -> Unit = {},
+    val onFlight: (Long) -> Unit = {},
+    val onAirport: (String) -> Unit = {},
+    val onSelectYear: (Int?) -> Unit = {},
+)
+
 @Composable
-fun PassportScreen(state: PassportUiState, onYear: (Int) -> Unit, onFlightsTab: () -> Unit, modifier: Modifier = Modifier) {
+fun PassportScreen(state: PassportUiState, actions: PassportActions, modifier: Modifier = Modifier, autoplay: Boolean = false) {
     val spacing = ContrailTheme.spacing
     val colors = ContrailTheme.colors
     val s = state.stats
+    val legs = remember(s.flown, state.places) { globeLegs(s.flown, state.places) }
+    val markers = remember(s.visited, s.transited, state.places) { (s.visited + s.transited).mapNotNull { state.places[it]?.let { p -> LatLon(p.lat, p.lon) } } }
     Column(
         modifier
             .fillMaxSize()
@@ -99,105 +129,164 @@ fun PassportScreen(state: PassportUiState, onYear: (Int) -> Unit, onFlightsTab: 
             .padding(top = spacing.xl, bottom = spacing.navBarClearance),
         verticalArrangement = Arrangement.spacedBy(spacing.lg),
     ) {
-        Column(verticalArrangement = Arrangement.spacedBy(spacing.sm)) {
-            Row(verticalAlignment = Alignment.CenterVertically, horizontalArrangement = Arrangement.spacedBy(spacing.sm)) {
-                LivePulse(color = colors.passport)
-                Eyebrow(s.years.lastOrNull()?.let { "Flying since $it" } ?: "Your flying life", color = colors.passport)
+        Row(verticalAlignment = Alignment.CenterVertically) {
+            Column(Modifier.weight(1f), verticalArrangement = Arrangement.spacedBy(spacing.sm)) {
+                Row(verticalAlignment = Alignment.CenterVertically, horizontalArrangement = Arrangement.spacedBy(spacing.sm)) {
+                    LivePulse(color = colors.passport)
+                    Eyebrow(s.years.lastOrNull()?.let { "Flying since $it" } ?: "Your flying life", color = colors.passport)
+                }
+                Text("Passport", style = ContrailTheme.type.displayLarge, color = colors.textPrimary)
             }
-            Text("Passport", style = ContrailTheme.type.displayLarge, color = colors.textPrimary)
+            Row(horizontalArrangement = Arrangement.spacedBy(spacing.sm)) {
+                GlassIconButton(ContrailIcons.List, "Logbook", actions.onLogbook)
+                GlassIconButton(ContrailIcons.Plus, "Add a flight", actions.onAdd)
+            }
         }
-        RiseIn(0) { GlobeCard(state) }
-        if (s.flights == 0) {
-            RiseIn(1) {
-                GlassSurface(Modifier.fillMaxWidth(), shape = ContrailTheme.shapes.medium) {
-                    Column(Modifier.padding(spacing.lg), verticalArrangement = Arrangement.spacedBy(spacing.sm)) {
-                        Text("Your Passport fills in as you fly", style = ContrailTheme.type.headline, color = colors.textPrimary)
-                        Text(
-                            if (state.upcomingFlights > 0) "${state.upcomingFlights} upcoming flight${if (state.upcomingFlights == 1) "" else "s"} will count once they land. Past flights can be imported the same way as trips."
-                            else "Import a ticket, or add past flights by flight number and date. Each one counts once it lands.",
-                            style = ContrailTheme.type.bodySmall,
-                            color = colors.textSecondary,
-                        )
-                        Text("Import past flights", style = ContrailTheme.type.label, color = colors.passport, modifier = Modifier.clickable(role = Role.Button, onClick = onFlightsTab))
-                    }
+        if (s.years.size > 1 || state.selectedYear != null) {
+            Row(Modifier.horizontalScroll(rememberScrollState()), horizontalArrangement = Arrangement.spacedBy(spacing.sm)) {
+                ContrailChip("All time", state.selectedYear == null, onClick = { actions.onSelectYear(null) }, accent = colors.passport)
+                s.years.forEach { y -> ContrailChip("$y", state.selectedYear == y, onClick = { actions.onSelectYear(y) }, accent = colors.passport) }
+            }
+        }
+        if (s.flights == 0 && !state.loading) {
+            RiseIn(0) { EmptyPassport(state, actions) }
+            if (s.achievements.isNotEmpty()) RiseIn(1) { AchievementsCard(s.achievements) }
+        } else if (s.flights > 0) {
+            RiseIn(0) { PassportGlobe(legs, markers, autoplay = autoplay) }
+            RiseIn(1) { Headline(s) }
+            RiseIn(2) { LogbookPreview(s, state.places, actions) }
+            if (s.stamps.isNotEmpty()) RiseIn(3) { StampStrip(s.stamps, actions.onStamps) }
+            RiseIn(4) { AchievementsCard(s.achievements) }
+            s.years.firstOrNull()?.let { y -> RiseIn(5) { YearCard(state.selectedYear ?: y, s.years, actions.onYearInReview) } }
+            if (state.selectedYear == null) RiseIn(6) { YearsChart(s.insights) }
+            RiseIn(7) { FlyingCalendar(s.insights) }
+            RiseIn(8) { RankedCard("Top airlines", s.insights.topAirlines, tintFor = { airlineTint(it) }) }
+            RiseIn(9) {
+                RankedCard("Top airports", s.insights.topAirports, tintFor = { colors.passport }) { r ->
+                    state.places[r.key]?.icao?.let(actions.onAirport)
                 }
             }
-        } else {
-            RiseIn(1) { Totals(s) }
-            RiseIn(2) { Places(s, state.places) }
-            RiseIn(3) { Records(s, state.places) }
-            s.years.firstOrNull()?.let { y -> RiseIn(4) { YearCard(y, s.years, onYear) } }
-            RiseIn(5) { Collection(s) }
+            RiseIn(10) { RankedCard("Top routes", s.insights.topRoutes, tintFor = { colors.statusAirborne }) }
+            RiseIn(11) { RankedCard("Aircraft you fly most", s.insights.topTypes, tintFor = { colors.statusOnTime }) }
+            RiseIn(12) { HowYouFlyCard(s.insights, s.flights) }
+            RiseIn(13) { ExtremesCard(s.insights, state.places) }
+            RiseIn(14) { CountriesCard(s.insights.countries) }
+            RiseIn(15) { Places(s, state.places) }
+            RiseIn(16) { Records(s, state.places) }
+            RiseIn(17) { Collection(s) }
         }
-        if (s.lounges.visits > 0) RiseIn(6) { Lounges(s.lounges) }
+        if (s.lounges.visits > 0) RiseIn(18) { Lounges(s.lounges) }
     }
 }
 
-/** The lifetime globe: every leg as a glowing arc. Drag to spin; it drifts on its own. */
+/** No flights yet: the two ways in, over an empty globe. */
 @Composable
-private fun GlobeCard(state: PassportUiState) {
+private fun EmptyPassport(state: PassportUiState, actions: PassportActions) {
     val colors = ContrailTheme.colors
-    val motion = ContrailTheme.motion
-    val places = state.places
-    val arcs = remember(state.stats.legs, places) {
-        state.stats.legs.mapNotNull { (a, b) ->
-            val p = places[a] ?: return@mapNotNull null
-            val q = places[b] ?: return@mapNotNull null
-            Geo.greatCircle(LatLon(p.lat, p.lon), LatLon(q.lat, q.lon), 48)
+    val spacing = ContrailTheme.spacing
+    GlassSurface(Modifier.fillMaxWidth(), glow = colors.passport.copy(alpha = 0.6f)) {
+        Column(Modifier.padding(spacing.xl), verticalArrangement = Arrangement.spacedBy(spacing.lg), horizontalAlignment = Alignment.CenterHorizontally) {
+            Box(Modifier.fillMaxWidth().aspectRatio(1.3f)) {
+                DottedGlobe(arcs = emptyList(), centerLon = -40f, modifier = Modifier.fillMaxSize())
+            }
+            Text("Your Passport fills in as you fly", style = ContrailTheme.type.displaySmall, color = colors.textPrimary)
+            Text(
+                if (state.upcomingFlights > 0) "${state.upcomingFlights} upcoming flight${if (state.upcomingFlights == 1) "" else "s"} will count once they land. Bring in the flights you've already taken:"
+                else "Bring in every flight you've already taken. Stamps, medals and your globe build themselves.",
+                style = ContrailTheme.type.body,
+                color = colors.textSecondary,
+            )
+            AccentButton("Import from myFlightradar24", actions.onImport, icon = ContrailIcons.Import, accent = colors.passport, modifier = Modifier.fillMaxWidth())
+            AccentButton("Add a flight", actions.onAdd, icon = ContrailIcons.Plus, accent = colors.passport, secondary = true, modifier = Modifier.fillMaxWidth())
         }
     }
-    val markers = remember(state.stats.visited, places) { state.stats.visited.mapNotNull { places[it]?.let { p -> LatLon(p.lat, p.lon) } } }
-    val home = markers.firstOrNull()
-    val drift by if (motion.ambientEnabled) {
-        rememberInfiniteTransition(label = "globe").animateFloat(0f, 360f, infiniteRepeatable(tween(90_000, easing = LinearEasing), RepeatMode.Restart), label = "drift")
-    } else {
-        remember { mutableFloatStateOf(0f) }
+}
+
+/** The big numbers, and what they add up to. */
+@Composable
+private fun Headline(s: PassportStats) {
+    val spacing = ContrailTheme.spacing
+    val colors = ContrailTheme.colors
+    GlassSurface(Modifier.fillMaxWidth(), shape = ContrailTheme.shapes.medium) {
+        Box(Modifier.matchParentSize().background(Brush.linearGradient(listOf(colors.passport.copy(alpha = 0.16f), Color.Transparent, colors.accent.copy(alpha = 0.08f)))))
+        Column(Modifier.padding(spacing.lg), verticalArrangement = Arrangement.spacedBy(spacing.lg)) {
+            Row(verticalAlignment = Alignment.Bottom) {
+                Odometer(if (s.flights == 1) "Flight" else "Flights", s.flights.toLong(), Modifier.weight(1f), big = true)
+                Odometer("Kilometres", s.distanceKm)
+            }
+            Row {
+                Odometer("Hours aloft", s.minutesAloft / 60, Modifier.weight(1f))
+                Odometer("Countries", s.countries.size.toLong(), Modifier.weight(1f))
+                Odometer("Airports", (s.visited.size + s.transited.size).toLong(), Modifier.weight(1f))
+            }
+            Row {
+                Odometer("Airlines", s.airlines.size.toLong(), Modifier.weight(1f))
+                Odometer("Types", s.types.size.toLong(), Modifier.weight(1f))
+                Odometer("Tails", s.tails.size.toLong(), Modifier.weight(1f))
+            }
+            Row(Modifier.horizontalScroll(rememberScrollState()), horizontalArrangement = Arrangement.spacedBy(spacing.sm)) {
+                FactChip(String.format(Locale.US, "%.1f× around the Earth", s.laps), colors.passport)
+                FactChip(String.format(Locale.US, "%.1f%% of the way to the Moon", s.distanceKm * 100f / PassportInsights.MOON_KM), colors.accent)
+                val days = s.minutesAloft / 1_440f
+                if (days >= 0.5f) FactChip(String.format(Locale.US, "%.1f days in the air", days), colors.statusOnTime)
+            }
+        }
     }
-    var dragged by remember { mutableFloatStateOf(0f) }
-    val bloom = remember { Animatable(if (motion.reduced) 1f else 0f) }
-    LaunchedEffect(arcs.size) { if (!motion.reduced) { bloom.snapTo(0f); bloom.animateTo(1f, tween(2_200, easing = FastOutSlowInEasing)) } }
-    GlassSurface(Modifier.fillMaxWidth(), glow = colors.passport.copy(alpha = 0.6f)) {
-        Box(Modifier.fillMaxWidth().aspectRatio(1.1f).pointerInput(Unit) {
-            detectHorizontalDragGestures { _, dx -> dragged -= dx * 0.35f }
-        }) {
-            val startLon = (home?.lon?.toFloat() ?: -40f) + 50f
-            DottedGlobe(
-                arcs = arcs.mapIndexed { i, a -> MapArc(a, progress = (bloom.value * (arcs.size + 2) - i * 0.6f).coerceIn(0f, 1f) * 1f) },
-                centerLon = startLon + drift + dragged,
-                centerLat = (home?.lat?.toFloat() ?: 25f).coerceIn(-20f, 45f),
-                markers = markers,
-                modifier = Modifier.fillMaxSize().padding(ContrailTheme.spacing.lg),
+}
+
+@Composable
+private fun FactChip(text: String, tint: Color) {
+    Box(
+        Modifier
+            .clip(ContrailTheme.shapes.chip)
+            .background(tint.copy(alpha = 0.12f))
+            .border(ContrailTheme.sizes.hairline, tint.copy(alpha = 0.5f), ContrailTheme.shapes.chip)
+            .padding(horizontal = ContrailTheme.spacing.md, vertical = ContrailTheme.spacing.xs),
+    ) { Text(text, style = ContrailTheme.type.label, color = ContrailTheme.colors.textPrimary, maxLines = 1) }
+}
+
+/** Your three latest flights, and the way into the full logbook. */
+@Composable
+private fun LogbookPreview(s: PassportStats, places: Map<String, AirportInfo>, actions: PassportActions) {
+    val spacing = ContrailTheme.spacing
+    val colors = ContrailTheme.colors
+    Column(verticalArrangement = Arrangement.spacedBy(spacing.sm)) {
+        Row(verticalAlignment = Alignment.CenterVertically) {
+            Eyebrow("Logbook", Modifier.weight(1f))
+            Text(
+                "All ${s.flights} flights",
+                style = ContrailTheme.type.label,
+                color = colors.passport,
+                modifier = Modifier.clip(ContrailTheme.shapes.chip).clickable(role = Role.Button, onClick = actions.onLogbook).padding(spacing.xs),
             )
         }
+        s.flown.take(3).forEach { f -> LogbookRow(f, places, onClick = { actions.onFlight(f.id) }) }
     }
 }
 
+/** The latest stamps in a row; tap to open the stamp book. */
 @Composable
-private fun Totals(s: PassportStats) {
+private fun StampStrip(stamps: List<Stamp>, onOpen: () -> Unit) {
     val spacing = ContrailTheme.spacing
-    GlassSurface(Modifier.fillMaxWidth(), shape = ContrailTheme.shapes.medium) {
-        Column(Modifier.padding(spacing.lg), verticalArrangement = Arrangement.spacedBy(spacing.lg)) {
-            Row {
-                Odometer("Flights", s.flights.toLong(), Modifier.weight(1f))
-                Odometer("Kilometres", s.distanceKm, Modifier.weight(1.4f))
-                Odometer("Hours aloft", s.minutesAloft / 60, Modifier.weight(1f))
+    val colors = ContrailTheme.colors
+    val interaction = remember { MutableInteractionSource() }
+    GlassSurface(
+        Modifier.fillMaxWidth().pressScale(interaction).clickable(interaction, indication = null, role = Role.Button, onClick = onOpen),
+        shape = ContrailTheme.shapes.medium,
+    ) {
+        Column(Modifier.padding(vertical = spacing.lg), verticalArrangement = Arrangement.spacedBy(spacing.sm)) {
+            Row(Modifier.padding(horizontal = spacing.lg), verticalAlignment = Alignment.CenterVertically) {
+                Eyebrow("Passport stamps", Modifier.weight(1f))
+                Text("${stamps.size}", style = ContrailTheme.type.numeric, color = colors.passport)
+                Icon(ContrailIcons.ChevronRight, "Open stamp book", tint = colors.passport, modifier = Modifier.padding(start = spacing.xs).size(18.dp))
             }
-            Row {
-                Odometer("Airports", s.visited.size.toLong(), Modifier.weight(1f))
-                Odometer("Countries", s.countries.size.toLong(), Modifier.weight(1.4f))
-                Odometer("Airlines", s.airlines.size.toLong(), Modifier.weight(1f))
-            }
-            Row {
-                Odometer("Types", s.types.size.toLong(), Modifier.weight(1f))
-                Odometer("Tails", s.tails.size.toLong(), Modifier.weight(1.4f))
-                Odometer("Transits", s.transited.size.toLong(), Modifier.weight(1f))
-            }
-            if (s.laps >= 0.1f) {
-                Text(
-                    String.format(Locale.US, "That's %.1f× around the Earth.", s.laps),
-                    style = ContrailTheme.type.bodySmall,
-                    color = ContrailTheme.colors.passport,
-                )
+            Row(
+                Modifier.horizontalScroll(rememberScrollState()).padding(horizontal = spacing.md),
+                horizontalArrangement = Arrangement.spacedBy(spacing.xs),
+            ) {
+                stamps.asReversed().take(12).forEachIndexed { i, st ->
+                    PassportStamp(st, Modifier.size(104.dp), delayMs = 250L + i * 110L)
+                }
             }
         }
     }

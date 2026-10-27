@@ -259,6 +259,66 @@ object ContrailIcons {
         strokeIcon("Calendar", "M5 6h14a1 1 0 0 1 1 1v12a1 1 0 0 1-1 1H5a1 1 0 0 1-1-1V7a1 1 0 0 1 1-1z", "M4 10h16", "M8 4v3M16 4v3")
     }
 
+    /** A tray with an arrow dropping in: bring flights in from another app. */
+    val Import: ImageVector by lazy {
+        strokeIcon("Import", "M12 3.5v10.5", "M7.8 10l4.2 4.2 4.2-4.2", "M4 14.5v3.5A2 2 0 0 0 6 20h12a2 2 0 0 0 2-2v-3.5")
+    }
+
+    val Seat: ImageVector by lazy {
+        strokeIcon(
+            "Seat",
+            "M7.5 4.5h3.2a1 1 0 0 1 1 .9l.9 8.1h4.2a2 2 0 0 1 2 2v.5",
+            "M6.6 5.4l1.3 9.6a2 2 0 0 0 2 1.7h8.6",
+            "M9 16.8l-1.2 3.4M16.6 16.8l1.2 3.4",
+        )
+    }
+
+    val Medal: ImageVector by lazy {
+        strokeIcon(
+            "Medal",
+            "M8 3.5l2.6 6M16 3.5l-2.6 6",
+            "M12 9.5a5 5 0 1 1 0 10 5 5 0 0 1 0-10z",
+            "M12 12.2l.9 1.8 2 .3-1.4 1.4.3 2-1.8-.9-1.8.9.3-2-1.4-1.4 2-.3z",
+        )
+    }
+
+    val Stamp: ImageVector by lazy {
+        strokeIcon(
+            "Stamp",
+            "M9.5 11V8.2a2.5 2.5 0 1 1 5 0V11",
+            "M5 11.5h14a1 1 0 0 1 1 1V15H4v-2.5a1 1 0 0 1 1-1z",
+            "M5.5 18.5h13",
+        )
+    }
+
+    val Play: ImageVector by lazy {
+        strokeIcon("Play", filled = listOf("M8 5.2v13.6a.8.8 0 0 0 1.2.7l10.6-6.8a.8.8 0 0 0 0-1.4L9.2 4.5A.8.8 0 0 0 8 5.2z"))
+    }
+
+    val Pause: ImageVector by lazy {
+        strokeIcon("Pause", filled = listOf("M7 5h3.2v14H7zM13.8 5H17v14h-3.2z"))
+    }
+
+    val Share: ImageVector by lazy {
+        strokeIcon("Share", "M12 14.5V3.5", "M8 7.2l4-3.9 4 3.9", "M7 10.5H6a2 2 0 0 0-2 2V18a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2v-5.5a2 2 0 0 0-2-2h-1")
+    }
+
+    val Compass: ImageVector by lazy {
+        strokeIcon(
+            "Compass",
+            "M12 3a9 9 0 1 1 0 18 9 9 0 0 1 0-18z",
+            filled = listOf("M15.6 8.4l-2.2 5-5 2.2 2.2-5z"),
+        )
+    }
+
+    val Bell: ImageVector by lazy {
+        strokeIcon("Bell", "M6 16.5V11a6 6 0 1 1 12 0v5.5l1.5 1.5h-15z", "M10 20.2a2.2 2.2 0 0 0 4 0")
+    }
+
+    val List: ImageVector by lazy {
+        strokeIcon("List", "M9 6.5h11M9 12h11M9 17.5h11", filled = listOf("M4.6 5.4a1.1 1.1 0 1 1 0 2.2 1.1 1.1 0 0 1 0-2.2zM4.6 10.9a1.1 1.1 0 1 1 0 2.2 1.1 1.1 0 0 1 0-2.2zM4.6 16.4a1.1 1.1 0 1 1 0 2.2 1.1 1.1 0 0 1 0-2.2z"))
+    }
+
     private fun strokeIcon(
         name: String,
         vararg strokes: String,

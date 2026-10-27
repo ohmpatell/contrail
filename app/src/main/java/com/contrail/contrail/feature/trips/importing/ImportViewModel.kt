@@ -177,7 +177,7 @@ class ImportViewModel @Inject constructor(
         viewModelScope.launch {
             directory = airports.directory()
             // Whatever was shared to Contrail, now or while this screen is open.
-            inbox.shared.collect { if (it != null) inbox.take()?.let { t -> readShared(t) } }
+            inbox.shared.collect { if (it != null && !LogImportViewModel.isLog(it.mime, it.uris)) inbox.take()?.let { t -> readShared(t) } }
         }
     }
 

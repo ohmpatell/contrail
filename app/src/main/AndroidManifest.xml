@@ -38,13 +38,17 @@
 
                 <category android:name="android.intent.category.LAUNCHER" />
             </intent-filter>
-            <!-- "Share to Contrail": e-ticket PDFs, boarding-pass screenshots and confirmation text. -->
+            <!-- "Share to Contrail": e-ticket PDFs, boarding-pass screenshots, confirmation text and flight logs. -->
             <intent-filter android:label="@string/share_label">
                 <action android:name="android.intent.action.SEND" />
                 <category android:name="android.intent.category.DEFAULT" />
                 <data android:mimeType="application/pdf" />
                 <data android:mimeType="image/*" />
                 <data android:mimeType="text/plain" />
+                <!-- Flight-log exports from myFlightradar24, Flighty and OpenFlights. -->
+                <data android:mimeType="text/csv" />
+                <data android:mimeType="text/comma-separated-values" />
+                <data android:mimeType="application/csv" />
             </intent-filter>
             <intent-filter android:label="@string/share_label">
                 <action android:name="android.intent.action.SEND_MULTIPLE" />

@@ -85,7 +85,7 @@ class ScreenshotTests {
                 TopLevelDestination.Trips -> TripsScreen(tripsState, {}, {}, {}, fixedNow = TripFixtures.now)
                 TopLevelDestination.Radar -> RadarScreen(radar, RadarActions()) { FakeRadarBackdrop(it) }
                 TopLevelDestination.Sky -> SkyScreen()
-                TopLevelDestination.Passport -> PassportScreen(passportState, {}, {})
+                TopLevelDestination.Passport -> PassportScreen(passportState, com.contrail.contrail.feature.passport.PassportActions())
                 TopLevelDestination.Airports -> AirportsScreen(airportsState, {}, {}, {}, {}, {}, nowMs = NOW)
             }
         }

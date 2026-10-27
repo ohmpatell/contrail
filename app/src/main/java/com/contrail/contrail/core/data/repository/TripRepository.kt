@@ -100,31 +100,26 @@ class TripRepository @Inject constructor(
     /**
      * Saves one flight. With [segmentId] it replaces that flight in place. Otherwise it joins
      * the trip whose last flight lands at its origin up to two days before it leaves (a
-     * connection or stopover), or starts a new trip. Returns the trip id.
+     * connection or stopover), or starts a new trip. Returns the flight's id.
      */
     suspend fun saveFlight(flight: FlightSegment, title: String, segmentId: Long = 0): Long = db.withTransaction {
         if (segmentId != 0L) {
             val old = dao.segment(segmentId) ?: return@withTransaction 0L
             dao.updateSegment(flight.copy(id = segmentId, tripId = old.tripId, ordinal = old.ordinal).toEntity())
             renumber(old.tripId)
-            return@withTransaction old.tripId
+            return@withTransaction segmentId
         }
         val all = dao.allSegments()
         val dep = flight.departure.toEpochMilli()
         val joins = all.groupBy { it.tripId }.values.mapNotNull { segs -> segs.maxByOrNull { it.arrivalUtcMs } }
             .filter { last -> last.destination == flight.origin && dep - last.arrivalUtcMs in 0..TWO_DAYS_MS }
             .maxByOrNull { it.arrivalUtcMs }
-        if (joins != null) {
-            dao.insertSegments(listOf(flight.copy(id = 0, tripId = joins.tripId, ordinal = Int.MAX_VALUE).toEntity()))
-            renumber(joins.tripId)
-            joins.tripId
-        } else {
-            dao.insertTripWithSegments(
-                TripEntity(title = title, pnr = null, passengerName = null, source = ImportSource.Manual.name, createdAtMs = clock.nowMs()),
-                listOf(flight.copy(id = 0, ordinal = 0).toEntity()),
-                emptySet(),
-            )
-        }
+        val tripId = joins?.tripId ?: dao.insertTrip(
+            TripEntity(title = title, pnr = null, passengerName = null, source = ImportSource.Manual.name, createdAtMs = clock.nowMs()),
+        )
+        val id = dao.insertSegments(listOf(flight.copy(id = 0, tripId = tripId, ordinal = Int.MAX_VALUE).toEntity())).first()
+        renumber(tripId)
+        id
     }
 
     /** Deletes one flight; a trip left with no flights goes too. */

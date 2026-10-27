@@ -35,6 +35,15 @@ import com.contrail.contrail.feature.sky.SkyScreen
 import com.contrail.contrail.feature.trips.TripDetailRoute
 import com.contrail.contrail.feature.trips.TripsRoute
 import com.contrail.contrail.feature.trips.importing.ImportRoute
+import com.contrail.contrail.feature.passport.LogbookRoute
+import com.contrail.contrail.feature.passport.StampBookRoute
+import com.contrail.contrail.navigation.StampBookKey
+import com.contrail.contrail.feature.trips.add.AddFlightRoute
+import com.contrail.contrail.feature.trips.importing.LogImportRoute
+import com.contrail.contrail.feature.trips.importing.LogImportViewModel
+import com.contrail.contrail.navigation.AddFlightKey
+import com.contrail.contrail.navigation.LogImportKey
+import com.contrail.contrail.navigation.LogbookKey
 import com.contrail.contrail.navigation.FlightKey
 import com.contrail.contrail.navigation.ImportKey
 import com.contrail.contrail.navigation.LoungeKey
@@ -98,6 +107,10 @@ private fun ContrailNavHost(inbox: SharedTicketInbox) {
             override fun openImport() = push(ImportKey)
             override fun openLounge(segmentId: Long, phase: String, visitId: Long) = push(LoungeKey(segmentId, phase, visitId))
             override fun openYearInReview(year: Int) = push(YearInReviewKey(year))
+            override fun openAddFlight(segmentId: Long) = push(AddFlightKey(segmentId))
+            override fun openLogImport() = push(LogImportKey)
+            override fun openLogbook() = push(LogbookKey)
+            override fun openStampBook() = push(StampBookKey)
             override fun back() {
                 if (backStack.size > 1) backStack.removeAt(backStack.lastIndex)
             }
@@ -109,7 +122,12 @@ private fun ContrailNavHost(inbox: SharedTicketInbox) {
     }
     // Something shared to Contrail opens the import screen, which picks it up from the inbox.
     LaunchedEffect(inbox) {
-        inbox.shared.collect { if (it != null && backStack.lastOrNull() != ImportKey) backStack.add(ImportKey) }
+        inbox.shared.collect { shared ->
+            if (shared == null) return@collect
+            // Flight-log CSVs go to the log importer; tickets to the ticket importer.
+            val key: NavKey = if (LogImportViewModel.isLog(shared.mime, shared.uris)) LogImportKey else ImportKey
+            if (backStack.lastOrNull() != key) backStack.add(key)
+        }
     }
     CompositionLocalProvider(LocalNavigator provides navigator) {
         NavDisplay(
@@ -140,6 +158,10 @@ private fun ContrailNavHost(inbox: SharedTicketInbox) {
                 entry<FlightKey>(metadata = DetailOverlayStrategy.detail) { FlightRoute(it.segmentId) }
                 entry<LoungeKey>(metadata = DetailOverlayStrategy.detail) { LoungeRoute(it.segmentId, it.phase, it.visitId) }
                 entry<YearInReviewKey>(metadata = DetailOverlayStrategy.detail) { YearInReviewRoute(it.year) }
+                entry<AddFlightKey>(metadata = DetailOverlayStrategy.detail) { AddFlightRoute(it.segmentId) }
+                entry<LogImportKey>(metadata = DetailOverlayStrategy.detail) { LogImportRoute() }
+                entry<LogbookKey>(metadata = DetailOverlayStrategy.detail) { LogbookRoute() }
+                entry<StampBookKey>(metadata = DetailOverlayStrategy.detail) { StampBookRoute() }
             },
         )
     }

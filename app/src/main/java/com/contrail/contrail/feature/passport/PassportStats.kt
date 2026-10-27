@@ -50,6 +50,11 @@ data class PassportStats(
     val collection: List<CollectedType> = emptyList(),
     val lounges: LoungeStats = LoungeStats(),
     val years: List<Int> = emptyList(),
+    /** Every landed flight, newest first. */
+    val flown: List<FlightSegment> = emptyList(),
+    val insights: Insights = Insights(),
+    val stamps: List<Stamp> = emptyList(),
+    val achievements: List<Achievement> = emptyList(),
 ) {
     /** Times around the equator. */
     val laps: Float get() = distanceKm / 40_075f
@@ -79,7 +84,14 @@ object PassportCalculator {
         fun inYear(s: FlightSegment) = year == null || s.departureLocal.year == year
         val flown = trips.flatMap { t -> t.segments.filter { it.arrival.isBefore(now) && inYear(it) }.map { t to it } }
         val segments = flown.map { it.second }
-        if (segments.isEmpty()) return PassportStats(lounges = loungeStats(visits.filter { year == null || it.date.year == year }, favouriteLounges), years = years(trips, now))
+        val yearVisits = visits.filter { year == null || it.date.year == year }
+        if (segments.isEmpty()) {
+            return PassportStats(
+                lounges = loungeStats(yearVisits, favouriteLounges),
+                years = years(trips, now),
+                achievements = PassportInsights.achievements(trips, emptyList(), places, Insights(), 0, 0, yearVisits),
+            )
+        }
 
         val visited = LinkedHashSet<String>()
         val transited = LinkedHashSet<String>()
@@ -114,13 +126,15 @@ object PassportCalculator {
                 on.minByOrNull { it.departure }?.let { Airlines.byIata(it.airlineIata)?.icao },
             )
         }
+        val insights = PassportInsights.insights(segments, places)
+        val countries = visited.mapNotNull { places[it]?.countryIso }.toSet()
         return PassportStats(
             flights = segments.size,
             distanceKm = distance.toLong(),
             minutesAloft = segments.sumOf { it.duration.toMinutes() },
             visited = visited.toList(),
             transited = transited.toList(),
-            countries = visited.mapNotNull { places[it]?.countryIso }.toSet(),
+            countries = countries,
             airlines = segments.map { it.airlineIata }.toSet(),
             types = types.toSet(),
             tails = segments.mapNotNull { it.tail }.toSet(),
@@ -132,8 +146,12 @@ object PassportCalculator {
             busiestMonth = segments.groupingBy { it.departureLocal.month }.eachCount().maxByOrNull { it.value }?.toPair(),
             legs = segments.map { it.origin to it.destination }.distinct(),
             collection = collection,
-            lounges = loungeStats(visits.filter { year == null || it.date.year == year }, favouriteLounges),
+            lounges = loungeStats(yearVisits, favouriteLounges),
             years = years(trips, now),
+            flown = segments.sortedByDescending { it.departure },
+            insights = insights,
+            stamps = PassportInsights.stamps(trips, segments.map { it.id }.toSet(), places),
+            achievements = PassportInsights.achievements(trips, segments, places, insights, distance.toLong(), countries.size, yearVisits),
         )
     }
 

@@ -120,6 +120,8 @@ fun ImportRoute(viewModel: ImportViewModel = hiltViewModel()) {
         onPdf = { pdf.launch(arrayOf("application/pdf")) },
         onPaste = { viewModel.choose(ImportStage.Paste) },
         onManual = { viewModel.choose(ImportStage.Review) },
+        onAddFlight = { nav.back(); nav.openAddFlight() },
+        onLogImport = { nav.back(); nav.openLogImport() },
         onPastedChange = viewModel::setPasted,
         onReadPasted = viewModel::readPasted,
         onClipboard = {
@@ -146,6 +148,8 @@ fun ImportScreen(
     onPdf: () -> Unit = {},
     onPaste: () -> Unit = {},
     onManual: () -> Unit = {},
+    onAddFlight: () -> Unit = {},
+    onLogImport: () -> Unit = {},
     onPastedChange: (String) -> Unit = {},
     onReadPasted: () -> Unit = {},
     onClipboard: () -> Unit = {},
@@ -159,7 +163,7 @@ fun ImportScreen(
     onSave: () -> Unit = {},
 ) {
     val title = when (state.stage) {
-        ImportStage.Choose -> "Add a trip"
+        ImportStage.Choose -> "Add flights"
         ImportStage.Paste -> "Paste your booking"
         ImportStage.Scan -> "Scan a boarding pass"
         ImportStage.Working -> "Reading your ticket"
@@ -167,7 +171,11 @@ fun ImportScreen(
     }
     DetailScaffold(
         title = title,
-        eyebrow = if (state.stage == ImportStage.Review) "Nothing is saved until you tap Save" else "Read on your phone, never uploaded",
+        eyebrow = when (state.stage) {
+            ImportStage.Review -> "Nothing is saved until you tap Save"
+            ImportStage.Choose -> "Past flights fill your Passport"
+            else -> "Read on your phone, never uploaded"
+        },
         onBack = onBack,
     ) {
         state.message?.let { Notice(it) }
@@ -179,7 +187,7 @@ fun ImportScreen(
         ) { stage ->
             Column(verticalArrangement = Arrangement.spacedBy(ContrailTheme.spacing.lg)) {
                 when (stage) {
-                    ImportStage.Choose -> ChooseSource(onScan, onPhoto, onPdf, onPaste, onManual)
+                    ImportStage.Choose -> ChooseSource(onScan, onPhoto, onPdf, onPaste, onAddFlight, onLogImport)
                     ImportStage.Paste -> PasteBox(state.pasted, onPastedChange, onReadPasted, onClipboard)
                     ImportStage.Scan -> ScanStage(onBarcode)
                     ImportStage.Working -> Working(state.working ?: "Reading")
@@ -208,46 +216,61 @@ private fun Notice(text: String) {
     }
 }
 
-@OptIn(ExperimentalLayoutApi::class)
 @Composable
-private fun ChooseSource(onScan: () -> Unit, onPhoto: () -> Unit, onPdf: () -> Unit, onPaste: () -> Unit, onManual: () -> Unit) {
+private fun ChooseSource(onScan: () -> Unit, onPhoto: () -> Unit, onPdf: () -> Unit, onPaste: () -> Unit, onAddFlight: () -> Unit, onLogImport: () -> Unit) {
     val spacing = ContrailTheme.spacing
     val colors = ContrailTheme.colors
     Column(verticalArrangement = Arrangement.spacedBy(spacing.md)) {
-        Row(horizontalArrangement = Arrangement.spacedBy(spacing.md)) {
-            RiseIn(0, Modifier.weight(1f)) { SourceTile(ContrailIcons.Scan, "Scan", "Boarding pass barcode, live", colors.accent, onScan) }
-            RiseIn(1, Modifier.weight(1f)) { SourceTile(ContrailIcons.Document, "PDF", "E-ticket or itinerary", colors.passport, onPdf) }
-        }
-        Row(horizontalArrangement = Arrangement.spacedBy(spacing.md)) {
-            RiseIn(2, Modifier.weight(1f)) { SourceTile(ContrailIcons.Image, "Screenshot", "Boarding pass or photo", colors.statusOnTime, onPhoto) }
-            RiseIn(3, Modifier.weight(1f)) { SourceTile(ContrailIcons.Paste, "Paste", "Confirmation email text", colors.statusDelayed, onPaste) }
-        }
-        RiseIn(4) {
-            GlassSurface(
-                Modifier.fillMaxWidth().clickable(role = Role.Button, onClick = onManual),
-                shape = ContrailTheme.shapes.medium,
-            ) {
-                Row(Modifier.padding(spacing.lg), verticalAlignment = Alignment.CenterVertically, horizontalArrangement = Arrangement.spacedBy(spacing.md)) {
-                    Icon(ContrailIcons.Edit, null, tint = colors.textSecondary, modifier = Modifier.size(ContrailTheme.sizes.icon))
-                    Column(Modifier.weight(1f)) {
-                        Text("Enter a flight by hand", style = ContrailTheme.type.title, color = colors.textPrimary)
-                        Text("Type the flight number and Contrail fills in the route.", style = ContrailTheme.type.bodySmall, color = colors.textTertiary)
-                    }
-                    Icon(ContrailIcons.ChevronRight, null, tint = colors.textTertiary, modifier = Modifier.size(18.dp))
-                }
+        RiseIn(0) { HeroTile(ContrailIcons.Plane, "Add a flight", "Flight number and day. Contrail fills in the route, and estimates times you don't know.", colors.accent, onAddFlight) }
+        RiseIn(1) { HeroTile(ContrailIcons.Import, "Import a flight log", "Your whole history from myFlightradar24, Flighty or OpenFlights, in one go.", colors.passport, onLogImport) }
+        RiseIn(2) {
+            Row(Modifier.padding(top = spacing.sm), verticalAlignment = Alignment.CenterVertically) {
+                Eyebrow("From a ticket", Modifier.weight(1f))
+                Tag("Beta", colors.textTertiary)
             }
         }
-        RiseIn(5) {
-            GlassSurface(Modifier.fillMaxWidth(), shape = ContrailTheme.shapes.medium, tint = colors.accent.copy(alpha = 0.06f)) {
-                Column(Modifier.padding(spacing.lg), verticalArrangement = Arrangement.spacedBy(spacing.xs)) {
-                    Eyebrow("Share to Contrail", color = colors.accent)
-                    Text(
-                        "In Gmail, the Etihad app or the Cathay Pacific app, open your e-ticket or boarding pass, tap Share, then Contrail.",
-                        style = ContrailTheme.type.bodySmall,
-                        color = colors.textSecondary,
-                    )
-                }
+        Row(horizontalArrangement = Arrangement.spacedBy(spacing.md)) {
+            RiseIn(3, Modifier.weight(1f)) { SourceTile(ContrailIcons.Scan, "Scan", "Boarding pass barcode", colors.statusAirborne, onScan) }
+            RiseIn(4, Modifier.weight(1f)) { SourceTile(ContrailIcons.Document, "PDF", "E-ticket or itinerary", colors.statusOnTime, onPdf) }
+        }
+        Row(horizontalArrangement = Arrangement.spacedBy(spacing.md)) {
+            RiseIn(5, Modifier.weight(1f)) { SourceTile(ContrailIcons.Image, "Screenshot", "Boarding pass or photo", colors.statusDelayed, onPhoto) }
+            RiseIn(6, Modifier.weight(1f)) { SourceTile(ContrailIcons.Paste, "Paste", "Confirmation email text", colors.textSecondary, onPaste) }
+        }
+        RiseIn(7) {
+            Text(
+                "Barcodes read perfectly. PDFs and screenshots are read on your phone and vary by airline, so you always check them before saving.",
+                style = ContrailTheme.type.bodySmall,
+                color = colors.textTertiary,
+            )
+        }
+    }
+}
+
+/** A wide glowing tile for the two main ways in. */
+@Composable
+private fun HeroTile(icon: ImageVector, title: String, body: String, tint: Color, onClick: () -> Unit) {
+    val spacing = ContrailTheme.spacing
+    val colors = ContrailTheme.colors
+    val interaction = remember { MutableInteractionSource() }
+    GlassSurface(
+        Modifier
+            .fillMaxWidth()
+            .pressScale(interaction)
+            .clickable(interaction, indication = null, role = Role.Button, onClick = onClick),
+        shape = ContrailTheme.shapes.medium,
+        glow = tint.copy(alpha = 0.75f),
+    ) {
+        Box(Modifier.matchParentSize().background(Brush.horizontalGradient(listOf(tint.copy(alpha = 0.22f), Color.Transparent))))
+        Row(Modifier.padding(spacing.lg), verticalAlignment = Alignment.CenterVertically, horizontalArrangement = Arrangement.spacedBy(spacing.lg)) {
+            Box(Modifier.size(52.dp).clip(ContrailTheme.shapes.small).background(tint.copy(alpha = 0.18f)), contentAlignment = Alignment.Center) {
+                Icon(icon, null, tint = tint, modifier = Modifier.size(ContrailTheme.sizes.iconLarge))
             }
+            Column(Modifier.weight(1f), verticalArrangement = Arrangement.spacedBy(spacing.xxs)) {
+                Text(title, style = ContrailTheme.type.headline, color = colors.textPrimary)
+                Text(body, style = ContrailTheme.type.bodySmall, color = colors.textSecondary)
+            }
+            Icon(ContrailIcons.ChevronRight, null, tint = tint, modifier = Modifier.size(20.dp))
         }
     }
 }

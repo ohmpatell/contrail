@@ -46,6 +46,20 @@ data class LoungeKey(val segmentId: Long, val phase: String, val visitId: Long =
 @Serializable
 data class YearInReviewKey(val year: Int) : NavKey
 
+/** Add a flight by hand; [segmentId] other than 0 edits that flight. */
+@Serializable
+data class AddFlightKey(val segmentId: Long = 0) : NavKey
+
+@Serializable
+data object LogImportKey : NavKey
+
+/** Every flight you've taken, newest first. */
+@Serializable
+data object LogbookKey : NavKey
+
+@Serializable
+data object StampBookKey : NavKey
+
 /** How any screen opens a detail page or goes back. */
 interface Navigator {
     fun openAircraft(hex: String)
@@ -56,6 +70,10 @@ interface Navigator {
     fun openImport()
     fun openLounge(segmentId: Long, phase: String, visitId: Long = 0)
     fun openYearInReview(year: Int)
+    fun openAddFlight(segmentId: Long = 0)
+    fun openLogImport()
+    fun openLogbook()
+    fun openStampBook()
     fun back()
 }
 
@@ -69,6 +87,10 @@ val LocalNavigator = staticCompositionLocalOf<Navigator> {
         override fun openImport() = Unit
         override fun openLounge(segmentId: Long, phase: String, visitId: Long) = Unit
         override fun openYearInReview(year: Int) = Unit
+        override fun openAddFlight(segmentId: Long) = Unit
+        override fun openLogImport() = Unit
+        override fun openLogbook() = Unit
+        override fun openStampBook() = Unit
         override fun back() = Unit
     }
 }
