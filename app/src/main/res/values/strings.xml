@@ -1,4 +1,11 @@
 <resources>
     <string name="app_name">Contrail</string>
     <string name="share_label">Add to Contrail</string>
+    <string name="alerts_channel">Overhead alerts</string>
+    <string name="widget_next_flight">Next flight</string>
+    <string name="widget_next_flight_description">Countdown to your next flight</string>
+    <string name="widget_overhead">Overhead</string>
+    <string name="widget_overhead_description">The closest plane to you right now</string>
+    <string name="widget_passport">Passport</string>
+    <string name="widget_passport_description">Your lifetime flying at a glance</string>
 </resources>

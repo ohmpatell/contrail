@@ -338,16 +338,16 @@ private fun EmptyTrips(onImport: () -> Unit) {
             }
             Text("Where to next?", style = ContrailTheme.type.displaySmall, color = colors.textPrimary)
             Text(
-                "Import a ticket and Contrail fills in every flight, connection, seat and terminal. It all stays on your phone.",
+                "Add a flight by number and Contrail fills in the route, the aircraft and the countdown. Bring your past flights from myFlightradar24 to fill your Passport.",
                 style = ContrailTheme.type.body,
                 color = colors.textSecondary,
                 textAlign = TextAlign.Center,
             )
-            AccentButton("Import a ticket", onImport, icon = ContrailIcons.Plus)
+            AccentButton("Add flights", onImport, icon = ContrailIcons.Plus)
             Row(horizontalArrangement = Arrangement.spacedBy(spacing.sm), verticalAlignment = Alignment.CenterVertically) {
                 Icon(ContrailIcons.Sparkle, null, tint = colors.textTertiary, modifier = Modifier.size(14.dp))
                 Text(
-                    "Or share a PDF or boarding pass screenshot to Contrail from any app.",
+                    "Or share a boarding pass, e-ticket or flight-log CSV to Contrail from any app.",
                     style = ContrailTheme.type.bodySmall,
                     color = colors.textTertiary,
                 )

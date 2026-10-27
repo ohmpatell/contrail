@@ -31,7 +31,9 @@ import com.contrail.contrail.feature.trips.flight.FlightRoute
 import com.contrail.contrail.feature.trips.lounge.LoungeRoute
 import com.contrail.contrail.feature.radar.RadarRoute
 import com.contrail.contrail.feature.settings.SettingsRoute
-import com.contrail.contrail.feature.sky.SkyScreen
+import com.contrail.contrail.feature.sky.SkyRoute
+import com.contrail.contrail.feature.sky.SkyViewRoute
+import com.contrail.contrail.navigation.SkyViewKey
 import com.contrail.contrail.feature.trips.TripDetailRoute
 import com.contrail.contrail.feature.trips.TripsRoute
 import com.contrail.contrail.feature.trips.importing.ImportRoute
@@ -57,6 +59,7 @@ import com.contrail.contrail.navigation.LocalNavigator
 import com.contrail.contrail.navigation.Navigator
 import com.contrail.contrail.navigation.SettingsKey
 import com.contrail.contrail.navigation.ShellKey
+import com.contrail.contrail.navigation.TabRequests
 import com.contrail.contrail.navigation.TopLevelDestination
 import dagger.hilt.android.AndroidEntryPoint
 import javax.inject.Inject
@@ -73,10 +76,19 @@ class MainActivity : ComponentActivity() {
             navigationBarStyle = SystemBarStyle.dark(android.graphics.Color.TRANSPARENT),
         )
         if (savedInstanceState == null) receiveShare(intent)
-        addOnNewIntentListener { receiveShare(it) }
+        TabRequests.request(intent?.getStringExtra(EXTRA_TAB))
+        addOnNewIntentListener {
+            receiveShare(it)
+            TabRequests.request(it.getStringExtra(EXTRA_TAB))
+        }
         setContent {
             ContrailTheme { ContrailNavHost(inbox) }
         }
+    }
+
+    companion object {
+        /** Opens on this tab (a TopLevelDestination name), from notifications and widgets. */
+        const val EXTRA_TAB = "contrail.tab"
     }
 
     /** "Share to Contrail" from another app: hand the files or text to the import screen. */
@@ -111,6 +123,7 @@ private fun ContrailNavHost(inbox: SharedTicketInbox) {
             override fun openLogImport() = push(LogImportKey)
             override fun openLogbook() = push(LogbookKey)
             override fun openStampBook() = push(StampBookKey)
+            override fun openSkyView() = push(SkyViewKey)
             override fun back() {
                 if (backStack.size > 1) backStack.removeAt(backStack.lastIndex)
             }
@@ -144,7 +157,7 @@ private fun ContrailNavHost(inbox: SharedTicketInbox) {
                         when (tab) {
                             TopLevelDestination.Trips -> TripsRoute()
                             TopLevelDestination.Radar -> RadarRoute(onOpenAircraft = navigator::openAircraft)
-                            TopLevelDestination.Sky -> SkyScreen()
+                            TopLevelDestination.Sky -> SkyRoute()
                             TopLevelDestination.Airports -> AirportsRoute()
                             TopLevelDestination.Passport -> PassportRoute()
                         }
@@ -162,6 +175,7 @@ private fun ContrailNavHost(inbox: SharedTicketInbox) {
                 entry<LogImportKey>(metadata = DetailOverlayStrategy.detail) { LogImportRoute() }
                 entry<LogbookKey>(metadata = DetailOverlayStrategy.detail) { LogbookRoute() }
                 entry<StampBookKey>(metadata = DetailOverlayStrategy.detail) { StampBookRoute() }
+                entry<SkyViewKey>(metadata = DetailOverlayStrategy.detail) { SkyViewRoute() }
             },
         )
     }

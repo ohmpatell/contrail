@@ -133,6 +133,12 @@ class AirportRepository @Inject constructor(
 
     @Volatile private var icaoIndex: Map<String, String>? = null
 
+    /** The nearest airport with scheduled service to [p], for naming where you are. */
+    suspend fun nearest(p: com.contrail.contrail.core.common.LatLon): AirportInfo? {
+        directory()
+        return directoryCache.orEmpty().values.minByOrNull { com.contrail.contrail.core.common.Geo.distanceM(p.lat, p.lon, it.lat, it.lon) }
+    }
+
     /** ICAO → IATA as a plain function, for parsers that run off the main thread. */
     suspend fun icaoResolver(): (String) -> String? {
         directory()

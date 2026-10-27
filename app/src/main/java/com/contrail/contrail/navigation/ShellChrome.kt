@@ -13,3 +13,12 @@ class ShellChrome {
 }
 
 val LocalShellChrome = staticCompositionLocalOf { ShellChrome() }
+
+/** Ask the shell to switch tabs from outside Compose: a notification or a widget tap. */
+object TabRequests {
+    val requested = kotlinx.coroutines.flow.MutableStateFlow<TopLevelDestination?>(null)
+
+    fun request(name: String?) {
+        TopLevelDestination.entries.firstOrNull { it.name == name }?.let { requested.value = it }
+    }
+}

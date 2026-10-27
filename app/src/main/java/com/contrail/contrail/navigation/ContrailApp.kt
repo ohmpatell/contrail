@@ -52,6 +52,9 @@ fun ContrailApp(
     val motion = ContrailTheme.motion
     val shell = remember { ShellChrome() }
     val navBarShift by animateFloatAsState(if (shell.navBarHidden) 1f else 0f, motion.gentle(), label = "navBarShift")
+    androidx.compose.runtime.LaunchedEffect(Unit) {
+        TabRequests.requested.collect { tab -> if (tab != null) { selected = tab; TabRequests.requested.value = null } }
+    }
 
     CompositionLocalProvider(
         LocalChromeHaze provides chromeHaze,

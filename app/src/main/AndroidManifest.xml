@@ -10,6 +10,8 @@
     <!-- Live boarding-pass barcode scanning only. -->
     <uses-permission android:name="android.permission.CAMERA" />
     <uses-feature android:name="android.hardware.camera" android:required="false" />
+    <!-- Overhead alerts. Asked for only when you turn alerts on. -->
+    <uses-permission android:name="android.permission.POST_NOTIFICATIONS" />
 
     <application
         android:name=".ContrailApplication"
@@ -57,6 +59,51 @@
                 <data android:mimeType="image/*" />
             </intent-filter>
         </activity>
+        <!-- WorkManager is started by ContrailApplication with Hilt's worker factory. -->
+        <provider
+            android:name="androidx.startup.InitializationProvider"
+            android:authorities="${applicationId}.androidx-startup"
+            android:exported="false"
+            tools:node="merge">
+            <meta-data
+                android:name="androidx.work.WorkManagerInitializer"
+                android:value="androidx.startup"
+                tools:node="remove" />
+        </provider>
+
+        <receiver
+            android:name=".feature.widgets.NextFlightWidgetReceiver"
+            android:exported="true"
+            android:label="@string/widget_next_flight">
+            <intent-filter>
+                <action android:name="android.appwidget.action.APPWIDGET_UPDATE" />
+            </intent-filter>
+            <meta-data
+                android:name="android.appwidget.provider"
+                android:resource="@xml/widget_next_flight" />
+        </receiver>
+        <receiver
+            android:name=".feature.widgets.OverheadWidgetReceiver"
+            android:exported="true"
+            android:label="@string/widget_overhead">
+            <intent-filter>
+                <action android:name="android.appwidget.action.APPWIDGET_UPDATE" />
+            </intent-filter>
+            <meta-data
+                android:name="android.appwidget.provider"
+                android:resource="@xml/widget_overhead" />
+        </receiver>
+        <receiver
+            android:name=".feature.widgets.PassportWidgetReceiver"
+            android:exported="true"
+            android:label="@string/widget_passport">
+            <intent-filter>
+                <action android:name="android.appwidget.action.APPWIDGET_UPDATE" />
+            </intent-filter>
+            <meta-data
+                android:name="android.appwidget.provider"
+                android:resource="@xml/widget_passport" />
+        </receiver>
     </application>
 
 </manifest>

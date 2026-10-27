@@ -228,7 +228,7 @@ object PassportInsights {
     fun maxLat(s: FlightSegment, places: Map<String, AirportInfo>): Double = points(s, places)?.maxOf { abs(it.lat) } ?: 0.0
 
     fun crossesDateLine(s: FlightSegment, places: Map<String, AirportInfo>): Boolean =
-        points(s, places)?.zipWithNext()?.any { (p, q) -> abs(p.lon - q.lon) > 180 } ?: false
+        points(s, places)?.map { Geo.normalizeLon(it.lon) }?.zipWithNext()?.any { (p, q) -> abs(p - q) > 180 } ?: false
 }
 
 /** Country (ISO 3166 alpha-2) → continent, for the Five continents badge and the stamp book. */

@@ -12,6 +12,7 @@ import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.offset
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
+import androidx.compose.material3.Icon
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.LaunchedEffect
@@ -41,6 +42,7 @@ import com.contrail.contrail.core.designsystem.component.AccentButton
 import com.contrail.contrail.core.designsystem.component.DetailScaffold
 import com.contrail.contrail.core.designsystem.component.Eyebrow
 import com.contrail.contrail.core.designsystem.component.GlassSurface
+import com.contrail.contrail.core.designsystem.component.GlassIconButton
 import com.contrail.contrail.core.designsystem.component.LivePulse
 import com.contrail.contrail.core.designsystem.component.RarityBadge
 import com.contrail.contrail.core.designsystem.component.SectionCard
@@ -58,6 +60,8 @@ import com.contrail.contrail.feature.trips.LoungeStrip
 import com.contrail.contrail.feature.trips.Tag
 import com.contrail.contrail.feature.trips.TripFormat
 import com.contrail.contrail.feature.trips.airlineAccent
+import com.contrail.contrail.feature.trips.BoardingPass
+import com.contrail.contrail.feature.trips.PassData
 import com.contrail.contrail.feature.trips.importing.FormField
 import com.contrail.contrail.feature.trips.maps.FlightMap
 import com.contrail.contrail.feature.trips.maps.rememberMapMarkers
@@ -81,6 +85,7 @@ fun FlightRoute(segmentId: Long) {
         onOpenAircraft = nav::openAircraft,
         onLogLounge = { phase -> nav.openLounge(segmentId, phase.name) },
         onOpenVisit = { v -> nav.openLounge(segmentId, v.phase.name, v.id) },
+        onEdit = { nav.openAddFlight(segmentId) },
     )
 }
 
@@ -95,6 +100,7 @@ fun FlightScreen(
     onLogLounge: (LoungePhase) -> Unit,
     onOpenVisit: (LoungeVisit) -> Unit,
     fixedNow: Instant? = null,
+    onEdit: () -> Unit = {},
 ) {
     val s = state.segment
     val now by rememberNow(fixedNow)
@@ -105,14 +111,22 @@ fun FlightScreen(
         eyebrow = s?.let { listOfNotNull(airline?.name, "${TripFormat.city(it.origin, state.places)} → ${TripFormat.city(it.destination, state.places)}").joinToString(" · ") },
         accent = accent,
         onBack = onBack,
+        actions = { GlassIconButton(ContrailIcons.Edit, "Edit flight", onEdit) },
         hero = { s?.let { FlightHero(it, state, now, accent) } },
     ) {
         if (s == null) return@DetailScaffold
-        StatusStrip(s, state, now, accent)
-        Timeline(s, state, now)
+        val flown = s.arrival.isBefore(now) && state.live.aircraft == null
+        if (flown) {
+            FlownCard(s, state, now, accent)
+            BoardingPass(PassData.of(s, state.places), flap = false)
+        } else {
+            StatusStrip(s, state, now, accent)
+            Timeline(s, state, now)
+        }
         AircraftCard(s, state, accent, onSetTail, onOpenAircraft)
-        RotationPanel(s, state.rotation, state.rotationLoading, state.thresholds, state.places, onRefreshRotation, onOpenSettings)
+        if (!flown) RotationPanel(s, state.rotation, state.rotationLoading, state.thresholds, state.places, onRefreshRotation, onOpenSettings)
         BookingCard(s, state)
+        NotesCard(s)
         SectionCard("Lounges") {
             val dep = state.lounges.filter { it.phase == LoungePhase.Departure }
             val arr = state.lounges.filter { it.phase == LoungePhase.Arrival }
@@ -284,6 +298,54 @@ private fun AircraftCard(s: FlightSegment, state: FlightUiState, accent: Color, 
                 uri.openUri("https://www.google.com/search?q=" + java.net.URLEncoder.encode("${airline?.name ?: s.airlineIata} ${AircraftTypes.nameFor(s.aircraftType) ?: ""} seat map", "UTF-8"))
             }, icon = ContrailIcons.ExternalLink, secondary = true, accent = colors.textSecondary)
         }
+    }
+}
+
+/** A flight you've taken: when, how far, and how long ago. */
+@Composable
+private fun FlownCard(s: FlightSegment, state: FlightUiState, now: Instant, accent: Color) {
+    val colors = ContrailTheme.colors
+    val spacing = ContrailTheme.spacing
+    val a = state.places[s.origin]
+    val b = state.places[s.destination]
+    val km = if (a != null && b != null) (Geo.distanceM(a.lat, a.lon, b.lat, b.lon) / 1000).toInt() else null
+    val days = Duration.between(s.arrival, now).toDays()
+    val ago = when {
+        days < 1 -> "today"
+        days < 2 -> "yesterday"
+        days < 60 -> "$days days ago"
+        days < 730 -> "${days / 30} months ago"
+        else -> "${days / 365} years ago"
+    }
+    GlassSurface(Modifier.fillMaxWidth(), shape = ContrailTheme.shapes.medium, glow = accent.copy(alpha = 0.5f)) {
+        Column(Modifier.padding(spacing.lg), verticalArrangement = Arrangement.spacedBy(spacing.md)) {
+            Row(verticalAlignment = Alignment.CenterVertically, horizontalArrangement = Arrangement.spacedBy(spacing.sm)) {
+                Icon(ContrailIcons.Stamp, null, tint = accent, modifier = Modifier.size(20.dp))
+                Text("Flown $ago", style = ContrailTheme.type.headline, color = colors.textPrimary, modifier = Modifier.weight(1f))
+                Tag(TripFormat.day(s.departureLocal), accent)
+            }
+            Row(Modifier.fillMaxWidth()) {
+                StatTile("Distance", km?.let { String.format(Locale.US, "%,d", it) } ?: "—", Modifier.weight(1f), unit = "km")
+                StatTile("Time", TripFormat.duration(s.duration), Modifier.weight(1f))
+                StatTile("Speed", km?.let { String.format(Locale.US, "%,d", (it / (s.duration.toMinutes().coerceAtLeast(1) / 60.0)).toInt()) } ?: "—", Modifier.weight(1f), unit = "km/h")
+            }
+            if (s.timesEstimated) {
+                Text("Times are estimated from the distance: your log didn't have them. Tap edit to add them.", style = ContrailTheme.type.bodySmall, color = colors.textTertiary)
+            }
+        }
+    }
+}
+
+/** Your seat, why you flew and anything you wrote about it. */
+@Composable
+private fun NotesCard(s: FlightSegment) {
+    if (s.note == null && s.reason == null && s.seatType == null) return
+    SectionCard("Notes") {
+        Row(Modifier.fillMaxWidth()) {
+            Field("Seat type", s.seatType?.label, Modifier.weight(1f))
+            Field("Reason", s.reason?.label, Modifier.weight(1f))
+        }
+        s.note?.let { Text(it, style = ContrailTheme.type.body, color = ContrailTheme.colors.textSecondary) }
     }
 }
 

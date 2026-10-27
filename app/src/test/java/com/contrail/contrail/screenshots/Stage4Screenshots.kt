@@ -69,6 +69,28 @@ private val addFlightState = run {
     )
 }
 
+private val skyMe = com.contrail.contrail.core.common.LatLon(43.65, -79.38)
+
+/** A busy evening over Toronto: arrivals into Pearson, overflights, one rare heavy. */
+internal val skyState = run {
+    fun at(brg: Double, km: Double) = com.contrail.contrail.core.common.Geo.destination(skyMe, brg, km * 1000)
+    val traffic = listOf(
+        Triple(at(300.0, 4.2), "ACA112" to "B789", 6_500 to 250f),
+        Triple(at(40.0, 9.0), "UAE241" to "A388", 31_000 to 80f),
+        Triple(at(200.0, 12.0), "WJA1203" to "B38M", 11_000 to 20f),
+        Triple(at(120.0, 16.0), "DAL2210" to "A321", 36_000 to 300f),
+        Triple(at(250.0, 19.0), "POE217" to "DH8D", 4_000 to 60f),
+        Triple(at(10.0, 22.0), "CPA829" to "A35K", 38_000 to 330f),
+    ).mapIndexed { i, (p, id, alt) ->
+        com.contrail.contrail.testing.aircraft(hex = "a0000$i", callsign = id.first, typeCode = id.second, lat = p.lat, lon = p.lon, altitudeFt = alt.first, trackDeg = alt.second, groundSpeedKt = 300f + i * 40)
+    }
+    com.contrail.contrail.feature.sky.SkyUiState(
+        permission = true, me = skyMe, near = "Toronto (YYZ)", radiusKm = 25,
+        contacts = com.contrail.contrail.core.data.sky.SkyGeometry.contacts(skyMe, traffic, 25.0, 0),
+        updatedAtMs = 0, source = "adsb.fi",
+    )
+}
+
 @RunWith(AndroidJUnit4::class)
 @GraphicsMode(GraphicsMode.Mode.NATIVE)
 @Config(qualifiers = "w411dp-h891dp-xxhdpi")
@@ -112,6 +134,21 @@ class Stage4Screenshots {
 
     @Test fun logImport() = snap("log_import_preview") {
         LogImportScreen(LogImportState(stage = LogStage.Preview, preview = logPreview, places = PassportFixtures.places, distanceKm = 312_000), onBack = {})
+    }
+
+    @Config(qualifiers = "w411dp-h2400dp-mdpi")
+    @Test fun sky() = snap("sky_full") { com.contrail.contrail.feature.sky.SkyScreen(skyState, 30f, true, com.contrail.contrail.feature.sky.SkyActions()) }
+
+    @Test fun skyView() = snap("sky_view") {
+        val o = com.contrail.contrail.feature.sky.DeviceOrientation().apply {
+            // Holding the phone up, facing north-east, tilted 25° above the horizon.
+            val yaw = Math.toRadians(30.0)
+            val pitch = Math.toRadians(25.0)
+            forward = com.contrail.contrail.feature.sky.Vec3(kotlin.math.sin(yaw) * kotlin.math.cos(pitch), kotlin.math.cos(yaw) * kotlin.math.cos(pitch), kotlin.math.sin(pitch))
+            right = com.contrail.contrail.feature.sky.Vec3(kotlin.math.cos(yaw), -kotlin.math.sin(yaw), 0.0)
+            up = com.contrail.contrail.feature.sky.Vec3(-kotlin.math.sin(yaw) * kotlin.math.sin(pitch), -kotlin.math.cos(yaw) * kotlin.math.sin(pitch), kotlin.math.cos(pitch))
+        }
+        com.contrail.contrail.feature.sky.SkyViewScreen(skyState, o, camera = false, onBack = {}, onAircraft = {})
     }
 
     @Test fun importHub() = snap("import_hub") { ImportScreen(ImportUiState(), onBack = {}) }
