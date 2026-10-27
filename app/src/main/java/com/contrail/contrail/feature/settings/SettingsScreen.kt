@@ -233,7 +233,7 @@ private fun OpenSkyHelp(state: SettingsUiState) {
     val ready = state.keys.filter { it.service == ApiService.OpenSkyClientId || it.service == ApiService.OpenSkyClientSecret }.all { it.source != KeySource.Missing }
     Text(
         if (ready) "OpenSky is set up: the cockpit-visit planner uses real turnaround history and earlier legs."
-        else "OpenSky (free account): My OpenSky → Account → API Client → Create, then paste the client ID and secret above. Until then the planner shows sample history.",
+        else "OpenSky (free account): My OpenSky → Account → API Client → Create, then paste the client ID and secret above (or paste the whole credentials.json into either one). Until then the planner shows sample history.",
         style = ContrailTheme.type.bodySmall,
         color = if (ready) colors.statusOnTime else colors.textTertiary,
     )

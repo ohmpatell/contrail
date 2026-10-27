@@ -59,9 +59,9 @@ class RotationRepository @Inject constructor(
         var error: String? = null
         val hex = live?.aircraft?.hex ?: tail?.let { t -> runCatching { hexFor(t) }.getOrNull() }
         val legs = hex?.let { h ->
-            runCatching { earlierLegs(h, segment.departure) }.onFailure { error = it.message }.getOrDefault(emptyList())
+            runCatching { earlierLegs(h, segment.departure) }.onFailure { error = friendly(it) }.getOrDefault(emptyList())
         }.orEmpty()
-        val turn = runCatching { turnaround(segment) }.onFailure { error = error ?: it.message }.getOrNull()
+        val turn = runCatching { turnaround(segment) }.onFailure { error = error ?: friendly(it) }.getOrNull()
         return Rotation(false, tail, hex, live, legs, turn, error)
     }
 
@@ -195,3 +195,7 @@ object SampleRotation {
         return Rotation(true, segment.tail, live?.aircraft?.hex, live, legs, TurnaroundEstimate(days))
     }
 }
+
+/** OpenSky's own messages read fine; anything else (a network or parsing hiccup) gets a plain one. */
+private fun friendly(e: Throwable): String =
+    (e as? com.contrail.contrail.core.network.opensky.OpenSkyException)?.message ?: "Couldn't reach OpenSky just now. Try again in a minute."

@@ -102,6 +102,14 @@ class ApiKeys @Inject constructor(
     }
 
     suspend fun save(service: ApiService, key: String?) {
+        // OpenSky's credentials.json pasted into either OpenSky field fills in both.
+        openSkyCredentials(key)?.takeIf { service == ApiService.OpenSkyClientId || service == ApiService.OpenSkyClientSecret }?.let { (id, secret) ->
+            store.edit { p ->
+                p[pref(ApiService.OpenSkyClientId)] = cipher.encrypt(id)
+                p[pref(ApiService.OpenSkyClientSecret)] = cipher.encrypt(secret)
+            }
+            return
+        }
         store.edit { p ->
             val clean = key?.trim().orEmpty()
             if (clean.isEmpty()) p.remove(pref(service)) else p[pref(service)] = cipher.encrypt(clean)
@@ -109,6 +117,17 @@ class ApiKeys @Inject constructor(
     }
 
     companion object {
+        private val CLIENT_ID = Regex(""""client_?id"\s*:\s*"([^"]+)"""", RegexOption.IGNORE_CASE)
+        private val CLIENT_SECRET = Regex(""""client_?secret"\s*:\s*"([^"]+)"""", RegexOption.IGNORE_CASE)
+
+        /** Client ID and secret from OpenSky's `credentials.json` text, or null when it isn't that. */
+        fun openSkyCredentials(text: String?): Pair<String, String>? {
+            val t = text ?: return null
+            val id = CLIENT_ID.find(t)?.groupValues?.get(1)?.trim()?.ifEmpty { null } ?: return null
+            val secret = CLIENT_SECRET.find(t)?.groupValues?.get(1)?.trim()?.ifEmpty { null } ?: return null
+            return id to secret
+        }
+
         fun mask(key: String): String = if (key.length <= 6) "••••" else "${key.take(4)}••••${key.takeLast(2)}"
     }
 }

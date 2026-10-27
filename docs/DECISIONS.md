@@ -197,3 +197,10 @@ Checked against the OpenAPI spec, the terms (Sept 3, 2026) and live probes with 
 ### Emulator fixes
 - **System back closed the app from every detail page.** Detail pages are overlay scenes on the shell, and NavDisplay only enables system back for the scene underneath, which has nothing behind it. A host-level back handler, registered before NavDisplay, pops the stack; a screen's own handlers (the radar sheet, import steps) still take priority because they register later.
 - **The spinning globe allocated thousands of points every frame**, which meant a garbage collection about every two seconds. The land dots now reuse float buffers drawn with one native call per brightness band.
+
+## Finishing up (Oct 27, 2026)
+- **Keys:** the OpenSky credentials and logostream key are in `local.properties` for debug builds only. On the phone, Settings accepts OpenSky's whole `credentials.json` text pasted into either OpenSky field and fills in both, so it's one paste.
+- **OpenSky sometimes returns flights with `firstSeen: null`.** Rows without times are skipped instead of failing the whole planner. Found by the first run against real data; the sample data never had them.
+- **The planner shows plain error messages**, not parser text.
+- **Time fields in Add a flight take digits only** and format as HH:MM once all four are typed.
+- **3D aircraft (Filament) are not built.** Free 3D airliner models with dependable licences and accurate airline liveries still don't exist in a consistent set, and each model would add megabytes. The livery renders cover every type in one style. Revisit if a good free model set appears.

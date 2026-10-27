@@ -181,7 +181,7 @@ fun AddFlightScreen(
 
         Section("Route", accent) {
             Row(horizontalArrangement = Arrangement.spacedBy(spacing.sm), verticalAlignment = Alignment.Bottom) {
-                FormField("From · code or city", state.from, { onAirport(AirportField.From, it) }, Modifier.weight(1f), "YYZ", caps = false, big = true, mono = false)
+                FormField("From", state.from, { onAirport(AirportField.From, it) }, Modifier.weight(1f), "YYZ", caps = false, big = true, mono = false)
                 GlassIconButton(ContrailIcons.Swap, "Swap", onSwap, size = 40.dp, modifier = Modifier.padding(bottom = spacing.sm))
                 FormField("To", state.to, { onAirport(AirportField.To, it) }, Modifier.weight(1f), "HKG", caps = false, big = true, mono = false)
             }
@@ -218,8 +218,8 @@ fun AddFlightScreen(
 
         Section("Times", accent, hint = "Local times. Leave blank and Contrail estimates them from the distance.") {
             Row(horizontalArrangement = Arrangement.spacedBy(spacing.sm)) {
-                FormField("Departs", state.departure, { v -> onEdit { it.copy(departure = v.take(5)) } }, Modifier.weight(1f), "22:10", number = true)
-                FormField("Arrives", state.arrival, { v -> onEdit { it.copy(arrival = v.take(5)) } }, Modifier.weight(1f), "19:55", number = true)
+                FormField("Departs", state.departure, { v -> onEdit { it.copy(departure = clockText(v)) } }, Modifier.weight(1f), "22:10", number = true)
+                FormField("Arrives", state.arrival, { v -> onEdit { it.copy(arrival = clockText(v)) } }, Modifier.weight(1f), "19:55", number = true)
             }
             Row(horizontalArrangement = Arrangement.spacedBy(spacing.sm)) {
                 FormField("Terminal", state.departureTerminal, { v -> onEdit { it.copy(departureTerminal = v.take(3)) } }, Modifier.weight(1f), "3", caps = true)
@@ -317,6 +317,12 @@ private fun NoteField(value: String, onChange: (String) -> Unit) {
             modifier = Modifier.fillMaxWidth(),
         )
     }
+}
+
+/** Digits only, at most four, shown as "21:40" once all four are in. */
+internal fun clockText(raw: String): String {
+    val d = raw.filter { it.isDigit() }.take(4)
+    return if (d.length == 4) d.take(2) + ":" + d.takeLast(2) else d
 }
 
 private val DATE = DateTimeFormatter.ofPattern("EEE d MMM yyyy", Locale.UK)

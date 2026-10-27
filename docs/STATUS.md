@@ -1,15 +1,12 @@
 # Status
 
-Last updated Oct 26, 2026.
+Last updated Oct 27, 2026.
 
-## Waiting on you (only at the very end, all optional)
+## Waiting on you
 
-Everything works without these. Each one only switches sample or fallback data for real data.
+**One paste on your phone:** in **Airports → gear → OpenSky client ID → Add key**, paste the whole credentials text (`{"clientId":…,"clientSecret":…}`) and tap **Save**. Both OpenSky fields fill in. Your logostream key is already saved on the phone.
 
-1. **OpenSky client ID and secret** (free account): real 7-day turnaround history in the cockpit-visit planner instead of the labelled sample. Sign up at https://opensky-network.org → Register, then **My OpenSky → Account → API Client → Create**, and download `credentials.json`.
-2. **logostream key** (free Community plan, https://airline.logostream.dev): real airline logos instead of styled monograms.
-
-Send them over, or paste them on the phone in **Airports → gear**. For debug builds the lines in `local.properties` are `OPENSKY_CLIENT_ID=…`, `OPENSKY_CLIENT_SECRET=…` and `LOGOSTREAM_API_KEY=…`.
+Both keys were checked against the live services: an OpenSky token was issued, logostream returned HTTP 200, and the cockpit-visit planner showed real 7-day history. They're in the git-ignored `local.properties` for debug builds only, never in the repo or the release APK.
 
 Releases: every push to `master` publishes a signed APK to GitHub Releases for Obtainium. Keep `C:\Users\ohm20\contrail-signing\contrail-release.jks` and its password backed up.
 
@@ -43,11 +40,10 @@ Releases: every push to `master` publishes a signed APK to GitHub Releases for O
   - **proximity alerts** (rare, military, emergency, watchlist, below 3,000 ft).
 - **Home-screen widgets:** next-flight countdown, plane overhead, Passport totals.
 - **Share your Passport:** a story-sized card (globe, totals, flags, latest stamps) sent through the share sheet.
-- 153 unit and screenshot tests green, lint clean. Verified on the Pixel 9 emulator: a real myFlightradar24-format CSV imported through the file picker, the Passport replay, Add a flight with live route lookup, a flown-flight page, and Sky with live ADS-B traffic.
+- 156 unit and screenshot tests green, lint clean. Verified on the Pixel 9 emulator: a real myFlightradar24-format CSV imported through the file picker, the Passport replay, Add a flight with live route lookup, a flown-flight page, and Sky with live ADS-B traffic.
 
 ## Next
 - Feedback from your phone.
-- Optional extra: Filament 3D aircraft.
 
 ## Known limits
 - No free schedule API: flight times come from your ticket or log, or are estimated from distance (always labelled). Tail numbers are entered by hand.

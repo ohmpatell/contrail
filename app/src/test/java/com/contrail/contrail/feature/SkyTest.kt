@@ -86,3 +86,13 @@ class SkyTest {
         assertTrue(PassportInsights.isRedEye(stats.flown.first { it.designator == "EY 140" }))
     }
 }
+
+class OpenSkyCredentialsTest {
+    @Test
+    fun `reads credentials json pasted into a key field`() {
+        val parsed = com.contrail.contrail.core.data.settings.ApiKeys.openSkyCredentials("""{"clientId":"me-api-client","clientSecret":"abc123XYZ"}""")
+        assertEquals("me-api-client" to "abc123XYZ", parsed)
+        assertEquals("a" to "b", com.contrail.contrail.core.data.settings.ApiKeys.openSkyCredentials("""{ "client_id" : "a", "client_secret": "b" }"""))
+        assertNull(com.contrail.contrail.core.data.settings.ApiKeys.openSkyCredentials("plain-client-id"))
+    }
+}

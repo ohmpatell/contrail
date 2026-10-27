@@ -78,7 +78,8 @@ class OpenSkyHistorySource(
                 throw OpenSkyException("OpenSky rejected the account (HTTP 401)")
             }
             !r.status.isSuccess() -> throw OpenSkyException("OpenSky returned HTTP ${r.status.value}")
-            else -> r.body()
+            // Some rows come back with null times; they can't be used for a turnaround, so skip them.
+            else -> r.body<List<RawFlight>>().mapNotNull { it.toFlight() }
         }
     }
 
@@ -98,6 +99,21 @@ class OpenSkyHistorySource(
         token = body.accessToken
         tokenExpiresAt = clock() + (body.expiresIn - 60).coerceAtLeast(60) * 1000L
         body.accessToken
+    }
+
+    @Serializable
+    private data class RawFlight(
+        val icao24: String? = null,
+        val callsign: String? = null,
+        val estDepartureAirport: String? = null,
+        val estArrivalAirport: String? = null,
+        val firstSeen: Long? = null,
+        val lastSeen: Long? = null,
+    ) {
+        fun toFlight(): HistoricFlight? = HistoricFlight(
+            icao24 ?: return null, callsign, estDepartureAirport, estArrivalAirport,
+            firstSeen ?: return null, lastSeen ?: return null,
+        )
     }
 
     @Serializable

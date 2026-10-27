@@ -196,3 +196,22 @@ class ThrottleTest {
         assertTrue(ua.contains("https://github.com/ohmpatell/contrail"))
     }
 }
+
+class OpenSkyHistorySourceTest {
+    @Test
+    fun `skips flights with null times instead of failing`() = runTest {
+        val source = com.contrail.contrail.core.network.opensky.OpenSkyHistorySource(
+            client { req ->
+                if (req.url.toString().contains("token")) respond("""{"access_token":"t","expires_in":1800}""", headers = jsonHeaders)
+                else respond(
+                    """[{"icao24":"407af2","firstSeen":null,"estDepartureAirport":null,"lastSeen":1761600000,"callsign":"BAW94  "},
+                       {"icao24":"c0173f","firstSeen":1761590000,"estDepartureAirport":"CYYZ","estArrivalAirport":"EGLL","lastSeen":1761615000,"callsign":"ACA856  "}]""",
+                    headers = jsonHeaders,
+                )
+            },
+            credentials = { com.contrail.contrail.core.network.opensky.OpenSkyCredentials("id", "secret") },
+        )
+        val flights = source.arrivals("EGLL", 0, 1)
+        assertEquals(listOf("ACA856"), flights.map { it.cleanCallsign })
+    }
+}
