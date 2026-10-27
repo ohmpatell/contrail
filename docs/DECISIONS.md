@@ -193,3 +193,7 @@ Checked against the OpenAPI spec, the terms (Sept 3, 2026) and live probes with 
 | --- | --- |
 | WorkManager 2.12.0 + androidx.hilt:hilt-work 1.4.0 | Background proximity checks with injected repositories |
 | Glance app-widget 1.2.0 | Home-screen widgets in Compose style |
+
+### Emulator fixes
+- **System back closed the app from every detail page.** Detail pages are overlay scenes on the shell, and NavDisplay only enables system back for the scene underneath, which has nothing behind it. A host-level back handler, registered before NavDisplay, pops the stack; a screen's own handlers (the radar sheet, import steps) still take priority because they register later.
+- **The spinning globe allocated thousands of points every frame**, which meant a garbage collection about every two seconds. The land dots now reuse float buffers drawn with one native call per brightness band.

@@ -13,6 +13,8 @@ import androidx.compose.ui.graphics.PointMode
 import androidx.compose.ui.graphics.StrokeCap
 import androidx.compose.ui.graphics.drawscope.DrawScope
 import androidx.compose.ui.graphics.drawscope.Stroke
+import androidx.compose.ui.graphics.nativeCanvas
+import androidx.compose.ui.graphics.toArgb
 import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.unit.dp
 import com.contrail.contrail.core.common.Geo
@@ -49,6 +51,14 @@ fun rememberWorldDots(): FloatArray {
     return remember { WorldDots.load(context) }
 }
 
+/** Reused point buffers and paints for the globe's land dots. */
+private class DotBuffers(size: Int) {
+    val bands = Array(3) { FloatArray(size) }
+    val paints = Array(3) {
+        android.graphics.Paint(android.graphics.Paint.ANTI_ALIAS_FLAG).apply { strokeCap = android.graphics.Paint.Cap.ROUND }
+    }
+}
+
 /** An arc to draw: great-circle points, and how much of it has drawn itself (0..1). */
 data class MapArc(val points: List<LatLon>, val progress: Float = 1f, val color: Color? = null, val emphasis: Boolean = false)
 
@@ -67,6 +77,7 @@ fun DottedGlobe(
 ) {
     val dots = rememberWorldDots()
     val colors = ContrailTheme.colors
+    val buffers = remember(dots) { DotBuffers(dots.size) }
     Canvas(modifier) {
         val r = min(size.width, size.height) / 2f * 0.92f
         val c = Offset(size.width / 2f, size.height / 2f)
@@ -80,8 +91,9 @@ fun DottedGlobe(
         drawCircle(Brush.radialGradient(listOf(colors.canvasRaised, colors.canvasSunken), Offset(c.x - r * 0.3f, c.y - r * 0.35f), r * 1.4f), r, c)
         drawCircle(accent.copy(alpha = 0.35f), r, c, style = Stroke(1.dp.toPx()))
 
-        // Land dots in three brightness bands, brighter towards the centre of the disc.
-        val bands = Array(3) { ArrayList<Offset>(dots.size / 3) }
+        // Land dots in three brightness bands, brighter towards the centre of the disc. The
+        // buffers are reused every frame so a spinning globe doesn't churn the garbage collector.
+        val count = IntArray(3)
         var i = 0
         while (i < dots.size - 1) {
             val lat = Geo.toRad(dots[i].toDouble())
@@ -91,13 +103,20 @@ fun DottedGlobe(
             if (cosc > 0) {
                 val x = (r * cosLat * sin(dl)).toFloat()
                 val y = (r * (cosLat0 * sin(lat) - sinLat0 * cosLat * cos(dl))).toFloat()
-                bands[if (cosc > 0.66) 2 else if (cosc > 0.33) 1 else 0] += Offset(c.x + x, c.y - y)
+                val b = if (cosc > 0.66) 2 else if (cosc > 0.33) 1 else 0
+                val buf = buffers.bands[b]
+                buf[count[b]++] = c.x + x
+                buf[count[b]++] = c.y - y
             }
             i += 2
         }
         val dotSize = max(1.6f, r / 95f)
-        bands.forEachIndexed { b, pts ->
-            drawPoints(pts, PointMode.Points, colors.textSecondary.copy(alpha = 0.18f + b * 0.17f), strokeWidth = dotSize, cap = StrokeCap.Round)
+        val canvas = drawContext.canvas.nativeCanvas
+        for (b in 0 until 3) {
+            val paint = buffers.paints[b]
+            paint.strokeWidth = dotSize
+            paint.color = colors.textSecondary.copy(alpha = 0.18f + b * 0.17f).toArgb()
+            canvas.drawPoints(buffers.bands[b], 0, count[b], paint)
         }
 
         // Routes, lifted off the surface by up to 12% of the radius at mid-arc.

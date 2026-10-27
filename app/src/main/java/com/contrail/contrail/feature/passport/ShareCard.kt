@@ -117,7 +117,11 @@ private suspend fun share(context: Context, bitmap: Bitmap) {
     }
     val uri = FileProvider.getUriForFile(context, "${context.packageName}.files", file)
     val send = Intent(Intent.ACTION_SEND).setType("image/png").putExtra(Intent.EXTRA_STREAM, uri).addFlags(Intent.FLAG_GRANT_READ_URI_PERMISSION)
-    context.startActivity(Intent.createChooser(send, "Share your Passport").addFlags(Intent.FLAG_ACTIVITY_NEW_TASK))
+    val chooser = Intent.createChooser(send, "Share your Passport")
+        // Contrail takes images in too (boarding passes); it shouldn't offer itself here.
+        .putExtra(Intent.EXTRA_EXCLUDE_COMPONENTS, arrayOf(android.content.ComponentName(context, com.contrail.contrail.MainActivity::class.java)))
+        .addFlags(Intent.FLAG_ACTIVITY_NEW_TASK)
+    context.startActivity(chooser)
 }
 
 /** The card itself: globe, the big numbers, flags and a row of stamps. */

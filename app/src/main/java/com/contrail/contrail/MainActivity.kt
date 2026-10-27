@@ -4,6 +4,7 @@ import android.content.Intent
 import android.net.Uri
 import android.os.Bundle
 import androidx.activity.ComponentActivity
+import androidx.activity.compose.BackHandler
 import androidx.activity.SystemBarStyle
 import androidx.activity.compose.setContent
 import androidx.activity.enableEdgeToEdge
@@ -146,6 +147,10 @@ private fun ContrailNavHost(inbox: SharedTicketInbox) {
         }
     }
     CompositionLocalProvider(LocalNavigator provides navigator) {
+        // Detail pages are overlays on the shell, and NavDisplay only enables system back for
+        // the scene underneath them, so back would close the app. Registered before NavDisplay,
+        // so a screen's own back handling (a sheet, an import step) still comes first.
+        BackHandler(enabled = backStack.size > 1) { navigator.back() }
         NavDisplay(
             backStack = backStack,
             onBack = { navigator.back() },
