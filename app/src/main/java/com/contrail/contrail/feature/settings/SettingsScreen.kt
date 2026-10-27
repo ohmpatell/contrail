@@ -121,7 +121,7 @@ private fun KeyRow(status: KeyStatus, onSave: (ApiService, String?) -> Unit) {
                 Text(status.service.title, style = ContrailTheme.type.title, color = colors.textPrimary)
                 val (label, tint) = when (status.source) {
                     KeySource.Settings -> "Saved on this phone · ${status.masked}" to colors.statusOnTime
-                    KeySource.LocalProperties -> "From local.properties (debug) · ${status.masked}" to colors.statusAirborne
+                    KeySource.BuiltIn -> "Built into this version · ${status.masked}" to colors.statusAirborne
                     KeySource.Missing -> "Not set" to colors.statusDelayed
                 }
                 Text(label, style = ContrailTheme.type.bodySmall, color = tint)

@@ -65,7 +65,8 @@ class KeystoreCipher : SecretCipher {
     }.getOrNull()
 }
 
-enum class KeySource { Settings, LocalProperties, Missing }
+/** Where a key came from: saved in Settings, built into the APK (CI secret or local.properties), or nowhere. */
+enum class KeySource { Settings, BuiltIn, Missing }
 
 data class KeyStatus(val service: ApiService, val source: KeySource, val masked: String?)
 
@@ -91,7 +92,7 @@ class ApiKeys @Inject constructor(
         val fallback = buildConfigKey(service).takeIf { it.isNotBlank() }
         when {
             saved != null -> KeyStatus(service, KeySource.Settings, mask(saved))
-            fallback != null -> KeyStatus(service, KeySource.LocalProperties, mask(fallback))
+            fallback != null -> KeyStatus(service, KeySource.BuiltIn, mask(fallback))
             else -> KeyStatus(service, KeySource.Missing, null)
         }
     }

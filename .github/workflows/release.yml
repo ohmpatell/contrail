@@ -6,6 +6,8 @@
 #   CONTRAIL_KEYSTORE_PASSWORD the keystore password
 #   CONTRAIL_KEY_ALIAS         the key alias inside the keystore
 #   CONTRAIL_KEY_PASSWORD      the key password
+# Optional API keys, built into the release so the app works without setup:
+#   CONTRAIL_LOGOSTREAM_API_KEY, CONTRAIL_OPENSKY_CLIENT_ID, CONTRAIL_OPENSKY_CLIENT_SECRET
 # Without them the workflow still runs the tests, then skips the release with a warning.
 name: Release APK
 
@@ -63,6 +65,9 @@ jobs:
           CONTRAIL_KEYSTORE_PASSWORD: ${{ secrets.CONTRAIL_KEYSTORE_PASSWORD }}
           CONTRAIL_KEY_ALIAS: ${{ secrets.CONTRAIL_KEY_ALIAS }}
           CONTRAIL_KEY_PASSWORD: ${{ secrets.CONTRAIL_KEY_PASSWORD }}
+          CONTRAIL_LOGOSTREAM_API_KEY: ${{ secrets.CONTRAIL_LOGOSTREAM_API_KEY }}
+          CONTRAIL_OPENSKY_CLIENT_ID: ${{ secrets.CONTRAIL_OPENSKY_CLIENT_ID }}
+          CONTRAIL_OPENSKY_CLIENT_SECRET: ${{ secrets.CONTRAIL_OPENSKY_CLIENT_SECRET }}
         run: |
           ./gradlew assembleRelease
           cp app/build/outputs/apk/release/app-release.apk "contrail-0.1.${{ github.run_number }}.apk"

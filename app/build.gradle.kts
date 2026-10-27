@@ -13,13 +13,16 @@ plugins {
 val ciVersionCode = providers.environmentVariable("CONTRAIL_VERSION_CODE").orNull?.toIntOrNull()
 val releaseKeystore = providers.environmentVariable("CONTRAIL_KEYSTORE_PATH").orNull
 
-// Debug builds may read API keys from the git-ignored local.properties. Release builds never
-// embed keys: they are entered in Settings and stored encrypted on the phone.
+// Debug builds read API keys from the git-ignored local.properties. Release builds get them from
+// CI environment variables (GitHub Secrets, e.g. CONTRAIL_LOGOSTREAM_API_KEY), so the published
+// APK works without setup. Keys are never in the repo; a key saved in Settings overrides them.
 val localProperties = Properties().apply {
     val f = rootProject.file("local.properties")
     if (f.exists()) f.inputStream().use { load(it) }
 }
-fun debugKey(name: String): String = "\"" + (localProperties.getProperty(name) ?: "").trim() + "\""
+fun quoted(value: String?): String = "\"" + (value ?: "").trim().replace("\\", "\\\\").replace("\"", "\\\"") + "\""
+fun debugKey(name: String): String = quoted(localProperties.getProperty(name))
+fun releaseKey(name: String): String = quoted(providers.environmentVariable("CONTRAIL_$name").orNull)
 val apiKeyNames = listOf("LOGOSTREAM_API_KEY", "OPENSKY_CLIENT_ID", "OPENSKY_CLIENT_SECRET")
 
 android {
@@ -55,7 +58,7 @@ android {
             apiKeyNames.forEach { buildConfigField("String", it, debugKey(it)) }
         }
         release {
-            apiKeyNames.forEach { buildConfigField("String", it, "\"\"") }
+            apiKeyNames.forEach { buildConfigField("String", it, releaseKey(it)) }
             // Whole-app R8. A package-scoped pass broke OkHttp's access to rewritten kotlin.* classes.
             optimization {
                 enable = true

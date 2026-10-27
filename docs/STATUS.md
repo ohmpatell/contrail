@@ -4,9 +4,7 @@ Last updated Oct 27, 2026.
 
 ## Waiting on you
 
-**One paste on your phone:** in **Airports → gear → OpenSky client ID → Add key**, paste the whole credentials text (`{"clientId":…,"clientSecret":…}`) and tap **Save**. Both OpenSky fields fill in. Your logostream key is already saved on the phone.
-
-Both keys were checked against the live services: an OpenSky token was issued, logostream returned HTTP 200, and the cockpit-visit planner showed real 7-day history. They're in the git-ignored `local.properties` for debug builds only, never in the repo or the release APK.
+Nothing. The OpenSky and logostream keys are built into every release from GitHub Secrets, so a fresh install works with no setup. To change a key: update the secret on GitHub (Settings → Secrets and variables → Actions) and push, or paste a new one in the app's Settings, which overrides the built-in one.
 
 Releases: every push to `master` publishes a signed APK to GitHub Releases for Obtainium. Keep `C:\Users\ohm20\contrail-signing\contrail-release.jks` and its password backed up.
 

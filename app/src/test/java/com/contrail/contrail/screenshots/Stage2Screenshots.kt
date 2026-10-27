@@ -168,7 +168,7 @@ class Stage2Screenshots {
         SettingsScreen(
             SettingsUiState(
                 keys = listOf(
-                    KeyStatus(ApiService.Logostream, KeySource.LocalProperties, "FREE••••02"),
+                    KeyStatus(ApiService.Logostream, KeySource.BuiltIn, "FREE••••02"),
                 ),
                 usage = LogostreamUsage(20_000, 19_874, "2026-11-01", 126, NOW),
             ),
