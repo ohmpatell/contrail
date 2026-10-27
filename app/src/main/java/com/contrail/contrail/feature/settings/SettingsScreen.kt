@@ -95,7 +95,7 @@ fun SettingsScreen(state: SettingsUiState, onSave: (ApiService, String?) -> Unit
     DetailScaffold(title = "Settings", eyebrow = "Contrail ${BuildConfig.VERSION_NAME}", onBack = onBack) {
         SectionCard("API keys") {
             Text(
-                "Keys are stored encrypted on this phone and never leave it except to call their service.",
+                "This version comes with its keys built in. A key you add here is stored encrypted on this phone, replaces the built-in one, and is only ever sent to its own service.",
                 style = ContrailTheme.type.bodySmall,
                 color = ContrailTheme.colors.textTertiary,
             )
