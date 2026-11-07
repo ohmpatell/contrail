@@ -62,12 +62,14 @@ fun SplitFlapText(
     text: String,
     modifier: Modifier = Modifier,
     style: TextStyle = ContrailTheme.type.flap,
-    color: Color = ContrailTheme.colors.textPrimary,
+    /** Defaults to the flap ink on tiles and the normal text colour without them. */
+    color: Color = Color.Unspecified,
     tiles: Boolean = true,
     tileColor: Color = ContrailTheme.colors.flapTile,
     haptics: Boolean = false,
     gap: Dp = 3.dp,
 ) {
+    val color = if (color != Color.Unspecified) color else if (tiles) ContrailTheme.colors.flapInk else ContrailTheme.colors.textPrimary
     val density = LocalDensity.current
     val fontDp = with(density) { style.fontSize.toDp() }
     val cellWidth = if (tiles) fontDp * 0.98f else fontDp * 0.66f

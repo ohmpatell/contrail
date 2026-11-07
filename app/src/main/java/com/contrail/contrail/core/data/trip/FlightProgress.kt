@@ -107,6 +107,19 @@ object FlightProgressCalc {
         return FlightProgress(phase, fraction.coerceIn(0f, 1f), eta, live = true, remainingKm = toDest / 1000, altitudeFt = ac.altitudeFt, groundSpeedKt = gs)
     }
 
+    /** The first flight whose Live Update window hasn't closed yet. */
+    fun upcoming(segments: List<FlightSegment>, now: Instant): FlightSegment? =
+        segments.filter { (it.arrival + SHOW_AFTER).isAfter(now) }.minByOrNull { it.departure }
+
+    /**
+     * Of the flights showing right now, the one to follow. On a connection the first leg's
+     * "Landed" gives way to the next leg as soon as that one opens.
+     */
+    fun current(segments: List<FlightSegment>, now: Instant): FlightSegment? {
+        val open = segments.filter { isInWindow(it, now) }.sortedBy { it.departure }
+        return open.firstOrNull { it.arrival.isAfter(now) } ?: open.lastOrNull()
+    }
+
     /** "1h 05m", "35m", "now": short enough for the status-bar chip. */
     fun shortDuration(d: Duration): String {
         val m = d.toMinutes().coerceAtLeast(0)

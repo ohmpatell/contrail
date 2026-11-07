@@ -214,3 +214,14 @@ Checked against the OpenAPI spec, the terms (Sept 3, 2026) and live probes with 
 - **Keys-free work first.** Live Updates, widgets, themes and tablet layouts are built before anything that needs the new accounts, so setup never blocks progress.
 - **Username and password instead of Google sign-in (your call).** It skips the Google Cloud setup. Supabase's "Confirm email" is turned off, so signing up sends no email, and usernames map to `<name>@users.contrail.invalid` (a reserved domain that can never receive mail). The cost is no self-service password reset; with two users, a reset from the Supabase dashboard is fine.
 - **Reusing the empty Supabase project you created** (`hppyekxenuyoyjlbmmud`, us-east-2) instead of making a second one. The free plan allows two active projects.
+
+## Stage 5 (Nov 7, 2026)
+- **Live Update refresh:** a self-rescheduling one-off WorkManager job (every 2 to 10 minutes depending on the phase) instead of a foreground service. Battery stays low, and the notification's own chronometer ticks the countdown between refreshes. ADS-B is only asked from 45 minutes before departure.
+- **Widgets are painted bitmaps** at each widget's exact size (`SizeMode.Exact`). Glance can't use bundled fonts or draw shapes, and the split-flap board, radar scope and ring need both. Each has a content description for TalkBack.
+- **Overhead snapshot keeps the nearest 30 aircraft** as a compact string in DataStore, which is enough for the scope.
+- **Themes are full palettes** (`ContrailColors`), not just accent swaps. Each palette carries its map style asset, a flap-ink colour (tiles stay dark everywhere) and a light flag for status-bar icons. Chart and Glass Cockpit map styles are generated from the dark style with per-layer colours.
+- **Golden Hour uses the place you last opened Sky** (no new location permission) and re-evaluates every 5 minutes, rounded to half a degree of sun so the app doesn't recompose constantly. Without a saved spot it stays on Night Cockpit and says why.
+- **Livery mode is on by default** and only applies inside a flight's Live Update window.
+- **The splash screen waits for the saved theme**, so Chart never flashes dark on launch.
+- **Sun maths moved to `core/common/Sun`** so the theme code doesn't depend on the radar feature.
+

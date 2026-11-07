@@ -43,9 +43,22 @@ Releases: every push to `master` publishes a signed APK to GitHub Releases for O
 - **Share your Passport:** a story-sized card (globe, totals, flags, latest stamps) sent through the share sheet.
 - 156 unit and screenshot tests green, lint clean. Verified on the Pixel 9 emulator: a real myFlightradar24-format CSV imported through the file picker, the Passport replay, Add a flight with live route lookup, a flown-flight page, and Sky with live ADS-B traffic.
 
-## Next: Stage 5, Contrail everywhere (plan in `DESIGN.md` → Roadmap)
-1. Live Update notification for flights in progress, new widgets
-2. Themes: Night Cockpit, Chart, Golden Hour, Glass Cockpit, Livery mode
+## In progress: Stage 5, Contrail everywhere (plan in `DESIGN.md` → Roadmap)
+- ✅ **Live Update:** from three hours before departure until you land, your flight sits on the lock screen and as a status-bar chip, showing phase, a progress bar with a plane and a ticking countdown. It uses the live ADS-B position once you're near departure and the timetable otherwise, always labelled. Tap it to open the flight. Switch: Settings → Live Update.
+- ✅ **New widgets**, painted at each widget's exact size:
+  - Next flight: a split-flap departure board with gate, seat and terminal flaps, and a progress bar in the air.
+  - Overhead: a radar scope with every nearby plane coloured by altitude.
+  - Passport: this year as a ring around the Earth, with all-time totals.
+- ✅ **Themes** (Settings → Appearance, with a live preview of each):
+  - **Night Cockpit**, the original.
+  - **Chart:** a light, paper-chart look with its own map style.
+  - **Golden Hour:** follows the real sun where you last opened Sky.
+  - **Glass Cockpit:** black glass, magenta and cyan, mono headlines, a flight-deck map.
+
+  **Livery mode** tints the app in your airline's colour while a flight is under way. Widgets follow the theme too.
+
+Still to do:
+
 3. Tablet layouts
 4. Optional username-and-password sign-in and sync (Supabase)
 5. Real departures and arrivals (AeroDataBox)

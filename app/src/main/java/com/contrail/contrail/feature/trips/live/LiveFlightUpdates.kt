@@ -82,18 +82,9 @@ class LiveFlightUpdates @Inject constructor(
         const val CHANNEL = "flight-live"
         const val NOTIFICATION_ID = 4_200
 
-        /** The first flight whose Live Update window hasn't closed yet. */
-        fun upcoming(segments: List<FlightSegment>, now: Instant): FlightSegment? =
-            segments.filter { (it.arrival + FlightProgressCalc.SHOW_AFTER).isAfter(now) }.minByOrNull { it.departure }
+        fun upcoming(segments: List<FlightSegment>, now: Instant) = FlightProgressCalc.upcoming(segments, now)
 
-        /**
-         * Of the flights showing right now, the one to follow. On a connection the first leg's
-         * "Landed" gives way to the next leg as soon as that one opens.
-         */
-        fun current(segments: List<FlightSegment>, now: Instant): FlightSegment? {
-            val open = segments.filter { FlightProgressCalc.isInWindow(it, now) }.sortedBy { it.departure }
-            return open.firstOrNull { it.arrival.isAfter(now) } ?: open.lastOrNull()
-        }
+        fun current(segments: List<FlightSegment>, now: Instant) = FlightProgressCalc.current(segments, now)
 
         fun cancel(context: Context) {
             context.getSystemService(NotificationManager::class.java).cancel(NOTIFICATION_ID)

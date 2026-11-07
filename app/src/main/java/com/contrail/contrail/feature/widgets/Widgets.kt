@@ -35,6 +35,7 @@ import com.contrail.contrail.core.data.reference.AircraftTypes
 import com.contrail.contrail.core.data.reference.Airlines
 import com.contrail.contrail.core.data.repository.AirportRepository
 import com.contrail.contrail.core.data.repository.TripRepository
+import com.contrail.contrail.core.data.settings.ThemeResolver
 import com.contrail.contrail.core.data.sky.SkyContact
 import com.contrail.contrail.core.data.ticket.AirportDirectory
 import com.contrail.contrail.core.data.trip.FlightPhase
@@ -124,6 +125,7 @@ interface WidgetEntryPoint {
     fun trips(): TripRepository
     fun airports(): AirportRepository
     fun overhead(): OverheadSnapshotStore
+    fun themes(): ThemeResolver
 }
 
 object Widgets {
@@ -138,8 +140,14 @@ object Widgets {
 
     fun entry(context: Context): WidgetEntryPoint = EntryPointAccessors.fromApplication(context.applicationContext, WidgetEntryPoint::class.java)
 
-    /** The colours widgets draw with. Follows the app theme once themes can be chosen. */
-    fun colors(@Suppress("UNUSED_PARAMETER") context: Context): ContrailColors = NightCockpitColors
+    /** The colours widgets draw with: the theme picked in Settings, airline tint included. */
+    suspend fun colors(context: Context): ContrailColors =
+        runCatching { entry(context).themes().theme.first().colors }.getOrDefault(NightCockpitColors)
+
+    suspend fun updateAll(context: Context) {
+        updateTrips(context)
+        updateOverhead(context)
+    }
 
     private val DAY = DateTimeFormatter.ofPattern("EEE d MMM", Locale.UK)
     private val TIME = DateTimeFormatter.ofPattern("HH:mm", Locale.UK)
@@ -260,8 +268,9 @@ class NextFlightWidget : GlanceAppWidget() {
         val e = Widgets.entry(context)
         val now = Instant.now()
         val next = e.trips().trips.first().flatMap { it.segments }.filter { it.arrival.isAfter(now - FlightProgressCalc.SHOW_AFTER) }.minByOrNull { it.departure }
-        val model = Widgets.board(next, e.airports().directory(), now, Widgets.colors(context))
-        val art = WidgetArt(context, Widgets.colors(context))
+        val colors = Widgets.colors(context)
+        val model = Widgets.board(next, e.airports().directory(), now, colors)
+        val art = WidgetArt(context, colors)
         provideContent {
             val size = LocalSize.current
             val description = if (model.from == null) "No flights booked" else "${model.header}, ${model.fromCity} to ${model.toCity}, ${model.status}, ${model.footer}"

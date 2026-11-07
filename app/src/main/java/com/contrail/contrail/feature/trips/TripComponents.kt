@@ -184,6 +184,7 @@ fun AirportFlap(code: String, city: String, modifier: Modifier = Modifier, align
 @Composable
 fun RouteArc(accent: Color, modifier: Modifier = Modifier, progress: Float? = null, delayMs: Long = 350) {
     val motion = ContrailTheme.motion
+    val planeInk = ContrailTheme.colors.textPrimary
     val drawIn = remember { Animatable(if (motion.reduced) 1f else 0f) }
     LaunchedEffect(Unit) {
         if (!motion.reduced) {
@@ -213,7 +214,7 @@ fun RouteArc(accent: Color, modifier: Modifier = Modifier, progress: Float? = nu
         val s = 18.dp.toPx()
         rotate(angle, pivot = tip) {
             translate(tip.x - s / 2, tip.y - s / 2) {
-                with(plane) { draw(Size(s, s), colorFilter = ColorFilter.tint(Color.White)) }
+                with(plane) { draw(Size(s, s), colorFilter = ColorFilter.tint(planeInk)) }
             }
         }
         drawCircle(accent, radius = 3.dp.toPx(), center = Offset(0f, size.height * 0.8f))

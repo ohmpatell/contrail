@@ -60,6 +60,7 @@ private val Context.secureDataStore: DataStore<Preferences> by preferencesDataSt
 private val Context.usageDataStore: DataStore<Preferences> by preferencesDataStore(name = "usage")
 private val Context.tripsDataStore: DataStore<Preferences> by preferencesDataStore(name = "trips")
 private val Context.skyDataStore: DataStore<Preferences> by preferencesDataStore(name = "sky")
+private val Context.appearanceDataStore: DataStore<Preferences> by preferencesDataStore(name = "appearance")
 
 @Module
 @InstallIn(SingletonComponent::class)
@@ -154,6 +155,9 @@ object StorageModule {
 
     @Provides @Singleton @Named("sky")
     fun skyStore(@ApplicationContext context: Context): DataStore<Preferences> = context.skyDataStore
+
+    @Provides @Singleton @Named("appearance")
+    fun appearanceStore(@ApplicationContext context: Context): DataStore<Preferences> = context.appearanceDataStore
 
     @Provides
     fun airportsAsset(@ApplicationContext context: Context): AirportsAsset = AirportsAsset { context.assets.open("airports.json") }

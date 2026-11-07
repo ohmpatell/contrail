@@ -174,6 +174,7 @@ fun NearbyScope(center: LatLon, traffic: List<LiveAircraft>, radiusM: Double, mo
 fun DestinationsMap(home: LatLon, destinations: List<Destination>, modifier: Modifier = Modifier) {
     val colors = ContrailTheme.colors
     val context = LocalContext.current
+    val styleAsset = ContrailTheme.colors.mapStyle
     val density = LocalDensity.current
     val inPreview = LocalInspectionMode.current
     BoxWithConstraints(modifier.fillMaxWidth().aspectRatio(1.6f).clip(ContrailTheme.shapes.small)) {
@@ -181,7 +182,7 @@ fun DestinationsMap(home: LatLon, destinations: List<Destination>, modifier: Mod
         val hPx = with(density) { maxHeight.roundToPx() }
         var snapshot by remember { mutableStateOf<Pair<Bitmap, List<List<PointF>>>?>(null) }
         if (!inPreview && destinations.isNotEmpty() && wPx > 0) {
-            DisposableEffect(destinations, wPx, hPx) {
+            DisposableEffect(destinations, wPx, hPx, styleAsset) {
                 val d = density.density
                 val wDp = wPx / d
                 val hDp = hPx / d
@@ -202,7 +203,7 @@ fun DestinationsMap(home: LatLon, destinations: List<Destination>, modifier: Mod
                 val arcs = arcsWorld.map { arc ->
                     arc.map { (x, y) -> PointF(((x - cx) * scalePx + wPx / 2.0).toFloat(), ((y - cy) * scalePx + hPx / 2.0).toFloat()) }
                 }
-                val json = context.assets.open("map/contrail_dark.json").bufferedReader().use { it.readText() }
+                val json = context.assets.open(styleAsset).bufferedReader().use { it.readText() }
                 val snapper = runCatching {
                     MapSnapshotter(
                         context,

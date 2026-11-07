@@ -35,6 +35,10 @@ import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import androidx.lifecycle.viewModelScope
 import com.contrail.contrail.BuildConfig
 import com.contrail.contrail.core.data.settings.ApiKeys
+import com.contrail.contrail.core.data.settings.Appearance
+import com.contrail.contrail.core.data.settings.AppearanceRepository
+import com.contrail.contrail.core.data.settings.ThemeResolver
+import com.contrail.contrail.core.designsystem.theme.ThemeChoice
 import com.contrail.contrail.core.data.settings.ApiService
 import com.contrail.contrail.core.data.settings.KeySource
 import com.contrail.contrail.core.data.settings.KeyStatus
@@ -64,6 +68,9 @@ data class SettingsUiState(
     val openSky: OpenSkyUsage? = null,
     val thresholds: TurnThresholds = TurnThresholds(),
     val liveUpdates: Boolean = true,
+    val appearance: Appearance = Appearance(),
+    val sunElevationDeg: Double? = null,
+    val liveryAirline: String? = null,
 )
 
 @HiltViewModel
@@ -71,6 +78,8 @@ class SettingsViewModel @Inject constructor(
     private val apiKeys: ApiKeys,
     usage: UsageTracker,
     private val tripSettings: TripSettings,
+    private val appearance: AppearanceRepository,
+    themes: ThemeResolver,
 ) : ViewModel() {
     val state: StateFlow<SettingsUiState> = combine(
         combine(ApiService.entries.map { apiKeys.status(it) }) { it.toList() },
@@ -79,10 +88,20 @@ class SettingsViewModel @Inject constructor(
         tripSettings.thresholds,
         tripSettings.liveUpdates,
     ) { keys, u, o, t, live -> SettingsUiState(keys, u, o, t, live) }
+        .combine(themes.theme) { s, theme -> s.copy(sunElevationDeg = theme.sunElevationDeg, liveryAirline = theme.liveryAirline) }
+        .combine(appearance.appearance) { s, a -> s.copy(appearance = a) }
         .stateIn(viewModelScope, SharingStarted.WhileSubscribed(5_000), SettingsUiState())
 
     fun setThresholds(t: TurnThresholds) {
         viewModelScope.launch { tripSettings.setThresholds(t) }
+    }
+
+    fun setTheme(choice: ThemeChoice) {
+        viewModelScope.launch { appearance.setTheme(choice) }
+    }
+
+    fun setLivery(on: Boolean) {
+        viewModelScope.launch { appearance.setLivery(on) }
     }
 
     fun setLiveUpdates(on: Boolean) {
@@ -106,6 +125,8 @@ fun SettingsRoute(viewModel: SettingsViewModel = hiltViewModel()) {
         onBack = LocalNavigator.current::back,
         onThresholds = viewModel::setThresholds,
         onLiveUpdates = { on -> if (on) notify.launch(Manifest.permission.POST_NOTIFICATIONS) else viewModel.setLiveUpdates(false) },
+        onTheme = viewModel::setTheme,
+        onLivery = viewModel::setLivery,
     )
 }
 
@@ -116,8 +137,13 @@ fun SettingsScreen(
     onBack: () -> Unit,
     onThresholds: (TurnThresholds) -> Unit = {},
     onLiveUpdates: (Boolean) -> Unit = {},
+    onTheme: (ThemeChoice) -> Unit = {},
+    onLivery: (Boolean) -> Unit = {},
 ) {
     DetailScaffold(title = "Settings", eyebrow = "Contrail ${BuildConfig.VERSION_NAME}", onBack = onBack) {
+        SectionCard("Appearance") {
+            AppearancePicker(state.appearance.choice, state.sunElevationDeg, state.appearance.livery, state.liveryAirline, onTheme, onLivery)
+        }
         SectionCard("API keys") {
             Text(
                 "This version comes with its keys built in. A key you add here is stored encrypted on this phone, replaces the built-in one, and is only ever sent to its own service.",

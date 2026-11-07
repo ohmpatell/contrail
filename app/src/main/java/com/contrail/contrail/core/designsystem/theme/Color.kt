@@ -62,6 +62,12 @@ data class ContrailColors(
     val passport: Color,
     val flapTile: Color,
     val flapTileEdge: Color,
+    /** Characters on split-flap tiles. Tiles stay dark on every theme, so this stays light. */
+    val flapInk: Color = textPrimary,
+    /** Light themes flip status-bar icons and anything drawn for a dark backdrop. */
+    val isLight: Boolean = false,
+    /** MapLibre style asset matching this palette. */
+    val mapStyle: String = "map/contrail_dark.json",
 )
 
 val NightCockpitColors = ContrailColors(

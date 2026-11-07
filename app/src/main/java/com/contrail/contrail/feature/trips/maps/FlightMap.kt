@@ -55,6 +55,7 @@ fun FlightMap(
 ) {
     val colors = ContrailTheme.colors
     val context = LocalContext.current
+    val styleAsset = ContrailTheme.colors.mapStyle
     val density = LocalDensity.current
     val inPreview = LocalInspectionMode.current
     val dots = rememberWorldDots()
@@ -64,8 +65,8 @@ fun FlightMap(
         val fit = remember(focus, wPx, hPx) { MercatorFit(focus, wPx, hPx, density.density) }
         var snapshot by remember { mutableStateOf<Bitmap?>(null) }
         if (realMap && !inPreview && focus.isNotEmpty() && wPx > 0 && hPx > 0) {
-            DisposableEffect(fit) {
-                val json = runCatching { context.assets.open("map/contrail_dark.json").bufferedReader().use { it.readText() } }.getOrNull()
+            DisposableEffect(fit, styleAsset) {
+                val json = runCatching { context.assets.open(styleAsset).bufferedReader().use { it.readText() } }.getOrNull()
                 val snapper = json?.let {
                     runCatching {
                         MapSnapshotter(
@@ -108,14 +109,14 @@ fun rememberMapMarkers(): MapMarkers {
     val style = ContrailTheme.type.numericSmall
     val textColor = ContrailTheme.colors.textPrimary
     val halo = ContrailTheme.colors.canvasSunken
-    return remember(plane, measurer, style) {
+    return remember(plane, measurer, style, textColor, halo) {
         MapMarkers(
             drawPlane = { at, heading, tint, sizeDp ->
                 val s = sizeDp.dp.toPx()
                 drawCircle(Brush.radialGradient(listOf(tint.copy(alpha = 0.55f), Color.Transparent), at, s * 1.2f), s * 1.2f, at)
                 rotate(heading, pivot = at) {
                     translate(at.x - s / 2, at.y - s / 2) {
-                        with(plane) { draw(Size(s, s), colorFilter = ColorFilter.tint(Color.White)) }
+                        with(plane) { draw(Size(s, s), colorFilter = ColorFilter.tint(textColor)) }
                     }
                 }
             },

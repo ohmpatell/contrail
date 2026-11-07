@@ -64,6 +64,14 @@ import com.contrail.contrail.navigation.SettingsKey
 import com.contrail.contrail.navigation.ShellKey
 import com.contrail.contrail.navigation.FlightRequests
 import com.contrail.contrail.navigation.TabRequests
+import com.contrail.contrail.core.data.settings.ResolvedTheme
+import com.contrail.contrail.core.data.settings.ThemeResolver
+import kotlinx.coroutines.flow.MutableStateFlow
+import kotlinx.coroutines.flow.launchIn
+import kotlinx.coroutines.flow.onEach
+import androidx.lifecycle.lifecycleScope
+import androidx.lifecycle.compose.collectAsStateWithLifecycle
+import androidx.compose.runtime.getValue
 import com.contrail.contrail.navigation.TopLevelDestination
 import dagger.hilt.android.AndroidEntryPoint
 import javax.inject.Inject
@@ -71,14 +79,28 @@ import javax.inject.Inject
 @AndroidEntryPoint
 class MainActivity : ComponentActivity() {
     @Inject lateinit var inbox: SharedTicketInbox
+    @Inject lateinit var themes: ThemeResolver
+
+    /** The look from Settings; null until it has loaded, which holds the splash screen. */
+    private val theme = MutableStateFlow<ResolvedTheme?>(null)
 
     override fun onCreate(savedInstanceState: Bundle?) {
-        installSplashScreen()
+        installSplashScreen().setKeepOnScreenCondition { theme.value == null }
         super.onCreate(savedInstanceState)
-        enableEdgeToEdge(
-            statusBarStyle = SystemBarStyle.dark(android.graphics.Color.TRANSPARENT),
-            navigationBarStyle = SystemBarStyle.dark(android.graphics.Color.TRANSPARENT),
-        )
+        var light: Boolean? = null
+        themes.theme.onEach { t ->
+            theme.value = t
+            // Status-bar icons go dark on the light Chart theme.
+            if (t.colors.isLight != light) {
+                light = t.colors.isLight
+                val bars = if (t.colors.isLight) {
+                    SystemBarStyle.light(android.graphics.Color.TRANSPARENT, android.graphics.Color.TRANSPARENT)
+                } else {
+                    SystemBarStyle.dark(android.graphics.Color.TRANSPARENT)
+                }
+                enableEdgeToEdge(statusBarStyle = bars, navigationBarStyle = bars)
+            }
+        }.launchIn(lifecycleScope)
         if (savedInstanceState == null) receiveShare(intent)
         TabRequests.request(intent?.getStringExtra(EXTRA_TAB))
         requestFlight(intent)
@@ -88,7 +110,8 @@ class MainActivity : ComponentActivity() {
             requestFlight(it)
         }
         setContent {
-            ContrailTheme { ContrailNavHost(inbox) }
+            val t by theme.collectAsStateWithLifecycle()
+            ContrailTheme(palette = t?.colors, typography = t?.type) { ContrailNavHost(inbox) }
         }
     }
 

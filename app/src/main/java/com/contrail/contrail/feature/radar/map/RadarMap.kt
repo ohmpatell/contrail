@@ -39,9 +39,11 @@ fun RadarMap(
     val density = LocalDensity.current.density
     val latestCallbacks = rememberUpdatedState(callbacks)
     val latestOnReady = rememberUpdatedState(onReady)
-    val holder = remember { ControllerHolder() }
+    val styleAsset = ContrailTheme.colors.mapStyle
+    val holder = remember(styleAsset) { ControllerHolder() }
 
-    val mapView = remember {
+    // A new theme means a new map style: the view is rebuilt with it.
+    val mapView = remember(styleAsset) {
         MapView(context, options(context, initialCamera, canvas)).apply { onCreate(null) }
     }
 
@@ -74,7 +76,7 @@ fun RadarMap(
 
     DisposableEffect(mapView) {
         mapView.getMapAsync { map ->
-            val json = context.assets.open(STYLE_ASSET).bufferedReader().use { it.readText() }
+            val json = context.assets.open(styleAsset).bufferedReader().use { it.readText() }
             map.setStyle(Style.Builder().fromJson(json)) { style ->
                 if (mapView.isDestroyed) return@setStyle
                 val controller = RadarMapController(
@@ -98,7 +100,7 @@ fun RadarMap(
         onDispose { }
     }
 
-    AndroidView(factory = { mapView }, modifier = modifier)
+    androidx.compose.runtime.key(mapView) { AndroidView(factory = { mapView }, modifier = modifier) }
 }
 
 private class ControllerHolder {
@@ -117,4 +119,3 @@ private fun options(context: Context, camera: RadarCamera, canvas: Int) =
         .minZoomPreference(2.0)
         .maxZoomPreference(16.5)
 
-private const val STYLE_ASSET = "map/contrail_dark.json"

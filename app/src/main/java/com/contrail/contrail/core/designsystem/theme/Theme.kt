@@ -6,6 +6,7 @@ import androidx.compose.material3.LocalContentColor
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Typography
 import androidx.compose.material3.darkColorScheme
+import androidx.compose.material3.lightColorScheme
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.CompositionLocalProvider
 import androidx.compose.runtime.ReadOnlyComposable
@@ -39,13 +40,16 @@ object ContrailTheme {
 }
 
 /**
- * Night cockpit theme. [accent] lets a screen glow in an airline's livery colour.
+ * Contrail's theme. [palette] and [typography] come from the look picked in Settings (night cockpit by
+ * default); [accent] lets a screen glow in an airline's livery colour.
  * [reducedMotion] defaults to the system "remove animations" setting.
  */
 @Composable
 fun ContrailTheme(
     accent: Color? = null,
     reducedMotion: Boolean? = null,
+    palette: ContrailColors? = null,
+    typography: ContrailTypography? = null,
     content: @Composable () -> Unit,
 ) {
     val context = LocalContext.current
@@ -53,11 +57,13 @@ fun ContrailTheme(
     val reduced = reducedMotion ?: remember(context) {
         !inPreview && ContrailMotion.isReducedMotion(context)
     }
-    val colors = remember(accent) {
-        if (accent == null) NightCockpitColors else NightCockpitColors.copy(accent = accent)
+    // A nested ContrailTheme (e.g. an airline-accented screen) keeps the app's chosen palette.
+    val base = palette ?: LocalColors.current
+    val colors = remember(accent, base) {
+        if (accent == null) base else base.copy(accent = accent)
     }
     val material = remember(colors) {
-        darkColorScheme(
+        (if (colors.isLight) lightColorScheme() else darkColorScheme()).copy(
             primary = colors.accent,
             onPrimary = colors.onAccent,
             secondary = colors.accentDeep,
@@ -71,8 +77,8 @@ fun ContrailTheme(
             error = colors.statusCancelled,
         )
     }
-    val type = ContrailType
-    val materialType = remember {
+    val type = typography ?: LocalType.current
+    val materialType = remember(type) {
         Typography(
             displayLarge = type.displayLarge,
             displayMedium = type.displayMedium,
