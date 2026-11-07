@@ -1,10 +1,14 @@
 # Status
 
-Last updated Oct 27, 2026.
+Last updated Nov 7, 2026.
 
 ## Waiting on you
 
-Nothing. The OpenSky and logostream keys are built into every release from GitHub Secrets, so a fresh install works with no setup. To change a key: update the secret on GitHub (Settings → Secrets and variables → Actions) and push, or paste a new one in the app's Settings, which overrides the built-in one.
+Three free sign-ups for Stage 5, needed only from step 4 (sync) onward. Steps 1 to 3 don't wait on them. Put each value in `local.properties`; Claude adds the GitHub Secrets.
+
+- **Supabase:** `SUPABASE_ACCESS_TOKEN` (used once to set up the project, then you can delete it).
+- **Google Cloud sign-in client:** `CONTRAIL_GOOGLE_WEB_CLIENT_ID`.
+- **AeroDataBox on RapidAPI (Basic, free):** `CONTRAIL_AERODATABOX_API_KEY`.
 
 Releases: every push to `master` publishes a signed APK to GitHub Releases for Obtainium. Keep `C:\Users\ohm20\contrail-signing\contrail-release.jks` and its password backed up.
 
@@ -40,8 +44,14 @@ Releases: every push to `master` publishes a signed APK to GitHub Releases for O
 - **Share your Passport:** a story-sized card (globe, totals, flags, latest stamps) sent through the share sheet.
 - 156 unit and screenshot tests green, lint clean. Verified on the Pixel 9 emulator: a real myFlightradar24-format CSV imported through the file picker, the Passport replay, Add a flight with live route lookup, a flown-flight page, and Sky with live ADS-B traffic.
 
-## Next
-- Feedback from your phone.
+## Next: Stage 5, Contrail everywhere (plan in `DESIGN.md` → Roadmap)
+1. Live Update notification for flights in progress, new widgets
+2. Themes: Night Cockpit, Chart, Golden Hour, Glass Cockpit, Livery mode
+3. Tablet layouts
+4. Optional Google sign-in and sync (Supabase)
+5. Real departures and arrivals (AeroDataBox)
+6. Automatic actual takeoff and landing times
+7. Follow a flight, shared trips, flights together
 
 ## Known limits
 - No free schedule API: flight times come from your ticket or log, or are estimated from distance (always labelled). Tail numbers are entered by hand.
