@@ -4,10 +4,10 @@ Personal Android flight tracking app for one aviation enthusiast (me). Flighty-g
 
 ## Non-negotiables
 
-- **Free only.** Only free APIs and free tiers (see the Data sources table in `docs/DESIGN.md`). No paid services, no Firebase, no backend server.
-- **No secrets in the repo.** Release builds get API keys from GitHub Secrets at build time (`CONTRAIL_LOGOSTREAM_API_KEY`, `CONTRAIL_OPENSKY_CLIENT_ID`, `CONTRAIL_OPENSKY_CLIENT_SECRET`), so the published APK works with no setup (my choice, knowing the public APK makes them extractable). Debug builds read them from the git-ignored `local.properties`. A key saved in the app's Settings (encrypted, DataStore + Android Keystore) overrides the built-in one. Never hardcode keys and never commit them.
+- **Free only.** Only free APIs and free tiers (see the Data sources table in `docs/DESIGN.md`). No paid services, no Firebase, no server of our own. The one exception is a free Supabase project for optional sign-in, sync and a shared cache (Stage 5); the app must work fully without it.
+- **No secrets in the repo.** Release builds get API keys from GitHub Secrets at build time (`CONTRAIL_LOGOSTREAM_API_KEY`, `CONTRAIL_OPENSKY_CLIENT_ID`, `CONTRAIL_OPENSKY_CLIENT_SECRET`, and from Stage 5 `CONTRAIL_AERODATABOX_API_KEY`, `CONTRAIL_SUPABASE_URL`, `CONTRAIL_SUPABASE_KEY`, `CONTRAIL_GOOGLE_WEB_CLIENT_ID`), so the published APK works with no setup (my choice, knowing the public APK makes them extractable). Debug builds read them from the git-ignored `local.properties`. A key saved in the app's Settings (encrypted, DataStore + Android Keystore) overrides the built-in one. Never hardcode keys and never commit them.
 - **Design is the top priority.** This app should look and feel stunning: smooth 120 Hz motion, shared-element transitions, spring physics, frosted glass, split-flap text. No default Material look, no placeholder-quality UI left behind. If a screen works but looks plain, it isn't done.
-- **No login, no accounts, no analytics, no ads.**
+- **Sign-in is optional** (Google, through Supabase, from Stage 5) and only syncs and shares your own data. No analytics, no ads.
 - **Offline first.** Screens read from the Room database; repositories refresh it from the network.
 
 ## Tech stack

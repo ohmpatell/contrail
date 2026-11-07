@@ -10,7 +10,7 @@ Every screen follows three rules:
 
 1. **The airplane is the hero.** Every flight, tail number and radar contact shows a real photo, a floating cutout or a livery render. No generic icons where a real aircraft can be shown.
 2. **Motion explains.** Every animation shows where something came from or where it is going: a card flies into its detail screen, a route draws itself, a plane glides between radar updates. Nothing moves just to decorate.
-3. **Free and private.** No account, no paid backend, no ads, no tracking. Keys for the few services that need one live only on your phone.
+3. **Free and private.** No paid backend, no ads, no tracking. Signing in is optional (from Stage 5) and only syncs your own data between your devices and the people you share with; the app works fully signed out.
 
 ## Technology
 
@@ -253,6 +253,8 @@ Everything comes from free sources, and nothing needs a payment card. Your fligh
 | [RainViewer](https://www.rainviewer.com/api.html) | Weather radar layer | Free for personal use | None |
 | [OpenFreeMap](https://openfreemap.org/) | Map tiles | Free | None |
 | [Open-Meteo](https://open-meteo.com/) | Winds and weather layers | Free for non-commercial use | None |
+| [AeroDataBox](https://rapidapi.com/aedbx-aedbx/api/aerodatabox) (RapidAPI Basic, from Stage 5) | Scheduled and actual times, gates, terminals and delays for your flights; airport departure and arrival boards | 400 units a month, 1 request per second | Free key |
+| [Supabase](https://supabase.com/) (Free, from Stage 5) | Optional sign-in (Google), sync between devices, shared trips, follow a flight, shared board cache | 500 MB database; pauses after a week with no activity, and the app keeps working offline if it does | Free account |
 
 How the free budgets are spent:
 
@@ -268,7 +270,7 @@ Screens never call the network directly. They read from the on-phone database, a
 &#91;embedded content: app architecture · 4 layers plus on-device stores\]
 
 - **Offline first:** your trips, Passport, favourite airports and cached aircraft pages all work in airplane mode.
-- **No server:** a native app can call every API directly, so there's no proxy, no Firebase and nothing to host.
+- **No server of our own:** a native app calls every API directly. From Stage 5, a free Supabase project stores synced data and a shared cache of airport boards; it is never required for the app to work, and there's still no Firebase and nothing to host.
 - **Swappable providers:** each source sits behind one interface, so a dead API can be replaced without touching the screens.
 
 ## Build and install
@@ -290,6 +292,23 @@ The build starts with the radar because it needs no keys and shows off the desig
 &#91;embedded content: build roadmap · 5 phases\]
 
 The optional 3D models come after phase 5, once the core app is done.
+
+### Stage 5: Contrail everywhere
+
+Phases 1 to 5 are built (Stages 1 to 4 in `STATUS.md`). Stage 5 takes Contrail from one phone to your phone, your tablet and the people you fly with, and gives it a look that is clearly its own. Items 1 to 3 need no keys and come first.
+
+1. **Live surfaces.** An Android 16 Live Update for a flight in progress: a promoted notification on the lock screen and status bar with a progress bar, phase (boarding, taxi, airborne, landing) and time to go. New widgets: a split-flap departure board for your next trip, a mini radar around home, a Passport year ring, and a large trip widget for tablets.
+2. **Themes.** A theme engine on the existing tokens, chosen in Settings with a live preview:
+   - **Night Cockpit**, the current theme.
+   - **Chart**, a light theme like a paper aeronautical chart: cream paper, magenta airways, printed-style type.
+   - **Golden Hour**, which follows the real sun position where you are, from dawn through day and dusk to night.
+   - **Glass Cockpit**, in the style of a pilot's flight display: green, magenta and cyan on black, with tape-style readouts.
+   - **Livery mode**, an option that tints the app in your airline's colours while a trip is under way.
+3. **Tablet layouts.** Window-size classes throughout. The radar gets a permanent side panel instead of a bottom sheet, Trips becomes list and detail side by side, and the Passport opens as a two-page spread. Landscape works everywhere.
+4. **Accounts and sync.** Optional "Sign in with Google" (name and email only, through Credential Manager) backed by Supabase Auth. Room stays the source of truth: changes go into an outbox and sync in the background; the newest edit wins per row, and deletes are soft so they sync too. Row-level security means each person can only read their own rows and what's shared with them. Everything works signed out.
+5. **Real departures and arrivals.** AeroDataBox supplies scheduled, estimated and actual times, terminals, gates and delays. The 400 free units a month go to your own flights first (checked on the day of travel), then to airport boards opened on demand, with a quota meter like logostream's. Boards are stored in Supabase for 15 minutes, so one fetch serves everyone signed in. ADS-B fills in live status (taxiing, airborne, landing in 12 min). Every estimate stays labelled.
+6. **Automatic actual times.** When one of your flights is tracked, takeoff and landing are detected from ADS-B, and from the phone's GPS while you're on board, and saved as the real times, replacing estimates in the log and the Passport.
+7. **Follow a flight and fly together.** Share a flight and it opens in the other person's Contrail, tracked live with "landed" and "at gate" notifications. Trips can be shared and edited by both people, and the Passport shows the flights you took together.
 
 ## Known limits and risks
 
