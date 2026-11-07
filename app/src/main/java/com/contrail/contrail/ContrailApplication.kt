@@ -14,12 +14,15 @@ import coil3.util.DebugLogger
 import com.contrail.contrail.core.data.reference.Airlines
 import com.contrail.contrail.core.data.reference.TypeDesignators
 import com.contrail.contrail.core.data.repository.TripRepository
+import com.contrail.contrail.core.data.repository.TripSettings
+import com.contrail.contrail.feature.trips.live.LiveFlightUpdates
 import com.contrail.contrail.feature.widgets.Widgets
 import dagger.Lazy
 import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.FlowPreview
 import kotlinx.coroutines.SupervisorJob
+import kotlinx.coroutines.flow.combine
 import kotlinx.coroutines.flow.debounce
 import kotlinx.coroutines.flow.drop
 import kotlinx.coroutines.launch
@@ -41,6 +44,8 @@ class ContrailApplication : Application(), SingletonImageLoader.Factory, Configu
     @Inject lateinit var okHttp: Lazy<OkHttpClient>
     @Inject lateinit var httpClient: Lazy<HttpClient>
     @Inject lateinit var trips: Lazy<TripRepository>
+    @Inject lateinit var tripSettings: Lazy<TripSettings>
+    @Inject lateinit var liveFlights: Lazy<LiveFlightUpdates>
 
     private val appScope = CoroutineScope(SupervisorJob() + Dispatchers.Default)
 
@@ -55,6 +60,13 @@ class ContrailApplication : Application(), SingletonImageLoader.Factory, Configu
         appScope.launch {
             @OptIn(FlowPreview::class)
             trips.get().trips.drop(1).debounce(1_500).collect { Widgets.updateTrips(this@ContrailApplication) }
+        }
+        // The lock-screen Live Update follows your next flight, and the switch in Settings.
+        appScope.launch {
+            @OptIn(FlowPreview::class)
+            combine(trips.get().trips, tripSettings.get().liveUpdates) { _, _ -> }.debounce(1_500).collect {
+                runCatching { liveFlights.get().reschedule() }
+            }
         }
     }
 

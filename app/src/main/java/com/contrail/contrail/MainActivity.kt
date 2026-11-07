@@ -62,6 +62,7 @@ import com.contrail.contrail.navigation.LocalNavigator
 import com.contrail.contrail.navigation.Navigator
 import com.contrail.contrail.navigation.SettingsKey
 import com.contrail.contrail.navigation.ShellKey
+import com.contrail.contrail.navigation.FlightRequests
 import com.contrail.contrail.navigation.TabRequests
 import com.contrail.contrail.navigation.TopLevelDestination
 import dagger.hilt.android.AndroidEntryPoint
@@ -80,9 +81,11 @@ class MainActivity : ComponentActivity() {
         )
         if (savedInstanceState == null) receiveShare(intent)
         TabRequests.request(intent?.getStringExtra(EXTRA_TAB))
+        requestFlight(intent)
         addOnNewIntentListener {
             receiveShare(it)
             TabRequests.request(it.getStringExtra(EXTRA_TAB))
+            requestFlight(it)
         }
         setContent {
             ContrailTheme { ContrailNavHost(inbox) }
@@ -92,6 +95,14 @@ class MainActivity : ComponentActivity() {
     companion object {
         /** Opens on this tab (a TopLevelDestination name), from notifications and widgets. */
         const val EXTRA_TAB = "contrail.tab"
+
+        /** Opens this flight's page (a segment id), from the Live Update. */
+        const val EXTRA_FLIGHT = "contrail.flight"
+    }
+
+    private fun requestFlight(intent: Intent?) {
+        val id = intent?.getLongExtra(EXTRA_FLIGHT, 0L) ?: 0L
+        if (id != 0L) FlightRequests.requested.value = id
     }
 
     /** "Share to Contrail" from another app: hand the files or text to the import screen. */
@@ -134,6 +145,14 @@ private fun ContrailNavHost(inbox: SharedTicketInbox) {
 
             private fun push(key: NavKey) {
                 if (backStack.lastOrNull() != key) backStack.add(key)
+            }
+        }
+    }
+    LaunchedEffect(Unit) {
+        FlightRequests.requested.collect { id ->
+            if (id != null) {
+                navigator.openFlight(id)
+                FlightRequests.requested.value = null
             }
         }
     }

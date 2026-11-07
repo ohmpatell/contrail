@@ -8,4 +8,5 @@
     <string name="widget_overhead_description">The closest plane to you right now</string>
     <string name="widget_passport">Passport</string>
     <string name="widget_passport_description">Your lifetime flying at a glance</string>
+    <string name="live_flight_channel">Your flight, live</string>
 </resources>

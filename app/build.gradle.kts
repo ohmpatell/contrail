@@ -21,9 +21,15 @@ val localProperties = Properties().apply {
     if (f.exists()) f.inputStream().use { load(it) }
 }
 fun quoted(value: String?): String = "\"" + (value ?: "").trim().replace("\\", "\\\\").replace("\"", "\\\"") + "\""
-fun debugKey(name: String): String = quoted(localProperties.getProperty(name))
+fun debugKey(name: String): String =
+    quoted(localProperties.getProperty(name) ?: localProperties.getProperty("CONTRAIL_$name"))
 fun releaseKey(name: String): String = quoted(providers.environmentVariable("CONTRAIL_$name").orNull)
-val apiKeyNames = listOf("LOGOSTREAM_API_KEY", "OPENSKY_CLIENT_ID", "OPENSKY_CLIENT_SECRET")
+val apiKeyNames = listOf(
+    "LOGOSTREAM_API_KEY", "OPENSKY_CLIENT_ID", "OPENSKY_CLIENT_SECRET",
+    "SUPABASE_KEY", "AERODATABOX_API_KEY",
+)
+// The project URL isn't a secret; the publishable key plus row-level security guard the data.
+val supabaseUrl = "\"https://hppyekxenuyoyjlbmmud.supabase.co\""
 
 android {
     namespace = "com.contrail.contrail"
@@ -39,6 +45,7 @@ android {
         versionName = "0.1.${ciVersionCode ?: 0}"
 
         testInstrumentationRunner = "androidx.test.runner.AndroidJUnitRunner"
+        buildConfigField("String", "SUPABASE_URL", supabaseUrl)
     }
 
     signingConfigs {

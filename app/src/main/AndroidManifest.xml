@@ -12,6 +12,8 @@
     <uses-feature android:name="android.hardware.camera" android:required="false" />
     <!-- Overhead alerts. Asked for only when you turn alerts on. -->
     <uses-permission android:name="android.permission.POST_NOTIFICATIONS" />
+    <!-- Android 16 Live Updates: your flight promoted to the lock screen and status bar. -->
+    <uses-permission android:name="android.permission.POST_PROMOTED_NOTIFICATIONS" />
 
     <application
         android:name=".ContrailApplication"

@@ -1,5 +1,8 @@
 package com.contrail.contrail.feature.settings
 
+import android.Manifest
+import androidx.activity.compose.rememberLauncherForActivityResult
+import androidx.activity.result.contract.ActivityResultContracts
 import androidx.compose.foundation.background
 import androidx.compose.foundation.border
 import androidx.compose.foundation.clickable
@@ -44,6 +47,7 @@ import com.contrail.contrail.core.designsystem.component.DetailScaffold
 import com.contrail.contrail.core.designsystem.component.Eyebrow
 import com.contrail.contrail.core.designsystem.component.SectionCard
 import com.contrail.contrail.core.designsystem.theme.ContrailTheme
+import com.contrail.contrail.feature.radar.components.GlassToggle
 import com.contrail.contrail.navigation.LocalNavigator
 import dagger.hilt.android.lifecycle.HiltViewModel
 import kotlinx.coroutines.flow.SharingStarted
@@ -59,6 +63,7 @@ data class SettingsUiState(
     val usage: LogostreamUsage? = null,
     val openSky: OpenSkyUsage? = null,
     val thresholds: TurnThresholds = TurnThresholds(),
+    val liveUpdates: Boolean = true,
 )
 
 @HiltViewModel
@@ -72,11 +77,16 @@ class SettingsViewModel @Inject constructor(
         usage.logostream,
         usage.openSky,
         tripSettings.thresholds,
-    ) { keys, u, o, t -> SettingsUiState(keys, u, o, t) }
+        tripSettings.liveUpdates,
+    ) { keys, u, o, t, live -> SettingsUiState(keys, u, o, t, live) }
         .stateIn(viewModelScope, SharingStarted.WhileSubscribed(5_000), SettingsUiState())
 
     fun setThresholds(t: TurnThresholds) {
         viewModelScope.launch { tripSettings.setThresholds(t) }
+    }
+
+    fun setLiveUpdates(on: Boolean) {
+        viewModelScope.launch { tripSettings.setLiveUpdates(on) }
     }
 
     fun save(service: ApiService, key: String?) {
@@ -87,11 +97,26 @@ class SettingsViewModel @Inject constructor(
 @Composable
 fun SettingsRoute(viewModel: SettingsViewModel = hiltViewModel()) {
     val state by viewModel.state.collectAsStateWithLifecycle()
-    SettingsScreen(state, onSave = viewModel::save, onBack = LocalNavigator.current::back, onThresholds = viewModel::setThresholds)
+    // Turning the Live Update on asks for notifications first; it's switched on either way and
+    // simply stays silent until notifications are allowed.
+    val notify = rememberLauncherForActivityResult(ActivityResultContracts.RequestPermission()) { viewModel.setLiveUpdates(true) }
+    SettingsScreen(
+        state,
+        onSave = viewModel::save,
+        onBack = LocalNavigator.current::back,
+        onThresholds = viewModel::setThresholds,
+        onLiveUpdates = { on -> if (on) notify.launch(Manifest.permission.POST_NOTIFICATIONS) else viewModel.setLiveUpdates(false) },
+    )
 }
 
 @Composable
-fun SettingsScreen(state: SettingsUiState, onSave: (ApiService, String?) -> Unit, onBack: () -> Unit, onThresholds: (TurnThresholds) -> Unit = {}) {
+fun SettingsScreen(
+    state: SettingsUiState,
+    onSave: (ApiService, String?) -> Unit,
+    onBack: () -> Unit,
+    onThresholds: (TurnThresholds) -> Unit = {},
+    onLiveUpdates: (Boolean) -> Unit = {},
+) {
     DetailScaffold(title = "Settings", eyebrow = "Contrail ${BuildConfig.VERSION_NAME}", onBack = onBack) {
         SectionCard("API keys") {
             Text(
@@ -103,6 +128,7 @@ fun SettingsScreen(state: SettingsUiState, onSave: (ApiService, String?) -> Unit
             OpenSkyHelp(state)
         }
         SectionCard("logostream usage this month") { UsageMeter(state.usage) }
+        SectionCard("Live Update") { LiveUpdateRow(state.liveUpdates, onLiveUpdates) }
         SectionCard("Cockpit visit planner") { Thresholds(state.thresholds, onThresholds) }
         Credits()
     }
@@ -247,6 +273,27 @@ private fun OpenSkyHelp(state: SettingsUiState) {
             style = ContrailTheme.type.bodySmall,
             color = if (o.exhausted) colors.statusDelayed else colors.textTertiary,
         )
+    }
+}
+
+/** The lock-screen Live Update switch. */
+@Composable
+private fun LiveUpdateRow(on: Boolean, onChange: (Boolean) -> Unit) {
+    val colors = ContrailTheme.colors
+    Row(
+        Modifier.fillMaxWidth().clickable(role = Role.Switch) { onChange(!on) },
+        verticalAlignment = Alignment.CenterVertically,
+        horizontalArrangement = Arrangement.spacedBy(ContrailTheme.spacing.md),
+    ) {
+        Column(Modifier.weight(1f)) {
+            Text("Your flight on the lock screen", style = ContrailTheme.type.title, color = colors.textPrimary)
+            Text(
+                "From three hours before departure until you land: phase, progress and a countdown in the status bar.",
+                style = ContrailTheme.type.bodySmall,
+                color = colors.textTertiary,
+            )
+        }
+        GlassToggle(on)
     }
 }
 
