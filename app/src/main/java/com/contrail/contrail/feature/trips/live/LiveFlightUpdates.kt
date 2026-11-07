@@ -19,6 +19,7 @@ import androidx.work.WorkerParameters
 import com.contrail.contrail.MainActivity
 import com.contrail.contrail.R
 import com.contrail.contrail.core.common.Clock
+import com.contrail.contrail.core.common.LatLon
 import com.contrail.contrail.core.data.reference.Airlines
 import com.contrail.contrail.core.data.repository.AirportRepository
 import com.contrail.contrail.core.data.repository.LiveFlightRepository
@@ -29,7 +30,6 @@ import com.contrail.contrail.core.data.trip.FlightPhase
 import com.contrail.contrail.core.data.trip.FlightProgress
 import com.contrail.contrail.core.data.trip.FlightProgressCalc
 import com.contrail.contrail.core.data.trip.FlightSegment
-import com.contrail.contrail.core.data.trip.LatLon
 import com.contrail.contrail.feature.widgets.Widgets
 import dagger.assisted.Assisted
 import dagger.assisted.AssistedInject

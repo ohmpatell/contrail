@@ -1,6 +1,7 @@
 package com.contrail.contrail.core.data.trip
 
 import com.contrail.contrail.core.common.Geo
+import com.contrail.contrail.core.common.LatLon
 import com.contrail.contrail.core.data.model.LiveAircraft
 import java.time.Duration
 import java.time.Instant
@@ -34,9 +35,6 @@ data class FlightProgress(
     /** The moment the countdown runs to: departure until wheels-up, then arrival. */
     fun target(segment: FlightSegment): Instant = if (phase <= FlightPhase.Departing) segment.departure else eta
 }
-
-/** A point on the map, kept separate from the airport directory so the logic stays testable. */
-data class LatLon(val lat: Double, val lon: Double)
 
 object FlightProgressCalc {
     /** The Live Update appears this long before departure… */

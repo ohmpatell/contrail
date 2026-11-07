@@ -1,9 +1,9 @@
 package com.contrail.contrail.core.data
 
+import com.contrail.contrail.core.common.LatLon
 import com.contrail.contrail.core.data.trip.FlightPhase
 import com.contrail.contrail.core.data.trip.FlightProgressCalc
 import com.contrail.contrail.core.data.trip.FlightSegment
-import com.contrail.contrail.core.data.trip.LatLon
 import com.contrail.contrail.testing.aircraft
 import org.junit.Assert.assertEquals
 import org.junit.Assert.assertFalse

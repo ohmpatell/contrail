@@ -87,7 +87,7 @@ class ProximityWorker @AssistedInject constructor(
         runCatching { traffic.refresh(spot, ceil(s.radiusKm / 1.852 + 5).toInt()) }.onFailure { return Result.retry() }
         val now = clock.nowMs()
         val contacts = SkyGeometry.contacts(spot, traffic.observeTraffic().first(), s.radiusKm.toDouble(), now)
-        snapshots.save(contacts.firstOrNull(), contacts.size, s.spotName, now)
+        snapshots.save(contacts, s.radiusKm, s.spotName, now)
         Widgets.updateOverhead(applicationContext)
 
         if (!s.alerts.enabled) return Result.success()
