@@ -1,0 +1,574 @@
+{
+ "departures": [
+  {
+   "movement": {
+    "airport": {
+     "icao": "KDTW",
+     "iata": "DTW",
+     "name": "Detroit",
+     "location": {
+      "lat": 42.2124,
+      "lon": -83.3534
+     },
+     "countryCode": "us",
+     "timeZone": "America/Detroit"
+    },
+    "scheduledTime": {
+     "utc": "2026-11-07 17:10Z",
+     "local": "2026-11-07 12:10-05:00"
+    },
+    "revisedTime": {
+     "utc": "2026-11-07 17:10Z",
+     "local": "2026-11-07 12:10-05:00"
+    },
+    "runwayTime": {
+     "utc": "2026-11-07 17:23Z",
+     "local": "2026-11-07 12:23-05:00"
+    },
+    "terminal": "3",
+    "gate": "A6",
+    "runway": "23",
+    "quality": [
+     "Basic",
+     "Live"
+    ]
+   },
+   "number": "DL 5256",
+   "callSign": "EDV5256",
+   "status": "Departed",
+   "codeshareStatus": "IsOperator",
+   "isCargo": false,
+   "aircraft": {
+    "reg": "N904XJ",
+    "modeS": "AC801E",
+    "model": "Canadair CRJ 900"
+   },
+   "airline": {
+    "name": "Delta Air Lines",
+    "iata": "DL",
+    "icao": "DAL"
+   }
+  },
+  {
+   "movement": {
+    "airport": {
+     "icao": "CYYC",
+     "iata": "YYC",
+     "name": "Calgary",
+     "location": {
+      "lat": 51.1139,
+      "lon": -114.02
+     },
+     "countryCode": "ca",
+     "timeZone": "America/Edmonton"
+    },
+    "scheduledTime": {
+     "utc": "2026-11-07 17:10Z",
+     "local": "2026-11-07 12:10-05:00"
+    },
+    "revisedTime": {
+     "utc": "2026-11-07 17:10Z",
+     "local": "2026-11-07 12:10-05:00"
+    },
+    "runwayTime": {
+     "utc": "2026-11-07 17:29Z",
+     "local": "2026-11-07 12:29-05:00"
+    },
+    "terminal": "1",
+    "gate": "D37",
+    "runway": "23",
+    "quality": [
+     "Basic",
+     "Live"
+    ]
+   },
+   "number": "AC 141",
+   "callSign": "ACA141",
+   "status": "Departed",
+   "codeshareStatus": "IsOperator",
+   "isCargo": false,
+   "aircraft": {
+    "reg": "C-FZUB",
+    "modeS": "C0440E",
+    "model": "Airbus A320"
+   },
+   "airline": {
+    "name": "Air Canada",
+    "iata": "AC",
+    "icao": "ACA"
+   }
+  },
+  {
+   "movement": {
+    "airport": {
+     "name": "Unknown"
+    },
+    "scheduledTime": {
+     "utc": "2026-11-07 17:11Z",
+     "local": "2026-11-07 12:11-05:00"
+    },
+    "revisedTime": {
+     "utc": "2026-11-07 17:11Z",
+     "local": "2026-11-07 12:11-05:00"
+    },
+    "runwayTime": {
+     "utc": "2026-11-07 17:17Z",
+     "local": "2026-11-07 12:17-05:00"
+    },
+    "runway": "23",
+    "quality": [
+     "Basic",
+     "Live"
+    ]
+   },
+   "number": "KPO 505",
+   "callSign": "KPO505",
+   "status": "Departed",
+   "codeshareStatus": "IsOperator",
+   "isCargo": false,
+   "aircraft": {
+    "reg": "N505WG",
+    "modeS": "A64E7E"
+   },
+   "airline": {
+    "name": "KPO"
+   }
+  },
+  {
+   "movement": {
+    "airport": {
+     "icao": "KJFK",
+     "iata": "JFK",
+     "name": "New York",
+     "location": {
+      "lat": 40.6398,
+      "lon": -73.7789
+     },
+     "countryCode": "us",
+     "timeZone": "America/New_York"
+    },
+    "scheduledTime": {
+     "utc": "2026-11-07 17:15Z",
+     "local": "2026-11-07 12:15-05:00"
+    },
+    "revisedTime": {
+     "utc": "2026-11-07 17:15Z",
+     "local": "2026-11-07 12:15-05:00"
+    },
+    "terminal": "3",
+    "gate": "A6",
+    "quality": [
+     "Basic",
+     "Live"
+    ]
+   },
+   "number": "DL 5098",
+   "callSign": "EDV5098",
+   "status": "Expected",
+   "codeshareStatus": "IsOperator",
+   "isCargo": false,
+   "aircraft": {
+    "reg": "N834SK",
+    "modeS": "AB68D0",
+    "model": "Bombardier CRJ900"
+   },
+   "airline": {
+    "name": "Delta Air Lines",
+    "iata": "DL",
+    "icao": "DAL"
+   }
+  },
+  {
+   "movement": {
+    "airport": {
+     "icao": "CYYT",
+     "iata": "YYT",
+     "name": "St. John's",
+     "location": {
+      "lat": 47.6186,
+      "lon": -52.7519
+     },
+     "countryCode": "ca",
+     "timeZone": "America/St_Johns"
+    },
+    "scheduledTime": {
+     "utc": "2026-11-07 17:15Z",
+     "local": "2026-11-07 12:15-05:00"
+    },
+    "revisedTime": {
+     "utc": "2026-11-07 17:15Z",
+     "local": "2026-11-07 12:15-05:00"
+    },
+    "terminal": "1",
+    "gate": "D32",
+    "quality": [
+     "Basic",
+     "Live"
+    ]
+   },
+   "number": "AC 2054",
+   "status": "Expected",
+   "codeshareStatus": "IsOperator",
+   "isCargo": false,
+   "aircraft": {
+    "model": "Airbus A321"
+   },
+   "airline": {
+    "name": "Air Canada",
+    "iata": "AC",
+    "icao": "ACA"
+   }
+  },
+  {
+   "movement": {
+    "airport": {
+     "icao": "KRDU",
+     "iata": "RDU",
+     "name": "Raleigh/Durham",
+     "location": {
+      "lat": 35.8776,
+      "lon": -78.7875
+     },
+     "countryCode": "us",
+     "timeZone": "America/New_York"
+    },
+    "scheduledTime": {
+     "utc": "2026-11-07 17:15Z",
+     "local": "2026-11-07 12:15-05:00"
+    },
+    "revisedTime": {
+     "utc": "2026-11-07 17:15Z",
+     "local": "2026-11-07 12:15-05:00"
+    },
+    "runwayTime": {
+     "utc": "2026-11-07 17:26Z",
+     "local": "2026-11-07 12:26-05:00"
+    },
+    "terminal": "1",
+    "gate": "F89",
+    "runway": "23",
+    "quality": [
+     "Basic",
+     "Live"
+    ]
+   },
+   "number": "AC 8836",
+   "callSign": "JZA836",
+   "status": "Departed",
+   "codeshareStatus": "IsOperator",
+   "isCargo": false,
+   "aircraft": {
+    "reg": "C-FTJZ",
+    "modeS": "C03330",
+    "model": "Canadair CRJ 900"
+   },
+   "airline": {
+    "name": "Air Canada",
+    "iata": "AC",
+    "icao": "ACA"
+   }
+  }
+ ],
+ "arrivals": [
+  {
+   "movement": {
+    "airport": {
+     "icao": "KLGA",
+     "iata": "LGA",
+     "name": "New York",
+     "location": {
+      "lat": 40.7772,
+      "lon": -73.8726
+     },
+     "countryCode": "us",
+     "timeZone": "America/New_York"
+    },
+    "scheduledTime": {
+     "utc": "2026-11-07 17:12Z",
+     "local": "2026-11-07 12:12-05:00"
+    },
+    "revisedTime": {
+     "utc": "2026-11-07 17:12Z",
+     "local": "2026-11-07 12:12-05:00"
+    },
+    "runwayTime": {
+     "utc": "2026-11-07 17:02Z",
+     "local": "2026-11-07 12:02-05:00"
+    },
+    "terminal": "1",
+    "gate": "F86",
+    "baggageBelt": "9",
+    "runway": "24L",
+    "quality": [
+     "Basic",
+     "Live"
+    ]
+   },
+   "number": "AC 8457",
+   "callSign": "JZA457",
+   "status": "Arrived",
+   "codeshareStatus": "IsOperator",
+   "isCargo": false,
+   "aircraft": {
+    "reg": "C-FJZD",
+    "modeS": "C01A52",
+    "model": "Canadair CRJ 900"
+   },
+   "airline": {
+    "name": "Air Canada",
+    "iata": "AC",
+    "icao": "ACA"
+   }
+  },
+  {
+   "movement": {
+    "airport": {
+     "icao": "LPFR",
+     "iata": "FAO",
+     "name": "Faro",
+     "location": {
+      "lat": 37.0144,
+      "lon": -7.965909
+     },
+     "countryCode": "pt",
+     "timeZone": "Europe/Lisbon"
+    },
+    "scheduledTime": {
+     "utc": "2026-11-07 17:30Z",
+     "local": "2026-11-07 12:30-05:00"
+    },
+    "revisedTime": {
+     "utc": "2026-11-07 17:13Z",
+     "local": "2026-11-07 12:13-05:00"
+    },
+    "runwayTime": {
+     "utc": "2026-11-07 17:13Z",
+     "local": "2026-11-07 12:13-05:00"
+    },
+    "terminal": "3",
+    "gate": "B17",
+    "baggageBelt": "10",
+    "runway": "24L",
+    "quality": [
+     "Basic",
+     "Live"
+    ]
+   },
+   "number": "TS 233",
+   "callSign": "TSC233",
+   "status": "Arrived",
+   "codeshareStatus": "IsOperator",
+   "isCargo": false,
+   "aircraft": {
+    "reg": "C-GOIX",
+    "modeS": "C06A88",
+    "model": "Airbus A321 NEO"
+   },
+   "airline": {
+    "name": "Air Transat",
+    "iata": "TS",
+    "icao": "TSC"
+   }
+  },
+  {
+   "movement": {
+    "airport": {
+     "icao": "CYTS",
+     "iata": "YTS",
+     "name": "Timmins",
+     "location": {
+      "lat": 48.5697,
+      "lon": -81.3767
+     },
+     "countryCode": "ca",
+     "timeZone": "America/Toronto"
+    },
+    "scheduledTime": {
+     "utc": "2026-11-07 16:47Z",
+     "local": "2026-11-07 11:47-05:00"
+    },
+    "revisedTime": {
+     "utc": "2026-11-07 17:17Z",
+     "local": "2026-11-07 12:17-05:00"
+    },
+    "runwayTime": {
+     "utc": "2026-11-07 17:08Z",
+     "local": "2026-11-07 12:08-05:00"
+    },
+    "terminal": "1",
+    "gate": "D3",
+    "baggageBelt": "1",
+    "runway": "24L",
+    "quality": [
+     "Basic",
+     "Live"
+    ]
+   },
+   "number": "AC 8430",
+   "callSign": "JZA430",
+   "status": "Arrived",
+   "codeshareStatus": "IsOperator",
+   "isCargo": false,
+   "aircraft": {
+    "reg": "C-GGMU",
+    "modeS": "C055CD",
+    "model": "De Havilland Canada DHC-8-400 Dash 8Q"
+   },
+   "airline": {
+    "name": "Air Canada",
+    "iata": "AC",
+    "icao": "ACA"
+   }
+  },
+  {
+   "movement": {
+    "airport": {
+     "icao": "KATL",
+     "iata": "ATL",
+     "name": "Atlanta",
+     "location": {
+      "lat": 33.6367,
+      "lon": -84.4281
+     },
+     "countryCode": "us",
+     "timeZone": "America/New_York"
+    },
+    "scheduledTime": {
+     "utc": "2026-11-07 17:19Z",
+     "local": "2026-11-07 12:19-05:00"
+    },
+    "revisedTime": {
+     "utc": "2026-11-07 17:17Z",
+     "local": "2026-11-07 12:17-05:00"
+    },
+    "runwayTime": {
+     "utc": "2026-11-07 17:12Z",
+     "local": "2026-11-07 12:12-05:00"
+    },
+    "terminal": "3",
+    "gate": "A8",
+    "baggageBelt": "6",
+    "runway": "24L",
+    "quality": [
+     "Basic",
+     "Live"
+    ]
+   },
+   "number": "DL 2883",
+   "callSign": "DAL2883",
+   "status": "Arrived",
+   "codeshareStatus": "IsOperator",
+   "isCargo": false,
+   "aircraft": {
+    "reg": "N899DN",
+    "modeS": "AC671B",
+    "model": "Boeing 737"
+   },
+   "airline": {
+    "name": "Delta Air Lines",
+    "iata": "DL",
+    "icao": "DAL"
+   }
+  },
+  {
+   "movement": {
+    "airport": {
+     "icao": "ZBAA",
+     "iata": "PEK",
+     "name": "Beijing",
+     "location": {
+      "lat": 40.0801,
+      "lon": 116.585
+     },
+     "countryCode": "cn",
+     "timeZone": "Asia/Shanghai"
+    },
+    "scheduledTime": {
+     "utc": "2026-11-07 17:10Z",
+     "local": "2026-11-07 12:10-05:00"
+    },
+    "revisedTime": {
+     "utc": "2026-11-07 17:22Z",
+     "local": "2026-11-07 12:22-05:00"
+    },
+    "runwayTime": {
+     "utc": "2026-11-07 17:22Z",
+     "local": "2026-11-07 12:22-05:00"
+    },
+    "terminal": "1",
+    "gate": "E78",
+    "baggageBelt": "11",
+    "runway": "24L",
+    "quality": [
+     "Basic",
+     "Live"
+    ]
+   },
+   "number": "CA 993",
+   "callSign": "CCA993",
+   "status": "Arrived",
+   "codeshareStatus": "IsOperator",
+   "isCargo": false,
+   "aircraft": {
+    "reg": "B-2088",
+    "modeS": "78076E",
+    "model": "Boeing 777-300"
+   },
+   "airline": {
+    "name": "Air China",
+    "iata": "CA",
+    "icao": "CCA"
+   }
+  },
+  {
+   "movement": {
+    "airport": {
+     "icao": "CYYC",
+     "iata": "YYC",
+     "name": "Calgary",
+     "location": {
+      "lat": 51.1139,
+      "lon": -114.02
+     },
+     "countryCode": "ca",
+     "timeZone": "America/Edmonton"
+    },
+    "scheduledTime": {
+     "utc": "2026-11-07 17:25Z",
+     "local": "2026-11-07 12:25-05:00"
+    },
+    "revisedTime": {
+     "utc": "2026-11-07 17:25Z",
+     "local": "2026-11-07 12:25-05:00"
+    },
+    "runwayTime": {
+     "utc": "2026-11-07 17:07Z",
+     "local": "2026-11-07 12:07-05:00"
+    },
+    "terminal": "3",
+    "gate": "B2A",
+    "baggageBelt": "2",
+    "runway": "24L",
+    "quality": [
+     "Basic",
+     "Live"
+    ]
+   },
+   "number": "PD 350",
+   "callSign": "POE350",
+   "status": "Arrived",
+   "codeshareStatus": "IsOperator",
+   "isCargo": false,
+   "aircraft": {
+    "reg": "C-GKXM",
+    "modeS": "C06173",
+    "model": "E295"
+   },
+   "airline": {
+    "name": "Porter",
+    "iata": "PD",
+    "icao": "POE"
+   }
+  }
+ ]
+}
