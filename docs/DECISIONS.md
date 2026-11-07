@@ -224,4 +224,6 @@ Checked against the OpenAPI spec, the terms (Sept 3, 2026) and live probes with 
 - **Livery mode is on by default** and only applies inside a flight's Live Update window.
 - **The splash screen waits for the saved theme**, so Chart never flashes dark on launch.
 - **Sun maths moved to `core/common/Sun`** so the theme code doesn't depend on the radar feature.
+- **Window size from `LocalConfiguration`** (`ContrailTheme.layout`) rather than adding material3-adaptive. Wide means 840 dp or more, or 600 dp or more in landscape, so phones on their side get the rail too. List-and-detail Trips needs 840 dp ("roomy").
+- **Phone-shaped pages are centred at 720 dp** on wide screens, not redesigned one by one. Radar, Trips and the Stamp book have their own wide layouts.
 

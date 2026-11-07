@@ -84,7 +84,13 @@ fun StampBookScreen(state: PassportUiState, onBack: () -> Unit, startPage: Int =
     val colors = ContrailTheme.colors
     val spacing = ContrailTheme.spacing
     val pages = remember(s.stamps) { s.stamps.chunked(PER_PAGE) }
-    val pager = rememberPagerState(initialPage = startPage) { 2 + pages.size.coerceAtLeast(1) }
+    val pageCount = 2 + pages.size.coerceAtLeast(1)
+    // Wide screens open the book flat: the cover alone, then two facing pages per spread.
+    val wide = ContrailTheme.layout.wide
+    val spreads = remember(pageCount, wide) {
+        if (wide) listOf(listOf(0)) + (1 until pageCount).chunked(2) else (0 until pageCount).map { listOf(it) }
+    }
+    val pager = rememberPagerState(initialPage = spreads.indexOfFirst { startPage in it }.coerceAtLeast(0)) { spreads.size }
     Box(Modifier.fillMaxSize()) {
         AuroraBackground(Modifier.fillMaxSize())
         Column(
@@ -102,15 +108,34 @@ fun StampBookScreen(state: PassportUiState, onBack: () -> Unit, startPage: Int =
                 modifier = Modifier.weight(1f).fillMaxWidth(),
                 contentPadding = androidx.compose.foundation.layout.PaddingValues(horizontal = spacing.xxl, vertical = spacing.lg),
                 pageSpacing = spacing.lg,
-            ) { page ->
-                androidx.compose.foundation.layout.BoxWithConstraints(Modifier.fillMaxSize().pageFlip(pager, page), contentAlignment = Alignment.Center) {
-                    // As big as fits, in a real passport page's proportions.
-                    val w = minOf(maxWidth, maxHeight * 0.68f)
+            ) { spread ->
+                androidx.compose.foundation.layout.BoxWithConstraints(Modifier.fillMaxSize().pageFlip(pager, spread), contentAlignment = Alignment.Center) {
+                    val faces = spreads[spread]
+                    // As big as fits, in a real passport page's proportions; two side by side when open flat.
+                    val across = if (wide) 2 else 1
+                    val w = minOf(maxWidth / across, maxHeight * 0.68f)
                     val sheet = Modifier.width(w).height(w / 0.68f)
-                    when (page) {
-                        0 -> Cover(sheet)
-                        1 -> Identity(state, sheet)
-                        else -> StampPage(pages.getOrNull(page - 2).orEmpty(), page - 1, sheet, animate = pager.currentPage == page)
+                    Row(verticalAlignment = Alignment.CenterVertically) {
+                        faces.forEachIndexed { i, page ->
+                            Box {
+                                when (page) {
+                                    0 -> Cover(sheet)
+                                    1 -> Identity(state, sheet)
+                                    else -> StampPage(pages.getOrNull(page - 2).orEmpty(), page - 1, sheet, animate = pager.currentPage == spread)
+                                }
+                                // The spine: a soft shadow where facing pages meet.
+                                if (faces.size == 2) {
+                                    val toSpine = if (i == 0) listOf(androidx.compose.ui.graphics.Color.Transparent, colors.scrim) else listOf(colors.scrim, androidx.compose.ui.graphics.Color.Transparent)
+                                    Box(
+                                        Modifier
+                                            .align(if (i == 0) Alignment.CenterEnd else Alignment.CenterStart)
+                                            .width(w * 0.08f)
+                                            .height(w / 0.68f)
+                                            .background(androidx.compose.ui.graphics.Brush.horizontalGradient(toSpine)),
+                                    )
+                                }
+                            }
+                        }
                     }
                 }
             }

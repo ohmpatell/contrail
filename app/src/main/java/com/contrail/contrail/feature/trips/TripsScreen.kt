@@ -1,5 +1,10 @@
 package com.contrail.contrail.feature.trips
 
+import androidx.compose.foundation.layout.width
+import androidx.compose.foundation.layout.fillMaxHeight
+import androidx.compose.animation.togetherWith
+import androidx.compose.animation.slideInHorizontally
+import androidx.compose.animation.AnimatedContent
 import androidx.compose.animation.AnimatedVisibility
 import androidx.compose.animation.core.animateFloatAsState
 import androidx.compose.animation.expandVertically
@@ -79,7 +84,33 @@ import java.time.Instant
 fun TripsRoute(viewModel: TripsViewModel = hiltViewModel()) {
     val state by viewModel.state.collectAsStateWithLifecycle()
     val nav = LocalNavigator.current
-    TripsScreen(state, onImport = nav::openImport, onTrip = nav::openTrip, onFlight = nav::openFlight)
+    if (!ContrailTheme.layout.roomy) {
+        TripsScreen(state, onImport = nav::openImport, onTrip = nav::openTrip, onFlight = nav::openFlight)
+        return
+    }
+    // Tablets: your trips on the left, the chosen one open beside them (the next trip by default).
+    var chosen by rememberSaveable { mutableStateOf<Long?>(null) }
+    val shown = chosen?.takeIf { id -> (state.upcoming + state.past).any { it.id == id } }
+        ?: state.next?.first?.id ?: state.upcoming.firstOrNull()?.id ?: state.past.firstOrNull()?.id
+    val motion = ContrailTheme.motion
+    Row(Modifier.fillMaxSize()) {
+        TripsScreen(
+            state,
+            onImport = nav::openImport,
+            onTrip = { chosen = it },
+            onFlight = nav::openFlight,
+            modifier = Modifier.width(440.dp).fillMaxHeight(),
+        )
+        Box(Modifier.weight(1f).fillMaxHeight()) {
+            AnimatedContent(
+                targetState = shown,
+                transitionSpec = { (fadeIn(motion.fade()) + slideInHorizontally(motion.gentle()) { it / 8 }) togetherWith fadeOut(motion.fade(150)) },
+                label = "tripPane",
+            ) { id ->
+                if (id != null) TripDetailRoute(id, onBack = { chosen = null }) else Box(Modifier.fillMaxSize())
+            }
+        }
+    }
 }
 
 @Composable

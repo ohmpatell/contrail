@@ -112,6 +112,58 @@ fun GlassNavBar(
     }
 }
 
+/**
+ * The tab bar standing up: a floating glass rail on the left of wide screens. The indicator
+ * springs between tabs vertically, the same way the bar's does sideways.
+ */
+@Composable
+fun GlassNavRail(
+    selected: TopLevelDestination,
+    onSelect: (TopLevelDestination) -> Unit,
+    modifier: Modifier = Modifier,
+) {
+    val colors = ContrailTheme.colors
+    val motion = ContrailTheme.motion
+    val haptic = LocalHapticFeedback.current
+    val destinations = TopLevelDestination.entries
+    val itemHeight = 72.dp
+    GlassSurface(
+        modifier = modifier.width(80.dp).height(itemHeight * destinations.size + 12.dp),
+        shape = ContrailTheme.shapes.large,
+        level = GlassLevel.Strong,
+        hazeState = LocalChromeHaze.current,
+    ) {
+        Box(Modifier.fillMaxSize().padding(6.dp)) {
+            val indicatorY by animateDpAsState(itemHeight * selected.ordinal, motion.bouncy(), label = "railIndicator")
+            val accent = colors.accent
+            Box(
+                Modifier
+                    .offset { IntOffset(0, indicatorY.roundToPx()) }
+                    .fillMaxWidth()
+                    .height(itemHeight)
+                    .clip(ContrailTheme.shapes.medium)
+                    .background(Brush.horizontalGradient(listOf(accent.copy(alpha = 0.10f), accent.copy(alpha = 0.24f))))
+                    .border(ContrailTheme.sizes.hairline, accent.copy(alpha = 0.35f), ContrailTheme.shapes.medium),
+            )
+            Column(Modifier.fillMaxSize()) {
+                destinations.forEach { destination ->
+                    NavItem(
+                        destination = destination,
+                        selected = destination == selected,
+                        modifier = Modifier.fillMaxWidth().height(itemHeight),
+                        onClick = {
+                            if (destination != selected) {
+                                haptic.performHapticFeedback(HapticFeedbackType.SegmentFrequentTick)
+                                onSelect(destination)
+                            }
+                        },
+                    )
+                }
+            }
+        }
+    }
+}
+
 @Composable
 private fun NavItem(
     destination: TopLevelDestination,

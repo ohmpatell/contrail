@@ -14,6 +14,10 @@ import androidx.compose.animation.togetherWith
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.BoxWithConstraints
 import androidx.compose.foundation.layout.Column
+import androidx.compose.ui.unit.dp
+import androidx.compose.foundation.layout.fillMaxHeight
+import androidx.compose.foundation.layout.width
+import androidx.compose.foundation.layout.widthIn
 import androidx.compose.foundation.layout.WindowInsets
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
@@ -84,8 +88,10 @@ fun RadarScreen(
     val density = LocalDensity.current
     var sheetHeightPx by remember { mutableIntStateOf(0) }
     val shell = LocalShellChrome.current
+    val layout = ContrailTheme.layout
     val sheetOpen = state.selected != null
-    LaunchedEffect(sheetOpen) { shell.navBarHidden = sheetOpen }
+    // On a wide screen the sheet sits beside the rail, so the rail stays.
+    LaunchedEffect(sheetOpen, layout.wide) { shell.navBarHidden = sheetOpen && !layout.wide }
     DisposableEffect(shell) { onDispose { shell.navBarHidden = false } }
 
     CompositionLocalProvider(LocalBackdropHaze provides mapHaze) {
@@ -95,7 +101,8 @@ fun RadarScreen(
 
             Column(
                 Modifier
-                    .fillMaxWidth()
+                    .padding(start = layout.railInset)
+                    .then(if (layout.wide) Modifier.widthIn(max = 560.dp) else Modifier.fillMaxWidth())
                     .windowInsetsPadding(WindowInsets.statusBars)
                     .padding(horizontal = spacing.lg, vertical = spacing.sm),
             ) {
@@ -145,7 +152,8 @@ fun RadarScreen(
                     .align(Alignment.BottomStart)
                     .fillMaxWidth()
                     .windowInsetsPadding(WindowInsets.navigationBars)
-                    .padding(bottom = spacing.navBarClearance - spacing.md),
+                    .padding(start = layout.railInset)
+                    .padding(bottom = if (layout.wide) spacing.md else spacing.navBarClearance - spacing.md),
             ) {
                 AnimatedVisibility(
                     visible = !sheetVisible,
@@ -158,7 +166,18 @@ fun RadarScreen(
                 Attribution(Modifier.padding(horizontal = spacing.lg).graphicsLayer { alpha = if (sheetVisible) 0f else 1f })
             }
 
-            AircraftSheet(
+            // Phones: a sheet from the bottom. Wide screens: a tall panel on the right.
+            val sheetFrame = if (layout.wide) {
+                Modifier
+                    .align(Alignment.TopEnd)
+                    .width(440.dp)
+                    .fillMaxHeight()
+                    .windowInsetsPadding(WindowInsets.statusBars)
+                    .padding(end = spacing.md, top = spacing.sm)
+            } else {
+                Modifier.fillMaxSize()
+            }
+            Box(sheetFrame) { AircraftSheet(
                 selected = state.selected,
                 following = state.following,
                 onFollow = actions.onToggleFollow,
@@ -171,8 +190,8 @@ fun RadarScreen(
                     sheetHeightPx = it
                     actions.onSheetHeightChanged(it)
                 },
-                startExpanded = sheetStartsExpanded,
-            )
+                startExpanded = sheetStartsExpanded || layout.wide,
+            ) }
         }
     }
 }

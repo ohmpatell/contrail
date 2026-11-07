@@ -56,10 +56,15 @@ Releases: every push to `master` publishes a signed APK to GitHub Releases for O
   - **Glass Cockpit:** black glass, magenta and cyan, mono headlines, a flight-deck map.
 
   **Livery mode** tints the app in your airline's colour while a flight is under way. Widgets follow the theme too.
+- ✅ **Tablets and landscape:**
+  - A glass nav rail on the left of wide screens, including phones on their side.
+  - The radar's aircraft sheet becomes a tall panel on the right.
+  - Trips shows your list beside the open trip.
+  - The Stamp book opens flat, two pages at a time.
+  - Other pages keep a comfortable reading width.
 
 Still to do:
 
-3. Tablet layouts
 4. Optional username-and-password sign-in and sync (Supabase)
 5. Real departures and arrivals (AeroDataBox)
 6. Automatic actual takeoff and landing times

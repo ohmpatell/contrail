@@ -2,6 +2,7 @@ package com.contrail.contrail.core.designsystem.component
 
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
+import androidx.compose.foundation.layout.widthIn
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.ColumnScope
 import androidx.compose.foundation.layout.Row
@@ -42,6 +43,7 @@ fun DetailScaffold(
     content: @Composable ColumnScope.() -> Unit,
 ) {
     val spacing = ContrailTheme.spacing
+    val reading = Modifier.widthIn(max = ContrailTheme.layout.readingWidth)
     val backdrop = rememberHazeState()
     CompositionLocalProvider(LocalBackdropHaze provides backdrop) {
         Box(modifier.fillMaxSize()) {
@@ -53,9 +55,11 @@ fun DetailScaffold(
                     .windowInsetsPadding(WindowInsets.statusBars)
                     .windowInsetsPadding(WindowInsets.navigationBars)
                     .padding(bottom = spacing.xxxl),
+                // On a tablet the page keeps a readable width in the middle of the aurora.
+                horizontalAlignment = Alignment.CenterHorizontally,
             ) {
                 Row(
-                    Modifier.fillMaxWidth().padding(horizontal = spacing.lg, vertical = spacing.sm),
+                    reading.fillMaxWidth().padding(horizontal = spacing.lg, vertical = spacing.sm),
                     verticalAlignment = Alignment.CenterVertically,
                     horizontalArrangement = Arrangement.spacedBy(spacing.sm),
                 ) {
@@ -63,16 +67,16 @@ fun DetailScaffold(
                     Box(Modifier.weight(1f))
                     actions()
                 }
-                hero?.invoke()
+                hero?.let { Box(reading.fillMaxWidth()) { it() } }
                 Column(
-                    Modifier.padding(horizontal = spacing.gutter).padding(top = spacing.md),
+                    reading.fillMaxWidth().padding(horizontal = spacing.gutter).padding(top = spacing.md),
                     verticalArrangement = Arrangement.spacedBy(spacing.xs),
                 ) {
                     if (eyebrow != null) Eyebrow(eyebrow, color = accent)
                     Text(title, style = ContrailTheme.type.displayMedium, color = ContrailTheme.colors.textPrimary)
                 }
                 Column(
-                    Modifier.padding(horizontal = spacing.gutter).padding(top = spacing.lg),
+                    reading.fillMaxWidth().padding(horizontal = spacing.gutter).padding(top = spacing.lg),
                     verticalArrangement = Arrangement.spacedBy(spacing.lg),
                     content = content,
                 )

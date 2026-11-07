@@ -122,7 +122,7 @@ class ScreenshotTests {
 
     @Test fun designSystem() = snap("design_system") { DesignSystemGallery() }
 
-    private companion object {
+    internal companion object {
         val traffic = listOf(
             aircraft(hex = "1", callsign = "ACA112", typeCode = "B789"),
             aircraft(hex = "2", callsign = "ETD141", typeCode = "A388", altitudeFt = 39_000),

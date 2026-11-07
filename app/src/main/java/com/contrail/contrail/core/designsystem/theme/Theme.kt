@@ -13,7 +13,9 @@ import androidx.compose.runtime.ReadOnlyComposable
 import androidx.compose.runtime.remember
 import androidx.compose.runtime.staticCompositionLocalOf
 import androidx.compose.ui.graphics.Color
+import androidx.compose.ui.platform.LocalConfiguration
 import androidx.compose.ui.platform.LocalContext
+import androidx.compose.ui.unit.dp
 import androidx.compose.ui.platform.LocalInspectionMode
 
 private val LocalColors = staticCompositionLocalOf { NightCockpitColors }
@@ -22,6 +24,7 @@ private val LocalSpacing = staticCompositionLocalOf { ContrailSpacing() }
 private val LocalShapes = staticCompositionLocalOf { ContrailShapes() }
 private val LocalSizes = staticCompositionLocalOf { ContrailSizes() }
 private val LocalMotion = staticCompositionLocalOf { ContrailMotion(reduced = false) }
+private val LocalWindowLayout = staticCompositionLocalOf { WindowLayout.Phone }
 
 /** Entry point for every design token. Feature code styles itself only through this. */
 object ContrailTheme {
@@ -37,6 +40,8 @@ object ContrailTheme {
         @Composable @ReadOnlyComposable get() = LocalSizes.current
     val motion: ContrailMotion
         @Composable @ReadOnlyComposable get() = LocalMotion.current
+    val layout: WindowLayout
+        @Composable @ReadOnlyComposable get() = LocalWindowLayout.current
 }
 
 /**
@@ -78,6 +83,8 @@ fun ContrailTheme(
         )
     }
     val type = typography ?: LocalType.current
+    val config = LocalConfiguration.current
+    val layout = remember(config.screenWidthDp, config.screenHeightDp) { WindowLayout(config.screenWidthDp.dp, config.screenHeightDp.dp) }
     val materialType = remember(type) {
         Typography(
             displayLarge = type.displayLarge,
@@ -98,6 +105,7 @@ fun ContrailTheme(
             LocalColors provides colors,
             LocalType provides type,
             LocalMotion provides ContrailMotion(reduced),
+            LocalWindowLayout provides layout,
             LocalContentColor provides colors.textPrimary,
             LocalTextSelectionColors provides TextSelectionColors(
                 handleColor = colors.accent,

@@ -77,13 +77,13 @@ import java.time.format.DateTimeFormatter
 import java.util.Locale
 
 @Composable
-fun TripDetailRoute(tripId: Long) {
+fun TripDetailRoute(tripId: Long, onBack: (() -> Unit)? = null) {
     val viewModel = hiltViewModel<TripDetailViewModel, TripDetailViewModel.Factory>(key = "trip-$tripId") { it.create(tripId) }
     val state by viewModel.state.collectAsStateWithLifecycle()
     val nav = LocalNavigator.current
     TripDetailScreen(
         state = state,
-        onBack = nav::back,
+        onBack = onBack ?: nav::back,
         onFlight = nav::openFlight,
         onToggleKind = viewModel::toggleKind,
         onToggleHotel = viewModel::toggleHotel,

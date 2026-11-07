@@ -10,6 +10,10 @@ import androidx.compose.animation.slideInHorizontally
 import androidx.compose.animation.slideOutHorizontally
 import androidx.compose.animation.togetherWith
 import androidx.compose.foundation.layout.Box
+import androidx.compose.foundation.layout.widthIn
+import androidx.compose.foundation.layout.safeDrawing
+import androidx.compose.foundation.layout.only
+import androidx.compose.foundation.layout.WindowInsetsSides
 import androidx.compose.foundation.layout.WindowInsets
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.navigationBars
@@ -50,6 +54,7 @@ fun ContrailApp(
     val backdropHaze = rememberHazeState()
     val stateHolder = rememberSaveableStateHolder()
     val motion = ContrailTheme.motion
+    val layout = ContrailTheme.layout
     val shell = remember { ShellChrome() }
     val navBarShift by animateFloatAsState(if (shell.navBarHidden) 1f else 0f, motion.gentle(), label = "navBarShift")
     androidx.compose.runtime.LaunchedEffect(Unit) {
@@ -69,10 +74,19 @@ fun ContrailApp(
                     transitionSpec = { tabTransition(initialState, targetState, motion) },
                     label = "tabs",
                 ) { tab ->
-                    stateHolder.SaveableStateProvider(tab.name) { tabContent(tab) }
+                    stateHolder.SaveableStateProvider(tab.name) { TabFrame(tab) { tabContent(tab) } }
                 }
             }
-            GlassNavBar(
+            if (layout.wide) {
+                GlassNavRail(
+                    selected = selected,
+                    onSelect = { selected = it },
+                    modifier = Modifier
+                        .align(Alignment.CenterStart)
+                        .windowInsetsPadding(WindowInsets.safeDrawing.only(WindowInsetsSides.Start))
+                        .padding(start = ContrailTheme.spacing.md),
+                )
+            } else GlassNavBar(
                 selected = selected,
                 onSelect = { selected = it },
                 modifier = Modifier
@@ -88,6 +102,22 @@ fun ContrailApp(
                         vertical = ContrailTheme.spacing.md,
                     ),
             )
+        }
+    }
+}
+
+/**
+ * On wide screens tabs clear the rail, and phone-shaped tabs sit at a comfortable reading
+ * width in the middle. The radar stays full-bleed and Trips lays out its own list and detail.
+ */
+@Composable
+private fun TabFrame(tab: TopLevelDestination, content: @Composable () -> Unit) {
+    val layout = ContrailTheme.layout
+    when {
+        !layout.wide || tab == TopLevelDestination.Radar -> content()
+        tab == TopLevelDestination.Trips && layout.roomy -> Box(Modifier.fillMaxSize().padding(start = layout.railInset)) { content() }
+        else -> Box(Modifier.fillMaxSize().padding(start = layout.railInset), contentAlignment = Alignment.TopCenter) {
+            Box(Modifier.widthIn(max = layout.readingWidth).fillMaxSize()) { content() }
         }
     }
 }
