@@ -90,7 +90,8 @@ fun AppearancePicker(
 /** A tiny screen in the theme: its canvas and aurora, a route arc, a flap and the name in its type. */
 @Composable
 private fun ThemeCard(choice: ThemeChoice, sun: Double?, selected: Boolean, modifier: Modifier, onClick: () -> Unit) {
-    val palette = remember(choice, sun) { colorsFor(choice, sun) }
+    // Without a known sun, Golden Hour previews at golden hour so the card shows what it is.
+    val palette = remember(choice, sun) { colorsFor(choice, sun ?: if (choice == ThemeChoice.GoldenHour) 3.0 else null) }
     val outer = ContrailTheme.colors
     val interaction = remember { MutableInteractionSource() }
     val ring by animateColorAsState(if (selected) outer.accent else outer.hairline, ContrailTheme.motion.fade(), label = "ring")

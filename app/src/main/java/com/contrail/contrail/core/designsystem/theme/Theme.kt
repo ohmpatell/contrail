@@ -13,9 +13,9 @@ import androidx.compose.runtime.ReadOnlyComposable
 import androidx.compose.runtime.remember
 import androidx.compose.runtime.staticCompositionLocalOf
 import androidx.compose.ui.graphics.Color
-import androidx.compose.ui.platform.LocalConfiguration
+import androidx.compose.ui.platform.LocalDensity
+import androidx.compose.ui.platform.LocalWindowInfo
 import androidx.compose.ui.platform.LocalContext
-import androidx.compose.ui.unit.dp
 import androidx.compose.ui.platform.LocalInspectionMode
 
 private val LocalColors = staticCompositionLocalOf { NightCockpitColors }
@@ -83,8 +83,12 @@ fun ContrailTheme(
         )
     }
     val type = typography ?: LocalType.current
-    val config = LocalConfiguration.current
-    val layout = remember(config.screenWidthDp, config.screenHeightDp) { WindowLayout(config.screenWidthDp.dp, config.screenHeightDp.dp) }
+    // The window's real size (split screen and freeform windows included), in dp.
+    val window = LocalWindowInfo.current.containerSize
+    val density = LocalDensity.current
+    val layout = remember(window, density) {
+        if (window.width == 0) WindowLayout.Phone else with(density) { WindowLayout(window.width.toDp(), window.height.toDp()) }
+    }
     val materialType = remember(type) {
         Typography(
             displayLarge = type.displayLarge,

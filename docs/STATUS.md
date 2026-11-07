@@ -4,9 +4,7 @@ Last updated Nov 7, 2026.
 
 ## Waiting on you
 
-Two free sign-ups and one Supabase setting for Stage 5, needed only from step 4 (sync) onward. Steps 1 to 3 don't wait on them. Put each value in `local.properties`; Claude adds the GitHub Secrets.
-
-- **Supabase:** token added. Still to do: turn off "Confirm email" and add `CONTRAIL_SUPABASE_KEY` (the publishable key).
+Nothing. All keys are in GitHub Secrets and `local.properties`. `SUPABASE_ACCESS_TOKEN` in `local.properties` lets Claude change the database (it set up the tables). It stays on your PC and is git-ignored. Delete it from Supabase (Account → Access Tokens) if you'd rather, and Claude will ask if it's ever needed again.
 
 Releases: every push to `master` publishes a signed APK to GitHub Releases for Obtainium. Keep `C:\Users\ohm20\contrail-signing\contrail-release.jks` and its password backed up.
 
@@ -42,7 +40,7 @@ Releases: every push to `master` publishes a signed APK to GitHub Releases for O
 - **Share your Passport:** a story-sized card (globe, totals, flags, latest stamps) sent through the share sheet.
 - 156 unit and screenshot tests green, lint clean. Verified on the Pixel 9 emulator: a real myFlightradar24-format CSV imported through the file picker, the Passport replay, Add a flight with live route lookup, a flown-flight page, and Sky with live ADS-B traffic.
 
-## In progress: Stage 5, Contrail everywhere (plan in `DESIGN.md` → Roadmap)
+### Stage 5: Contrail everywhere (Nov 7, 2026)
 - ✅ **Live Update:** from three hours before departure until you land, your flight sits on the lock screen and as a status-bar chip, showing phase, a progress bar with a plane and a ticking countdown. It uses the live ADS-B position once you're near departure and the timetable otherwise, always labelled. Tap it to open the flight. Switch: Settings → Live Update.
 - ✅ **New widgets**, painted at each widget's exact size:
   - Next flight: a split-flap departure board with gate, seat and terminal flaps, and a progress bar in the air.
@@ -77,9 +75,15 @@ Releases: every push to `master` publishes a signed APK to GitHub Releases for O
   - It gets its own Live Update on the day and a "@you has landed" alert.
   - Your edits reach them, and Stop sharing takes it back.
   - They can tap **I'm on this trip too**, which turns it into their own trip, in their log and Passport. Their Passport then gets a **Flown together** card.
+- 188 unit and screenshot tests green, lint clean. Verified on the Pixel 9 emulator: the database upgrade keeps existing trips, sign-up and sync with the real Supabase project (with a throwaway account that was deleted after), the new Settings, and the Chart theme with its map.
+
+## Next
+- Feedback from your phones. Optional ideas from the planning chat: a Wear OS tile, and an "at gate" alert if a free source for it turns up.
 
 ## Known limits
-- No free schedule API: flight times come from your ticket or log, or are estimated from distance (always labelled). Tail numbers are entered by hand.
+- AeroDataBox's free plan is 400 units a month: about 200 lookups. Airport boards load when tapped and stop at 60 units left, so your own flights always get their checks.
+- Sync needs the free Supabase project, which pauses after a week with no use; any use wakes it. Everything works offline either way.
+- There's no password reset by email. A forgotten password is reset from the Supabase dashboard (Authentication → Users).
 - myFlightradar24 can only export from its website (Settings → Export → Download CSV), not from its app.
 - Alerts and the overhead widget use the last place you opened Sky, not live background location.
 - Sky View accuracy depends on the phone's compass. Wave the phone in a figure eight if labels sit off to one side.

@@ -43,18 +43,18 @@ class ThemeScreenshots {
     }
 
     @Composable
-    private fun trips() = ContrailApp(initial = TopLevelDestination.Trips) { t ->
+    private fun Trips() = ContrailApp(initial = TopLevelDestination.Trips) { t ->
         when (t) {
             TopLevelDestination.Passport -> PassportScreen(passportState, PassportActions())
             else -> TripsScreen(tripsState, {}, {}, {}, fixedNow = TripFixtures.now)
         }
     }
 
-    @Test fun chart() = snap("theme_chart", ThemeChoice.Chart) { trips() }
+    @Test fun chart() = snap("theme_chart", ThemeChoice.Chart) { Trips() }
 
-    @Test fun glassCockpit() = snap("theme_glass", ThemeChoice.GlassCockpit) { trips() }
+    @Test fun glassCockpit() = snap("theme_glass", ThemeChoice.GlassCockpit) { Trips() }
 
-    @Test fun goldenHour() = snap("theme_golden", ThemeChoice.GoldenHour, sun = 3.0) { trips() }
+    @Test fun goldenHour() = snap("theme_golden", ThemeChoice.GoldenHour, sun = 3.0) { Trips() }
 
     @Test fun chartPassport() = snap("theme_chart_passport", ThemeChoice.Chart) {
         ContrailApp(initial = TopLevelDestination.Passport) { PassportScreen(passportState, PassportActions()) }
