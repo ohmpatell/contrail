@@ -51,10 +51,24 @@ data class FlightSegment(
     val note: String? = null,
     /** No times were given, so they're worked out from the distance. Shown as "estimated". */
     val timesEstimated: Boolean = false,
+    val revisedDeparture: Instant? = null,
+    val revisedArrival: Instant? = null,
+    val actualDeparture: Instant? = null,
+    val actualArrival: Instant? = null,
+    /** "runway" when the airline reported it, "adsb" when Contrail saw it. */
+    val actualSource: String? = null,
+    val liveStatus: String? = null,
 ) {
+    /** Best departure we know: actual, then the airline's estimate, then the ticket. */
+    val expectedDeparture: Instant get() = actualDeparture ?: revisedDeparture ?: departure
+    val expectedArrival: Instant get() = actualArrival ?: revisedArrival ?: arrival
+    val delayMinutes: Long get() = Duration.between(departure, actualDeparture ?: revisedDeparture ?: departure).toMinutes()
+
     val departure: Instant get() = departureLocal.atZone(departureZone).toInstant()
     val arrival: Instant get() = arrivalLocal.atZone(arrivalZone).toInstant()
-    val duration: Duration get() = Duration.between(departure, arrival)
+    /** Time in the air: real takeoff to touchdown once both are known, the timetable before that. */
+    val duration: Duration get() =
+        if (actualDeparture != null && actualArrival != null) Duration.between(actualDeparture, actualArrival) else Duration.between(departure, arrival)
     val designator: String get() = "$airlineIata $flightNumber".trim()
 
     /** The ATC callsign ADS-B feeds use: EY 141 → ETD141. Null for airlines we can't map. */
@@ -144,6 +158,10 @@ data class Trip(
     val passengerName: String?,
     val segments: List<FlightSegment>,
     val connections: List<Connection>,
+    /** Someone else's trip you follow: shown under "Following", kept out of your Passport. */
+    val following: Boolean = false,
+    /** Who shared it with you, if anyone. */
+    val sharedBy: String? = null,
 ) {
     val first: FlightSegment get() = segments.first()
     val last: FlightSegment get() = segments.last()

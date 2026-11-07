@@ -46,7 +46,40 @@ interface SyncBackend {
     suspend fun push(session: Session, records: List<RemoteRecord>)
     /** Records changed after [afterSeq], oldest first, at most [limit]. */
     suspend fun pull(session: Session, afterSeq: Long, limit: Int = 500): List<RemoteRecord>
+
+    /** The shared copy of an airport's board: when it was fetched and the raw AeroDataBox JSON. */
+    suspend fun board(session: Session, iata: String): Pair<Long, String>? = null
+    suspend fun putBoard(session: Session, iata: String, fetchedAtMs: Long, body: String) = Unit
+
+    /** The account id for a username, or null when nobody has it. */
+    suspend fun userId(session: Session, username: String): String? = null
+    suspend fun share(session: Session, share: OutgoingShare) = Unit
+    /** Shares sent to you after [afterSeq]. */
+    suspend fun incoming(session: Session, afterSeq: Long): List<IncomingShare> = emptyList()
 }
+
+/** A flight or trip you send to someone. [ref] is the trip uid; [data] the trip record. */
+@Serializable
+data class OutgoingShare(
+    @SerialName("to_user") val toUser: String,
+    @SerialName("from_username") val fromUsername: String,
+    val kind: String,
+    val ref: String,
+    val data: JsonObject,
+    @SerialName("updated_at") val updatedAt: Long,
+    val deleted: Boolean = false,
+)
+
+@Serializable
+data class IncomingShare(
+    @SerialName("from_username") val fromUsername: String,
+    val kind: String,
+    val ref: String,
+    val data: JsonObject,
+    @SerialName("updated_at") val updatedAt: Long,
+    val deleted: Boolean = false,
+    val seq: Long = 0,
+)
 
 /**
  * Supabase over plain REST (GoTrue for accounts, PostgREST for records), on the app's shared
@@ -127,6 +160,69 @@ class SupabaseBackend(
         if (!r.status.isSuccess()) throw AccountException("Sync failed (${r.status.value}).")
         return json.decodeFromString(r.bodyAsText())
     }
+
+    private fun HttpRequestBuilder.authed(session: Session) {
+        base()
+        header("Authorization", "Bearer ${session.accessToken}")
+    }
+
+    override suspend fun board(session: Session, iata: String): Pair<Long, String>? {
+        val r = client.get("$url/rest/v1/boards") {
+            authed(session)
+            parameter("select", "fetched_at,body")
+            parameter("airport", "eq.${iata.uppercase()}")
+        }
+        if (!r.status.isSuccess()) return null
+        val row = json.parseToJsonElement(r.bodyAsText()).let { it as? kotlinx.serialization.json.JsonArray }?.firstOrNull()?.jsonObject ?: return null
+        val at = row["fetched_at"]?.jsonPrimitive?.content?.toLongOrNull() ?: return null
+        val body = row["body"]?.jsonPrimitive?.content ?: return null
+        return at to body
+    }
+
+    override suspend fun putBoard(session: Session, iata: String, fetchedAtMs: Long, body: String) {
+        client.post("$url/rest/v1/boards") {
+            authed(session)
+            header("Prefer", "resolution=merge-duplicates,return=minimal")
+            parameter("on_conflict", "airport")
+            setBody(listOf(BoardRow(iata.uppercase(), fetchedAtMs, body)))
+        }
+    }
+
+    override suspend fun userId(session: Session, username: String): String? {
+        val r = client.get("$url/rest/v1/profiles") {
+            authed(session)
+            parameter("select", "id")
+            parameter("username", "eq.${normalise(username)}")
+        }
+        if (!r.status.isSuccess()) return null
+        return json.parseToJsonElement(r.bodyAsText()).let { it as? kotlinx.serialization.json.JsonArray }
+            ?.firstOrNull()?.jsonObject?.get("id")?.jsonPrimitive?.content
+    }
+
+    override suspend fun share(session: Session, share: OutgoingShare) {
+        val r = client.post("$url/rest/v1/shares") {
+            authed(session)
+            header("Prefer", "resolution=merge-duplicates,return=minimal")
+            parameter("on_conflict", "from_user,to_user,kind,ref")
+            setBody(listOf(share))
+        }
+        if (!r.status.isSuccess()) throw AccountException("Couldn't share (${r.status.value}).")
+    }
+
+    override suspend fun incoming(session: Session, afterSeq: Long): List<IncomingShare> {
+        val r = client.get("$url/rest/v1/shares") {
+            authed(session)
+            parameter("select", "from_username,kind,ref,data,updated_at,deleted,seq")
+            parameter("to_user", "eq.${session.userId}")
+            parameter("seq", "gt.$afterSeq")
+            parameter("order", "seq.asc")
+        }
+        if (!r.status.isSuccess()) throw AccountException("Couldn't check shares (${r.status.value}).")
+        return json.decodeFromString(r.bodyAsText())
+    }
+
+    @Serializable
+    private data class BoardRow(val airport: String, @SerialName("fetched_at") val fetchedAt: Long, val body: String)
 
     private suspend fun session(r: HttpResponse): Session {
         val text = r.bodyAsText()

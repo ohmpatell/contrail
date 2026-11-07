@@ -27,6 +27,7 @@ import dagger.hilt.android.lifecycle.HiltViewModel
 import kotlinx.coroutines.ExperimentalCoroutinesApi
 import kotlinx.coroutines.delay
 import kotlinx.coroutines.flow.Flow
+import kotlinx.coroutines.flow.onStart
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.SharingStarted
 import kotlinx.coroutines.flow.StateFlow
@@ -74,6 +75,11 @@ data class AirportUiState(
     val departures: List<BoardRow> = emptyList(),
     val arrivals: List<BoardRow> = emptyList(),
     val board: BoardKind = BoardKind.Departures,
+    /** The airline board (AeroDataBox), when loaded. */
+    val schedule: com.contrail.contrail.core.network.schedule.AirportBoard? = null,
+    val scheduleNote: com.contrail.contrail.core.data.repository.BoardRefresh? = null,
+    val scheduleLoading: Boolean = false,
+    val unitsLeft: Int? = null,
 )
 
 @OptIn(ExperimentalCoroutinesApi::class)
@@ -85,8 +91,11 @@ class AirportViewModel @AssistedInject constructor(
     private val logostream: LogostreamRepository,
     private val traffic: LiveTrafficRepository,
     private val details: AircraftDetailsRepository,
+    private val schedule: com.contrail.contrail.core.data.repository.ScheduleRepository,
     private val clock: Clock,
 ) : ViewModel() {
+    private val scheduleStatus = MutableStateFlow<Pair<com.contrail.contrail.core.data.repository.BoardRefresh?, Boolean>>(null to false)
+
 
     @AssistedFactory
     interface Factory {
@@ -154,7 +163,10 @@ class AirportViewModel @AssistedInject constructor(
             geometry = b.geometry, stats = s, airlines = served, destinations = dest,
             nearby = near, departures = bd.first, arrivals = bd.second, board = kind,
         )
-    }.stateIn(viewModelScope, SharingStarted.WhileSubscribed(5_000), AirportUiState())
+    }.combine(airport.filterNotNull().flatMapLatest { schedule.board(it.iata) }.onStart { emit(null) }) { s, b -> s.copy(schedule = b) }
+        .combine(scheduleStatus) { s, (note, loading) -> s.copy(scheduleNote = note, scheduleLoading = loading) }
+        .combine(schedule.units) { s, u -> s.copy(unitsLeft = u.remaining) }
+        .stateIn(viewModelScope, SharingStarted.WhileSubscribed(5_000), AirportUiState())
 
     private data class Basics(
         val airport: AirportWithUser?,
@@ -167,6 +179,8 @@ class AirportViewModel @AssistedInject constructor(
     init {
         viewModelScope.launch {
             val a = airport.filterNotNull().first()
+            // Only free sources on open: your copy, or one someone fetched in the last 15 minutes.
+            launch { scheduleStatus.value = schedule.refreshBoard(a.iata, fetch = false) to false }
             launch { info.refreshWeather(a.icao) }
             launch { info.refreshGeometry(a.icao, a.lat, a.lon) }
             launch { logostream.refreshAirportStats(a.iata) }
@@ -193,6 +207,15 @@ class AirportViewModel @AssistedInject constructor(
                 .mapNotNull { it.callsign }.distinct().take(MAX_ROUTE_LOOKUPS)
             callsigns.forEach { runCatching { details.refreshRoute(it) } }
             delay(POLL_MS)
+        }
+    }
+
+    /** You tapped Load or Refresh: worth 2 AeroDataBox units. */
+    fun loadSchedule() {
+        val a = airport.value ?: return
+        viewModelScope.launch {
+            scheduleStatus.value = scheduleStatus.value.first to true
+            scheduleStatus.value = schedule.refreshBoard(a.iata, fetch = true) to false
         }
     }
 

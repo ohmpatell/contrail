@@ -7,7 +7,6 @@ Last updated Nov 7, 2026.
 Two free sign-ups and one Supabase setting for Stage 5, needed only from step 4 (sync) onward. Steps 1 to 3 don't wait on them. Put each value in `local.properties`; Claude adds the GitHub Secrets.
 
 - **Supabase:** token added. Still to do: turn off "Confirm email" and add `CONTRAIL_SUPABASE_KEY` (the publishable key).
-- **AeroDataBox on RapidAPI (Basic, free):** `CONTRAIL_AERODATABOX_API_KEY`.
 
 Releases: every push to `master` publishes a signed APK to GitHub Releases for Obtainium. Keep `C:\Users\ohm20\contrail-signing\contrail-release.jks` and its password backed up.
 
@@ -70,11 +69,12 @@ Releases: every push to `master` publishes a signed APK to GitHub Releases for O
   - favourite airports
 
   Sync runs about 5 seconds after a change, whenever the app opens, and hourly. Your Supabase project's tables are set up; the schema is in `supabase/migrations`.
+- ✅ **Real departures and arrivals** (airport page): the airline's board, with times, delays, gates and status, from AeroDataBox. It loads when you tap (2 units). When you open an airport, Contrail first uses a copy that you or anyone else signed in fetched in the last 15 minutes, which costs nothing. Boards stop when only 60 units are left, so your own flights always have some.
+- ✅ **Your flights from the airline:** three hours before departure, before boarding and after landing, Contrail checks your flight and fills in the gate, terminal, tail number, revised times and runway times. It costs 2 units a check, 6 per flight. "Check now" on the flight page does it on demand.
+- ✅ **Real takeoff and landing times:** watching your flight on ADS-B, Contrail records wheels-up (worked back from the climb) and touchdown. The airport's runway report takes over when there is one. Flights with estimated times take the real ones on landing, so the Passport's hours become real.
 
 Still to do:
 
-5. Real departures and arrivals (AeroDataBox)
-6. Automatic actual takeoff and landing times
 7. Follow a flight, shared trips, flights together
 
 ## Known limits

@@ -26,6 +26,7 @@ import com.contrail.contrail.core.data.repository.LiveFlightRepository
 import com.contrail.contrail.core.data.repository.TripRepository
 import com.contrail.contrail.core.data.repository.TripSettings
 import com.contrail.contrail.core.data.ticket.AirportDirectory
+import com.contrail.contrail.core.data.trip.ActualTimes
 import com.contrail.contrail.core.data.trip.FlightPhase
 import com.contrail.contrail.core.data.trip.FlightProgress
 import com.contrail.contrail.core.data.trip.FlightProgressCalc
@@ -60,7 +61,7 @@ class LiveFlightUpdates @Inject constructor(
     suspend fun reschedule() {
         val wm = WorkManager.getInstance(context)
         val now = Instant.ofEpochMilli(clock.nowMs())
-        val next = if (settings.liveUpdates.first()) upcoming(trips.trips.first().flatMap { it.segments }, now) else null
+        val next = if (settings.liveUpdates.first()) upcoming(trips.allTrips.first().flatMap { it.segments }, now) else null
         if (next == null) {
             wm.cancelUniqueWork(WORK)
             cancel(context)
@@ -101,12 +102,14 @@ class LiveFlightWorker @AssistedInject constructor(
     private val liveFlights: LiveFlightRepository,
     private val settings: TripSettings,
     private val updates: LiveFlightUpdates,
+    private val schedule: com.contrail.contrail.core.data.repository.ScheduleRepository,
+    private val db: com.contrail.contrail.core.database.ContrailDatabase,
     private val clock: Clock,
 ) : CoroutineWorker(context, params) {
 
     override suspend fun doWork(): Result {
         val now = Instant.ofEpochMilli(clock.nowMs())
-        val segments = trips.trips.first().flatMap { it.segments }
+        val segments = trips.allTrips.first().flatMap { it.segments }
         val seg = if (settings.liveUpdates.first()) LiveFlightUpdates.current(segments, now) else null
         if (seg == null) {
             // Window closed (or turned off): clear it and plan around the next flight.
@@ -114,11 +117,18 @@ class LiveFlightWorker @AssistedInject constructor(
             updates.reschedule()
             return Result.success()
         }
+        // The airline's gate, times and tail, at most three times per flight.
+        runCatching { schedule.checkIfDue(seg.id) }
         val dir = airports.directory()
         val o = dir.find(seg.origin)
         val d = dir.find(seg.destination)
-        val progress = FlightProgressCalc.compute(seg, now, o?.let { LatLon(it.lat, it.lon) }, d?.let { LatLon(it.lat, it.lon) }, live(seg, now))
-        LiveFlightNotification.post(applicationContext, seg, progress, dir, now)
+        val aircraft = live(seg, now)
+        val progress = FlightProgressCalc.compute(seg, now, o?.let { LatLon(it.lat, it.lon) }, d?.let { LatLon(it.lat, it.lon) }, aircraft)
+        // Real takeoff and touchdown, as seen on ADS-B.
+        val dao = db.tripDao()
+        dao.segment(seg.id)?.let { row -> ActualTimes.observe(row, aircraft, progress, now.toEpochMilli())?.let { dao.updateSegment(it) } }
+        val latest = trips.allTrips.first().flatMap { it.segments }.firstOrNull { it.id == seg.id } ?: seg
+        LiveFlightNotification.post(applicationContext, latest, progress, dir, now)
         Widgets.updateTrips(applicationContext)
 
         WorkManager.getInstance(applicationContext).enqueueUniqueWork(
@@ -207,7 +217,7 @@ object LiveFlightNotification {
 
     internal fun text(seg: FlightSegment, p: FlightProgress, destCity: String): String {
         val at = listOfNotNull(seg.departureTerminal?.let { "Terminal $it" }, seg.gate?.let { "Gate $it" }).joinToString(" · ")
-        val dep = TIME.format(seg.departureLocal)
+        val dep = TIME.format(seg.expectedDeparture.atZone(seg.departureZone))
         val eta = TIME.format(p.eta.atZone(seg.arrivalZone))
         return when (p.phase) {
             FlightPhase.Upcoming -> listOf("Departs $dep", at, seg.seat?.let { "Seat $it" }).filter { !it.isNullOrBlank() }.joinToString(" · ")

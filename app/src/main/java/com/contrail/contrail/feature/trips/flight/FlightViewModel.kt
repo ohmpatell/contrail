@@ -60,6 +60,8 @@ data class FlightUiState(
     val thresholds: TurnThresholds = TurnThresholds(),
     val flightsOnTail: Int = 0,
     val lounges: List<LoungeVisit> = emptyList(),
+    val statusChecking: Boolean = false,
+    val unitsLeft: Int? = null,
 )
 
 /** One row of the gate-to-gate timeline. Estimates are always labelled as such. */
@@ -111,8 +113,11 @@ class FlightViewModel @AssistedInject constructor(
     private val rotations: RotationRepository,
     settings: TripSettings,
     loungeRepo: LoungeRepository,
+    private val schedule: com.contrail.contrail.core.data.repository.ScheduleRepository,
     private val clock: Clock,
 ) : ViewModel() {
+    private val statusChecking = MutableStateFlow(false)
+
 
     @AssistedFactory
     interface Factory {
@@ -137,7 +142,9 @@ class FlightViewModel @AssistedInject constructor(
         loungeRepo.visits.map { v -> v.filter { it.segmentId == segmentId } },
     ) { (f, p), (l, r, rl), (t, c), lounges ->
         FlightUiState(false, f?.first, f?.second, p, l, r, rl, t, c, lounges)
-    }.stateIn(viewModelScope, SharingStarted.WhileSubscribed(5_000), FlightUiState())
+    }.combine(statusChecking) { s, busy -> s.copy(statusChecking = busy) }
+        .combine(schedule.units) { s, u -> s.copy(unitsLeft = u.remaining) }
+        .stateIn(viewModelScope, SharingStarted.WhileSubscribed(5_000), FlightUiState())
 
     init {
         viewModelScope.launch { pollLive() }
@@ -175,6 +182,15 @@ class FlightViewModel @AssistedInject constructor(
         rotationLoading.value = true
         rotation.value = runCatching { rotations.rotation(seg) }.getOrNull()
         rotationLoading.value = false
+    }
+
+    /** Asks the airline (AeroDataBox, 2 units) for gate, times and tail. */
+    fun checkStatus() {
+        viewModelScope.launch {
+            statusChecking.value = true
+            runCatching { schedule.refreshFlight(segmentId) }
+            statusChecking.value = false
+        }
     }
 
     fun setTail(tail: String) {

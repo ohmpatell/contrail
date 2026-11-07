@@ -50,6 +50,8 @@ class SyncCodec(private val json: Json) {
         val createdAtMs: Long = 0,
         val segments: List<SegmentDoc> = emptyList(),
         val prefs: List<PrefDoc> = emptyList(),
+        val following: Boolean = false,
+        val sharedBy: String? = null,
     )
 
     @Serializable
@@ -62,6 +64,9 @@ class SyncCodec(private val json: Json) {
         val aircraftType: String? = null, val tail: String? = null, val operatedBy: String? = null,
         val airlineName: String? = null, val seatType: String? = null, val reason: String? = null,
         val note: String? = null, val timesEstimated: Boolean = false,
+        val revisedDepartureUtcMs: Long? = null, val revisedArrivalUtcMs: Long? = null,
+        val actualDepartureUtcMs: Long? = null, val actualArrivalUtcMs: Long? = null, val actualSource: String? = null,
+        val liveStatus: String? = null,
     )
 
     @Serializable
@@ -97,6 +102,7 @@ class SyncCodec(private val json: Json) {
                 t.title, t.pnr, t.passengerName, t.source, t.createdAtMs,
                 segs.map { it.toDoc() },
                 prefs.filter { it.inboundSegmentId in ids }.mapNotNull { p -> segUid[p.inboundSegmentId]?.let { PrefDoc(it, p.kind, p.hotel) } }.sortedBy { it.segmentUid },
+                t.following, t.sharedBy,
             )
             LocalRecord(RecordKind.Trip, t.uid, obj(doc))
         }
@@ -154,9 +160,9 @@ class SyncCodec(private val json: Json) {
             return
         }
         val tripId = if (local == null) {
-            dao.insertTrip(TripEntity(uid = uid, title = doc.title, pnr = doc.pnr, passengerName = doc.passengerName, source = doc.source, createdAtMs = doc.createdAtMs))
+            dao.insertTrip(TripEntity(uid = uid, title = doc.title, pnr = doc.pnr, passengerName = doc.passengerName, source = doc.source, createdAtMs = doc.createdAtMs, following = doc.following, sharedBy = doc.sharedBy))
         } else {
-            dao.updateTrip(local.copy(title = doc.title, pnr = doc.pnr, passengerName = doc.passengerName, source = doc.source, createdAtMs = doc.createdAtMs))
+            dao.updateTrip(local.copy(title = doc.title, pnr = doc.pnr, passengerName = doc.passengerName, source = doc.source, createdAtMs = doc.createdAtMs, following = doc.following, sharedBy = doc.sharedBy))
             local.id
         }
         val existing = dao.segmentsOf(tripId)
@@ -181,6 +187,7 @@ class SyncCodec(private val json: Json) {
         uid, ordinal, airlineIata, flightNumber, origin, destination, departureLocal, arrivalLocal, departureZone, arrivalZone,
         departureUtcMs, arrivalUtcMs, departureTerminal, arrivalTerminal, gate, cabin, fareClass, seat, aircraftType, tail, operatedBy,
         airlineName, seatType, reason, note, timesEstimated,
+        revisedDepartureUtcMs, revisedArrivalUtcMs, actualDepartureUtcMs, actualArrivalUtcMs, actualSource, liveStatus,
     )
 
     private fun SegmentDoc.toEntity(id: Long, tripId: Long) = SegmentEntity(
@@ -190,6 +197,8 @@ class SyncCodec(private val json: Json) {
         departureTerminal = departureTerminal, arrivalTerminal = arrivalTerminal, gate = gate, cabin = cabin, fareClass = fareClass,
         seat = seat, aircraftType = aircraftType, tail = tail, operatedBy = operatedBy, airlineName = airlineName,
         seatType = seatType, reason = reason, note = note, timesEstimated = timesEstimated,
+        revisedDepartureUtcMs = revisedDepartureUtcMs, revisedArrivalUtcMs = revisedArrivalUtcMs,
+        actualDepartureUtcMs = actualDepartureUtcMs, actualArrivalUtcMs = actualArrivalUtcMs, actualSource = actualSource, liveStatus = liveStatus,
     )
 
     companion object {

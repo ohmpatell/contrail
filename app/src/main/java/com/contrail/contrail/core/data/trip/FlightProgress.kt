@@ -66,8 +66,9 @@ object FlightProgressCalc {
     }
 
     private fun fromTimetable(s: FlightSegment, now: Instant): FlightProgress {
-        val dep = s.departure
-        val arr = s.arrival
+        // The airline's revised times (or real ones) beat the ticket when we have them.
+        val dep = s.expectedDeparture
+        val arr = s.expectedArrival
         val phase = when {
             now.isBefore(dep - BOARDING) -> FlightPhase.Upcoming
             now.isBefore(dep) -> FlightPhase.Boarding

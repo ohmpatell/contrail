@@ -87,7 +87,7 @@ class ContrailApplication : Application(), SingletonImageLoader.Factory, Configu
         // The lock-screen Live Update follows your next flight, and the switch in Settings.
         appScope.launch {
             @OptIn(FlowPreview::class)
-            combine(trips.get().trips, tripSettings.get().liveUpdates) { _, _ -> }.debounce(1_500).collect {
+            combine(trips.get().allTrips, tripSettings.get().liveUpdates) { _, _ -> }.debounce(1_500).collect {
                 runCatching { liveFlights.get().reschedule() }
             }
         }

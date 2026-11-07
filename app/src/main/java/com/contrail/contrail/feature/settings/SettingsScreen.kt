@@ -397,6 +397,7 @@ private fun Credits() {
         "Live positions: adsb.fi open data" to "https://adsb.fi",
         "Live positions: adsb.lol (ODbL)" to "https://adsb.lol",
         "Flight tracks and history: The OpenSky Network" to "https://opensky-network.org",
+        "Departures, arrivals and flight status: Flight data by AeroDataBox" to "https://aerodatabox.com",
         "Lounges and airport diagrams: © OpenStreetMap contributors (ODbL)" to "https://www.openstreetmap.org/copyright",
         "Ticket and boarding-pass reading: Google ML Kit, on device" to "https://developers.google.com/ml-kit",
         "Globe land outline: Natural Earth (public domain)" to "https://www.naturalearthdata.com",

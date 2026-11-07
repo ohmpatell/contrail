@@ -26,6 +26,7 @@ enum class ApiService(val title: String, val signUpUrl: String) {
     Logostream("logostream", "https://airline.logostream.dev"),
     OpenSkyClientId("OpenSky client ID", "https://opensky-network.org/my-opensky/account"),
     OpenSkyClientSecret("OpenSky client secret", "https://opensky-network.org/my-opensky/account"),
+    AeroDataBox("AeroDataBox (RapidAPI)", "https://rapidapi.com/aedbx-aedbx/api/aerodatabox"),
 }
 
 /** Encrypts small strings with an AES-GCM key that never leaves the Android Keystore. */
@@ -85,6 +86,7 @@ class ApiKeys @Inject constructor(
         ApiService.Logostream -> BuildConfig.LOGOSTREAM_API_KEY
         ApiService.OpenSkyClientId -> BuildConfig.OPENSKY_CLIENT_ID
         ApiService.OpenSkyClientSecret -> BuildConfig.OPENSKY_CLIENT_SECRET
+        ApiService.AeroDataBox -> BuildConfig.AERODATABOX_API_KEY
     }
 
     fun status(service: ApiService): Flow<KeyStatus> = store.data.map { p ->
@@ -130,6 +132,16 @@ class ApiKeys @Inject constructor(
         }
 
         fun mask(key: String): String = if (key.length <= 6) "••••" else "${key.take(4)}••••${key.takeLast(2)}"
+    }
+}
+
+/** AeroDataBox's monthly units. Your own flights may use the last [RESERVE]; boards may not. */
+data class ScheduleUsage(val limit: Int?, val remaining: Int?, val resetAtMs: Long?) {
+    val boardsAllowed: Boolean get() = remaining == null || remaining > RESERVE
+    val flightsAllowed: Boolean get() = remaining == null || remaining >= 2
+
+    companion object {
+        const val RESERVE = 60
     }
 }
 
@@ -179,6 +191,21 @@ class UsageTracker @Inject constructor(@Named("usage") private val store: DataSt
     private val openSkyMade = longPreferencesKey("opensky.made")
 
     /** OpenSky's credits left today (from `X-Rate-Limit-Remaining`) and requests Contrail made today. */
+    private val adbRemaining = stringPreferencesKey("aerodatabox.remaining")
+    private val adbLimit = stringPreferencesKey("aerodatabox.limit")
+    private val adbResetAt = longPreferencesKey("aerodatabox.resetAt")
+
+    /** AeroDataBox's monthly API units, from its `X-RateLimit-API-Units-*` headers. */
+    val aeroDataBox: Flow<ScheduleUsage> = store.data.map { p ->
+        ScheduleUsage(p[adbLimit]?.toIntOrNull(), p[adbRemaining]?.toIntOrNull(), p[adbResetAt])
+    }
+
+    suspend fun recordAeroDataBox(limit: Int?, remaining: Int?, resetAtMs: Long?) = store.edit { p ->
+        limit?.let { p[adbLimit] = it.toString() }
+        remaining?.let { p[adbRemaining] = it.toString() }
+        resetAtMs?.let { p[adbResetAt] = it }
+    }
+
     val openSky: Flow<OpenSkyUsage> = store.data.map { p ->
         OpenSkyUsage(p[openSkyRemaining]?.toIntOrNull(), p[openSkyMade] ?: 0, p[openSkyDay])
     }

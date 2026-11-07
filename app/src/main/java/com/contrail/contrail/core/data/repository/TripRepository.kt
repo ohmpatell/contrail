@@ -19,6 +19,7 @@ import kotlinx.coroutines.flow.Flow
 import kotlinx.coroutines.flow.combine
 import kotlinx.coroutines.flow.distinctUntilChanged
 import kotlinx.coroutines.flow.map
+import java.time.Instant
 import java.time.LocalDateTime
 import java.time.ZoneId
 import javax.inject.Inject
@@ -39,21 +40,27 @@ class TripRepository @Inject constructor(
 ) {
     private val dao = db.tripDao()
 
-    /** Every trip, soonest first, with its connections classified. */
-    val trips: Flow<List<Trip>> = combine(dao.observeTrips(), dao.observeSegments(), dao.observePrefs()) { trips, segments, prefs ->
+    /** Every trip, including ones you follow for someone else, soonest first. */
+    val allTrips: Flow<List<Trip>> = combine(dao.observeTrips(), dao.observeSegments(), dao.observePrefs()) { trips, segments, prefs ->
         val prefMap = prefs.associate { it.inboundSegmentId to it.toDomain() }
         val byTrip = segments.groupBy { it.tripId }
         trips.mapNotNull { t ->
             val segs = byTrip[t.id].orEmpty().sortedBy { it.departureUtcMs }.map { it.toDomain() }
             if (segs.isEmpty()) return@mapNotNull null
-            Trip(t.id, t.title, t.pnr, t.passengerName, segs, ConnectionRules.connections(segs, prefMap))
+            Trip(t.id, t.title, t.pnr, t.passengerName, segs, ConnectionRules.connections(segs, prefMap), t.following, t.sharedBy)
         }.sortedBy { it.start }
     }.distinctUntilChanged()
 
-    fun trip(id: Long): Flow<Trip?> = trips.map { list -> list.firstOrNull { it.id == id } }.distinctUntilChanged()
+    /** Your own trips: what Trips, the Passport and widgets show. */
+    val trips: Flow<List<Trip>> = allTrips.map { list -> list.filterNot { it.following } }.distinctUntilChanged()
+
+    /** Other people's flights you follow. */
+    val following: Flow<List<Trip>> = allTrips.map { list -> list.filter { it.following } }.distinctUntilChanged()
+
+    fun trip(id: Long): Flow<Trip?> = allTrips.map { list -> list.firstOrNull { it.id == id } }.distinctUntilChanged()
 
     /** A segment with its trip, for the flight detail page. */
-    fun segment(id: Long): Flow<Pair<Trip, FlightSegment>?> = trips.map { list ->
+    fun segment(id: Long): Flow<Pair<Trip, FlightSegment>?> = allTrips.map { list ->
         list.firstNotNullOfOrNull { t -> t.segments.firstOrNull { it.id == id }?.let { t to it } }
     }.distinctUntilChanged()
 
@@ -154,6 +161,9 @@ class TripRepository @Inject constructor(
             seatType = seatType?.let { v -> SeatType.entries.firstOrNull { it.name == v } },
             reason = reason?.let { v -> FlightReason.entries.firstOrNull { it.name == v } },
             note = note, timesEstimated = timesEstimated,
+            revisedDeparture = revisedDepartureUtcMs?.let(Instant::ofEpochMilli), revisedArrival = revisedArrivalUtcMs?.let(Instant::ofEpochMilli),
+            actualDeparture = actualDepartureUtcMs?.let(Instant::ofEpochMilli), actualArrival = actualArrivalUtcMs?.let(Instant::ofEpochMilli),
+            actualSource = actualSource, liveStatus = liveStatus,
         )
 
         fun FlightSegment.toEntity() = SegmentEntity(
@@ -165,6 +175,9 @@ class TripRepository @Inject constructor(
             departureTerminal = departureTerminal, arrivalTerminal = arrivalTerminal, gate = gate,
             cabin = cabin?.name, fareClass = fareClass, seat = seat, aircraftType = aircraftType, tail = tail, operatedBy = operatedBy,
             airlineName = airlineName, seatType = seatType?.name, reason = reason?.name, note = note, timesEstimated = timesEstimated,
+            revisedDepartureUtcMs = revisedDeparture?.toEpochMilli(), revisedArrivalUtcMs = revisedArrival?.toEpochMilli(),
+            actualDepartureUtcMs = actualDeparture?.toEpochMilli(), actualArrivalUtcMs = actualArrival?.toEpochMilli(),
+            actualSource = actualSource, liveStatus = liveStatus,
         )
 
         fun ConnectionPrefEntity.toDomain() = ConnectionPref(

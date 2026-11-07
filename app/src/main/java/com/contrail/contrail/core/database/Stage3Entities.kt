@@ -28,6 +28,10 @@ data class TripEntity(
     /** How it was added (ImportSource names, comma-separated). */
     val source: String,
     val createdAtMs: Long,
+    /** Someone else's trip you follow (shared with you): not in your Passport. */
+    @ColumnInfo(defaultValue = "0") val following: Boolean = false,
+    /** The username who shared it, for followed trips and ones you joined. */
+    val sharedBy: String? = null,
 )
 
 /** One flight. Local times are ISO strings as printed on the ticket; the UTC columns are for sorting. */
@@ -65,6 +69,16 @@ data class SegmentEntity(
     val reason: String? = null,
     val note: String? = null,
     @ColumnInfo(defaultValue = "0") val timesEstimated: Boolean = false,
+    /** The airline's latest times (AeroDataBox), when they differ from the ticket. */
+    val revisedDepartureUtcMs: Long? = null,
+    val revisedArrivalUtcMs: Long? = null,
+    /** Wheels-up and touchdown, from the runway report or seen on ADS-B. */
+    val actualDepartureUtcMs: Long? = null,
+    val actualArrivalUtcMs: Long? = null,
+    /** Where the actual times came from: "runway" (airline report) or "adsb". */
+    val actualSource: String? = null,
+    val liveStatus: String? = null,
+    val statusCheckedAtMs: Long? = null,
 )
 
 /** Your layover/stopover choice and hotel flag for the connection after a segment. */

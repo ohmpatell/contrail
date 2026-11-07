@@ -76,6 +76,14 @@ object NetworkModule {
     fun httpClient(okHttp: OkHttpClient): HttpClient = ContrailHttp.ktor(okHttp)
 
     @Provides @Singleton
+    fun scheduleSource(client: HttpClient, json: Json, keys: com.contrail.contrail.core.data.settings.ApiKeys, usage: UsageTracker): com.contrail.contrail.core.network.schedule.ScheduleSource =
+        com.contrail.contrail.core.network.schedule.AeroDataBoxSource(
+            client, json,
+            key = { keys.get(com.contrail.contrail.core.data.settings.ApiService.AeroDataBox) },
+            onUnits = { u -> usage.recordAeroDataBox(u.limit, u.remaining, u.resetAtMs) },
+        )
+
+    @Provides @Singleton
     fun syncBackend(client: HttpClient, json: Json): com.contrail.contrail.core.network.sync.SyncBackend =
         com.contrail.contrail.core.network.sync.SupabaseBackend(client, json)
 

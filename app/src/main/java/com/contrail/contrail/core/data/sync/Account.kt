@@ -123,6 +123,9 @@ class AccountRepository @Inject constructor(
         result
     }
 
+    /** The signed-in session for other features (shared boards, shares), or null. */
+    suspend fun currentSession(): Session? = runCatching { session() }.getOrNull()
+
     /** A usable session, refreshed when it's about to expire. */
     private suspend fun session(): Session? {
         val p = store.data.first()

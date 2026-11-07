@@ -62,6 +62,7 @@ fun AirportRoute(icao: String) {
         onToggleFavourite = viewModel::toggleFavourite,
         onToggleVisited = viewModel::toggleVisited,
         onOpenAircraft = nav::openAircraft,
+        onLoadSchedule = viewModel::loadSchedule,
     )
 }
 
@@ -73,6 +74,8 @@ fun AirportScreen(
     onToggleFavourite: () -> Unit,
     onToggleVisited: () -> Unit,
     onOpenAircraft: (String) -> Unit,
+    onLoadSchedule: () -> Unit = {},
+    nowMs: Long = System.currentTimeMillis(),
 ) {
     val a = state.airport
     val colors = ContrailTheme.colors
@@ -95,6 +98,7 @@ fun AirportScreen(
         if (a == null) return@DetailScaffold
         StatsStrip(state)
         WeatherCard(state.weather?.metar, state.weather?.taf?.rawTAF)
+        ScheduleBoardCard(state, nowMs, onBoard, onLoadSchedule)
         BoardCard(state, onBoard, onOpenAircraft)
         val activeEnd = LiveBoard.likelyActiveEnd(state.runways, windFrom(state.weather?.metar))
         SectionCard("Airfield", trailing = { Eyebrow("© OpenStreetMap") }) {

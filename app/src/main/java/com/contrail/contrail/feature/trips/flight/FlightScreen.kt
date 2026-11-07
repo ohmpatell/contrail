@@ -86,6 +86,7 @@ fun FlightRoute(segmentId: Long) {
         onLogLounge = { phase -> nav.openLounge(segmentId, phase.name) },
         onOpenVisit = { v -> nav.openLounge(segmentId, v.phase.name, v.id) },
         onEdit = { nav.openAddFlight(segmentId) },
+        onCheckStatus = viewModel::checkStatus,
     )
 }
 
@@ -101,6 +102,7 @@ fun FlightScreen(
     onOpenVisit: (LoungeVisit) -> Unit,
     fixedNow: Instant? = null,
     onEdit: () -> Unit = {},
+    onCheckStatus: () -> Unit = {},
 ) {
     val s = state.segment
     val now by rememberNow(fixedNow)
@@ -123,6 +125,7 @@ fun FlightScreen(
             StatusStrip(s, state, now, accent)
             Timeline(s, state, now)
         }
+        if (showsAirlineStatus(s, now)) AirlineStatusCard(s, state.statusChecking, state.unitsLeft, onCheckStatus)
         AircraftCard(s, state, accent, onSetTail, onOpenAircraft)
         if (!flown) RotationPanel(s, state.rotation, state.rotationLoading, state.thresholds, state.places, onRefreshRotation, onOpenSettings)
         BookingCard(s, state)
