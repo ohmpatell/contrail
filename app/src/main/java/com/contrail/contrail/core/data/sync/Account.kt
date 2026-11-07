@@ -64,6 +64,7 @@ class AccountRepository @Inject constructor(
     private val db: ContrailDatabase,
     private val json: Json,
     private val clock: Clock,
+    private val shares: SharesRepository,
 ) {
     private val userKey = stringPreferencesKey("account.user")
     private val userIdKey = stringPreferencesKey("account.userId")
@@ -116,11 +117,26 @@ class AccountRepository @Inject constructor(
         val cursor = store.data.first()[cursorKey] ?: 0
         val engine = SyncEngine(db, backend, SyncCodec(json), clock::nowMs)
         val result = runCatching { engine.sync(session, cursor) }
+        // Shared trips go out and come in with every sync; a hiccup there doesn't fail the sync.
+        if (result.isSuccess) store.data.first()[userKey]?.let { me -> runCatching { shares.exchange(session, me) } }
         result.onSuccess { r ->
             store.edit { it[cursorKey] = r.cursor; it[lastSyncKey] = clock.nowMs() }
             activity.value = false to null
         }.onFailure { activity.value = false to (it.message ?: "Sync failed.") }
         result
+    }
+
+    /** Shares one of your trips with another Contrail user, then syncs so it arrives soon. */
+    suspend fun shareTrip(tripId: Long, username: String) {
+        val session = session() ?: throw AccountException("Sign in first (Settings → Account and sync).")
+        val me = store.data.first()[userKey] ?: throw AccountException("Sign in first.")
+        shares.share(session, me, tripId, username)
+    }
+
+    suspend fun unshareTrip(tripUid: String, userId: String) {
+        val session = session() ?: return
+        val me = store.data.first()[userKey] ?: return
+        shares.unshare(session, me, tripUid, userId)
     }
 
     /** The signed-in session for other features (shared boards, shares), or null. */

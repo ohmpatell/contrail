@@ -37,6 +37,12 @@ data class TripDetailUiState(
     val lounges: Map<Long, List<LoungeVisit>> = emptyMap(),
     /** Weather at stopover airports, by IATA code. */
     val weather: Map<String, AirportWeather> = emptyMap(),
+    val signedIn: Boolean = false,
+    /** People you've shared this trip with. */
+    val sharedWith: List<com.contrail.contrail.core.data.sync.SentShare> = emptyList(),
+    val sharing: Boolean = false,
+    val shareMessage: String? = null,
+    val shareError: String? = null,
 )
 
 @OptIn(ExperimentalCoroutinesApi::class)
@@ -47,7 +53,13 @@ class TripDetailViewModel @AssistedInject constructor(
     private val airports: AirportRepository,
     private val info: AirportInfoRepository,
     loungeRepo: LoungeRepository,
+    private val account: com.contrail.contrail.core.data.sync.AccountRepository,
+    private val shares: com.contrail.contrail.core.data.sync.SharesRepository,
+    private val db: com.contrail.contrail.core.database.ContrailDatabase,
 ) : ViewModel() {
+    /** Sending, then a message or an error, for the share sheet. */
+    private val shareStatus = kotlinx.coroutines.flow.MutableStateFlow(Triple(false, null as String?, null as String?))
+
 
     @AssistedFactory
     interface Factory {
@@ -78,7 +90,13 @@ class TripDetailViewModel @AssistedInject constructor(
     val state: StateFlow<TripDetailUiState> = combine(trip, places, loungeRepo.visits, weather) { t, p, visits, wx ->
         val ids = t?.segments?.map { it.id }?.toSet().orEmpty()
         TripDetailUiState(false, t, p, visits.filter { it.segmentId in ids }.groupBy { it.segmentId!! }, wx)
-    }.stateIn(viewModelScope, SharingStarted.WhileSubscribed(5_000), TripDetailUiState())
+    }.combine(account.signedIn) { s, signed -> s.copy(signedIn = signed) }
+        .combine(shares.sent) { s, sent ->
+            val uid = db.syncDao().trips().firstOrNull { it.id == tripId }?.uid
+            s.copy(sharedWith = sent.filter { it.tripUid == uid })
+        }
+        .combine(shareStatus) { s, (busy, msg, err) -> s.copy(sharing = busy, shareMessage = msg, shareError = err) }
+        .stateIn(viewModelScope, SharingStarted.WhileSubscribed(5_000), TripDetailUiState())
 
     init {
         viewModelScope.launch {
@@ -95,6 +113,34 @@ class TripDetailViewModel @AssistedInject constructor(
 
     fun toggleHotel(c: Connection) {
         viewModelScope.launch { trips.setHotel(c.inbound.id, !c.hotel) }
+    }
+
+    fun share(username: String) {
+        viewModelScope.launch {
+            shareStatus.value = Triple(true, null, null)
+            val r = runCatching { account.shareTrip(tripId, username) }
+            shareStatus.value = Triple(false, r.getOrNull()?.let { "Shared with @${username.trim().lowercase()}." }, r.exceptionOrNull()?.message)
+        }
+    }
+
+    fun clearShareStatus() {
+        shareStatus.value = Triple(false, null, null)
+    }
+
+    fun unshare(s: com.contrail.contrail.core.data.sync.SentShare) {
+        viewModelScope.launch { runCatching { account.unshareTrip(s.tripUid, s.userId) } }
+    }
+
+    /** "I'm on this trip too": a followed trip becomes yours and counts in your Passport. */
+    fun join() {
+        viewModelScope.launch { shares.join(tripId) }
+    }
+
+    fun unfollow(done: () -> Unit) {
+        viewModelScope.launch {
+            shares.unfollow(tripId)
+            done()
+        }
     }
 
     fun rename(title: String) {

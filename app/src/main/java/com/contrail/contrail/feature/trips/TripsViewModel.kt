@@ -23,6 +23,8 @@ data class TripsUiState(
     /** The next flight that hasn't landed, and its trip. */
     val next: Pair<Trip, FlightSegment>? = null,
     val places: Map<String, AirportInfo> = emptyMap(),
+    /** Other people's trips shared with you that haven't ended yet. */
+    val following: List<Trip> = emptyList(),
 ) {
     companion object {
         fun from(trips: List<Trip>, now: Instant, places: Map<String, AirportInfo>): TripsUiState {
@@ -39,9 +41,11 @@ class TripsViewModel @Inject constructor(
     private val airports: AirportRepository,
     private val clock: Clock,
 ) : ViewModel() {
-    val state: StateFlow<TripsUiState> = trips.trips.map { list ->
+    val state: StateFlow<TripsUiState> = kotlinx.coroutines.flow.combine(trips.trips, trips.following) { list, followed ->
         val dir = airports.directory()
-        val codes = list.flatMap { t -> t.segments.flatMap { listOf(it.origin, it.destination) } }.toSet()
-        TripsUiState.from(list, Instant.ofEpochMilli(clock.nowMs()), codes.mapNotNull { c -> dir.find(c)?.let { c to it } }.toMap())
+        val now = Instant.ofEpochMilli(clock.nowMs())
+        val codes = (list + followed).flatMap { t -> t.segments.flatMap { listOf(it.origin, it.destination) } }.toSet()
+        TripsUiState.from(list, now, codes.mapNotNull { c -> dir.find(c)?.let { c to it } }.toMap())
+            .copy(following = followed.filterNot { it.isPast(now) })
     }.stateIn(viewModelScope, SharingStarted.WhileSubscribed(5_000), TripsUiState())
 }

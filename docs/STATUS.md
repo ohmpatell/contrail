@@ -72,10 +72,11 @@ Releases: every push to `master` publishes a signed APK to GitHub Releases for O
 - ✅ **Real departures and arrivals** (airport page): the airline's board, with times, delays, gates and status, from AeroDataBox. It loads when you tap (2 units). When you open an airport, Contrail first uses a copy that you or anyone else signed in fetched in the last 15 minutes, which costs nothing. Boards stop when only 60 units are left, so your own flights always have some.
 - ✅ **Your flights from the airline:** three hours before departure, before boarding and after landing, Contrail checks your flight and fills in the gate, terminal, tail number, revised times and runway times. It costs 2 units a check, 6 per flight. "Check now" on the flight page does it on demand.
 - ✅ **Real takeoff and landing times:** watching your flight on ADS-B, Contrail records wheels-up (worked back from the climb) and touchdown. The airport's runway report takes over when there is one. Flights with estimated times take the real ones on landing, so the Passport's hours become real.
-
-Still to do:
-
-7. Follow a flight, shared trips, flights together
+- ✅ **Sharing:** open a trip and tap Share to send it to someone's username.
+  - On their phone, it appears under **Following** on the Trips tab, with your name.
+  - It gets its own Live Update on the day and a "@you has landed" alert.
+  - Your edits reach them, and Stop sharing takes it back.
+  - They can tap **I'm on this trip too**, which turns it into their own trip, in their log and Passport. Their Passport then gets a **Flown together** card.
 
 ## Known limits
 - No free schedule API: flight times come from your ticket or log, or are estimated from distance (always labelled). Tail numbers are entered by hand.

@@ -22,6 +22,21 @@ class TripSettings @Inject constructor(@Named("trips") private val store: DataSt
     /** Your flight on the lock screen while it's under way. On unless you turn it off. */
     val liveUpdates: Flow<Boolean> = store.data.map { it[live] ?: true }
 
+    private val landedAlerts = androidx.datastore.preferences.core.stringSetPreferencesKey("landed.alerted")
+
+    /** True the first time it's called for [segmentId], so each followed flight alerts once. */
+    suspend fun firstLandedAlert(segmentId: Long): Boolean {
+        var first = false
+        store.edit { p ->
+            val seen = p[landedAlerts].orEmpty()
+            if ("$segmentId" !in seen) {
+                first = true
+                p[landedAlerts] = (seen + "$segmentId").toList().takeLast(200).toSet()
+            }
+        }
+        return first
+    }
+
     suspend fun setLiveUpdates(on: Boolean) {
         store.edit { it[live] = on }
     }

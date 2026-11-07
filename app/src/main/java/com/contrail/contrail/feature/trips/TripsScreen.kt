@@ -136,10 +136,21 @@ fun TripsScreen(
         Header(state, now, onImport)
         when {
             state.loading -> Unit
-            state.upcoming.isEmpty() && state.past.isEmpty() -> RiseIn(0) { EmptyTrips(onImport) }
+            state.upcoming.isEmpty() && state.past.isEmpty() && state.following.isEmpty() -> RiseIn(0) { EmptyTrips(onImport) }
             else -> {
                 state.next?.let { (trip, seg) ->
                     RiseIn(0) { NextFlightCard(trip, seg, state.places, now, onClick = { onFlight(seg.id) }) }
+                }
+                if (state.following.isNotEmpty()) {
+                    Eyebrow("Following", Modifier.padding(top = spacing.xs), color = ContrailTheme.colors.accent)
+                    state.following.forEachIndexed { i, t ->
+                        RiseIn(i + 1) {
+                            Column(verticalArrangement = Arrangement.spacedBy(spacing.xxs)) {
+                                Text("Shared by @${t.sharedBy ?: "someone"}", style = ContrailTheme.type.label, color = ContrailTheme.colors.textTertiary)
+                                TripCard(t, state.places, onClick = { onTrip(t.id) })
+                            }
+                        }
+                    }
                 }
                 if (state.upcoming.isNotEmpty()) {
                     Eyebrow("Upcoming trips", Modifier.padding(top = spacing.xs))

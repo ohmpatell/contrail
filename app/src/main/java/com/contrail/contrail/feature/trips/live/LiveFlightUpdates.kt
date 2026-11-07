@@ -127,8 +127,14 @@ class LiveFlightWorker @AssistedInject constructor(
         // Real takeoff and touchdown, as seen on ADS-B.
         val dao = db.tripDao()
         dao.segment(seg.id)?.let { row -> ActualTimes.observe(row, aircraft, progress, now.toEpochMilli())?.let { dao.updateSegment(it) } }
-        val latest = trips.allTrips.first().flatMap { it.segments }.firstOrNull { it.id == seg.id } ?: seg
-        LiveFlightNotification.post(applicationContext, latest, progress, dir, now)
+        val all = trips.allTrips.first()
+        val trip = all.firstOrNull { t -> t.segments.any { it.id == seg.id } }
+        val latest = trip?.segments?.firstOrNull { it.id == seg.id } ?: seg
+        val whose = trip?.takeIf { it.following }?.sharedBy
+        LiveFlightNotification.post(applicationContext, latest, progress, dir, now, whose)
+        if (whose != null && progress.phase == FlightPhase.Landed && settings.firstLandedAlert(seg.id)) {
+            LiveFlightNotification.landed(applicationContext, latest, whose, dir.find(latest.destination)?.city ?: latest.destination)
+        }
         Widgets.updateTrips(applicationContext)
 
         WorkManager.getInstance(applicationContext).enqueueUniqueWork(
@@ -161,7 +167,31 @@ class LiveFlightWorker @AssistedInject constructor(
 object LiveFlightNotification {
     private val TIME = DateTimeFormatter.ofPattern("HH:mm", Locale.UK)
 
-    fun post(context: Context, seg: FlightSegment, p: FlightProgress, dir: AirportDirectory, now: Instant) {
+    /** A one-off alert when a flight you follow lands. */
+    fun landed(context: Context, seg: FlightSegment, whose: String, city: String) {
+        if (ContextCompat.checkSelfPermission(context, Manifest.permission.POST_NOTIFICATIONS) != PackageManager.PERMISSION_GRANTED) return
+        val nm = context.getSystemService(NotificationManager::class.java)
+        nm.createNotificationChannel(NotificationChannel(LANDED_CHANNEL, context.getString(R.string.landed_channel), NotificationManager.IMPORTANCE_HIGH))
+        val open = PendingIntent.getActivity(
+            context, seg.id.toInt() + 1,
+            Intent(context, MainActivity::class.java).putExtra(MainActivity.EXTRA_FLIGHT, seg.id).addFlags(Intent.FLAG_ACTIVITY_SINGLE_TOP),
+            PendingIntent.FLAG_IMMUTABLE or PendingIntent.FLAG_UPDATE_CURRENT,
+        )
+        val n = NotificationCompat.Builder(context, LANDED_CHANNEL)
+            .setSmallIcon(R.drawable.ic_stat_plane)
+            .setContentTitle("@$whose has landed")
+            .setContentText("${seg.designator} is down in $city.")
+            .setColor((Airlines.byIata(seg.airlineIata)?.accentArgb ?: 0xFF8FD8FF).toInt())
+            .setContentIntent(open)
+            .setAutoCancel(true)
+            .build()
+        nm.notify(LANDED_BASE + (seg.id % 1000).toInt(), n)
+    }
+
+    private const val LANDED_CHANNEL = "followed-landed"
+    private const val LANDED_BASE = 4_300
+
+    fun post(context: Context, seg: FlightSegment, p: FlightProgress, dir: AirportDirectory, now: Instant, whose: String? = null) {
         if (ContextCompat.checkSelfPermission(context, Manifest.permission.POST_NOTIFICATIONS) != PackageManager.PERMISSION_GRANTED) return
         val nm = context.getSystemService(NotificationManager::class.java)
         nm.createNotificationChannel(
@@ -190,7 +220,7 @@ object LiveFlightNotification {
 
         val n = NotificationCompat.Builder(context, LiveFlightUpdates.CHANNEL)
             .setSmallIcon(R.drawable.ic_stat_plane)
-            .setContentTitle("${seg.designator} · ${seg.origin} → ${seg.destination}")
+            .setContentTitle((whose?.let { "@$it · " } ?: "") + "${seg.designator} · ${seg.origin} → ${seg.destination}")
             .setContentText(text(seg, p, destCity))
             .setSubText(if (p.live) "Live · estimated" else if (seg.timesEstimated) "Estimated times" else null)
             .setShortCriticalText(chip(p, target, now))

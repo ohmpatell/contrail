@@ -29,6 +29,8 @@ data class PassportUiState(
     val upcomingFlights: Int = 0,
     /** The year the Passport is filtered to; null is all time. */
     val selectedYear: Int? = null,
+    /** Flights you joined from someone's shared trip, by their username. */
+    val together: Map<String, Int> = emptyMap(),
 )
 
 private fun passportFlow(
@@ -48,6 +50,10 @@ private fun passportFlow(
         places = places,
         upcomingFlights = t.sumOf { trip -> trip.segments.count { it.arrival.isAfter(now) } },
         selectedYear = year,
+        together = t.filter { it.sharedBy != null }
+            .groupBy { it.sharedBy!! }
+            .mapValues { (_, list) -> list.sumOf { trip -> trip.segments.count { it.arrival.isBefore(now) && (year == null || it.departureLocal.year == year) } } }
+            .filterValues { it > 0 },
     )
 }
 

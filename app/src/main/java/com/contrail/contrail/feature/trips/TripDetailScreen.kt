@@ -91,8 +91,26 @@ fun TripDetailRoute(tripId: Long, onBack: (() -> Unit)? = null) {
         onOpenVisit = { v -> nav.openLounge(v.segmentId ?: 0, v.phase.name, v.id) },
         onRename = viewModel::rename,
         onDelete = { viewModel.delete { nav.back() } },
+        sharing = TripSharing(
+            onShare = viewModel::share,
+            onUnshare = viewModel::unshare,
+            onJoin = viewModel::join,
+            onUnfollow = { viewModel.unfollow { (onBack ?: nav::back)() } },
+            onOpenSettings = nav::openSettings,
+            onCloseShare = viewModel::clearShareStatus,
+        ),
     )
 }
+
+/** What the trip page can do with sharing. */
+data class TripSharing(
+    val onShare: (String) -> Unit = {},
+    val onUnshare: (com.contrail.contrail.core.data.sync.SentShare) -> Unit = {},
+    val onJoin: () -> Unit = {},
+    val onUnfollow: () -> Unit = {},
+    val onOpenSettings: () -> Unit = {},
+    val onCloseShare: () -> Unit = {},
+)
 
 @Composable
 fun TripDetailScreen(
@@ -106,18 +124,38 @@ fun TripDetailScreen(
     onRename: (String) -> Unit,
     onDelete: () -> Unit,
     fixedNow: Instant? = null,
+    sharing: TripSharing = TripSharing(),
 ) {
     val trip = state.trip
     val now by rememberNow(fixedNow)
     val accent = airlineAccent(trip?.first?.airlineIata)
+    var showShare by androidx.compose.runtime.saveable.rememberSaveable { androidx.compose.runtime.mutableStateOf(false) }
+    if (showShare) {
+        ShareTripDialog(
+            signedIn = state.signedIn, sending = state.sharing, message = state.shareMessage, error = state.shareError,
+            onSend = sharing.onShare,
+            onOpenSettings = { showShare = false; sharing.onOpenSettings() },
+            onDismiss = { showShare = false; sharing.onCloseShare() },
+        )
+    }
     DetailScaffold(
         title = trip?.title ?: "",
         eyebrow = trip?.let { listOfNotNull(it.pnr, TripFormat.range(it)).joinToString(" · ") },
         accent = accent,
         onBack = onBack,
+        actions = {
+            if (trip != null && !trip.following) {
+                com.contrail.contrail.core.designsystem.component.GlassIconButton(com.contrail.contrail.core.designsystem.icon.ContrailIcons.Share, "Share this trip", { showShare = true })
+            }
+        },
         hero = { trip?.let { TripMap(it, state.places) } },
     ) {
         if (trip == null) return@DetailScaffold
+        if (trip.following) FollowingBanner(trip.sharedBy, sharing.onJoin, sharing.onUnfollow)
+        if (!trip.following && trip.sharedBy != null) {
+            Text("Flown together with @${trip.sharedBy}", style = ContrailTheme.type.label, color = ContrailTheme.colors.passport)
+        }
+        if (state.sharedWith.isNotEmpty()) SharedWithCard(state.sharedWith, sharing.onUnshare)
         trip.segments.forEachIndexed { i, s ->
             val departureLounges = state.lounges[s.id].orEmpty().filter { it.phase == LoungePhase.Departure }
             if (i == 0) {

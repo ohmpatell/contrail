@@ -159,6 +159,7 @@ fun PassportScreen(state: PassportUiState, actions: PassportActions, modifier: M
             RiseIn(1) { Headline(s) }
             RiseIn(2) { LogbookPreview(s, state.places, actions) }
             if (s.stamps.isNotEmpty()) RiseIn(3) { StampStrip(s.stamps, actions.onStamps) }
+            if (state.together.isNotEmpty()) RiseIn(4) { FlownTogetherCard(state.together) }
             RiseIn(4) { AchievementsCard(s.achievements) }
             s.years.firstOrNull()?.let { y -> RiseIn(5) { YearCard(state.selectedYear ?: y, s.years, actions.onYearInReview) } }
             if (state.selectedYear == null) RiseIn(6) { YearsChart(s.insights) }
@@ -538,5 +539,19 @@ private fun LoungeTile(c: LoungeCard, modifier: Modifier) {
         Text(c.name, style = ContrailTheme.type.label, color = colors.textPrimary, maxLines = 2, overflow = TextOverflow.Ellipsis)
         Stars(c.bestRating, size = 11.dp)
         Text("${c.visits} visit${if (c.visits == 1) "" else "s"} · ${PassportCalculator.hours(c.minutes)}", style = ContrailTheme.type.numericSmall, color = colors.textTertiary)
+    }
+}
+
+/** Flights you took with someone who shared their trip with you. */
+@Composable
+private fun FlownTogetherCard(together: Map<String, Int>) {
+    val colors = ContrailTheme.colors
+    SectionCard("Flown together") {
+        together.entries.sortedByDescending { it.value }.forEach { (who, n) ->
+            Row(verticalAlignment = Alignment.CenterVertically) {
+                Text("@$who", style = ContrailTheme.type.title, color = colors.textPrimary, modifier = Modifier.weight(1f))
+                Text(if (n == 1) "1 flight" else "$n flights", style = ContrailTheme.type.numeric, color = colors.passport)
+            }
+        }
     }
 }
