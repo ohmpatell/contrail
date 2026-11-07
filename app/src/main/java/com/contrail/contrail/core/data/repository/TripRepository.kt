@@ -105,7 +105,7 @@ class TripRepository @Inject constructor(
     suspend fun saveFlight(flight: FlightSegment, title: String, segmentId: Long = 0): Long = db.withTransaction {
         if (segmentId != 0L) {
             val old = dao.segment(segmentId) ?: return@withTransaction 0L
-            dao.updateSegment(flight.copy(id = segmentId, tripId = old.tripId, ordinal = old.ordinal).toEntity())
+            dao.updateSegment(flight.copy(id = segmentId, tripId = old.tripId, ordinal = old.ordinal).toEntity().copy(uid = old.uid))
             renumber(old.tripId)
             return@withTransaction segmentId
         }

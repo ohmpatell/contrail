@@ -76,6 +76,10 @@ object NetworkModule {
     fun httpClient(okHttp: OkHttpClient): HttpClient = ContrailHttp.ktor(okHttp)
 
     @Provides @Singleton
+    fun syncBackend(client: HttpClient, json: Json): com.contrail.contrail.core.network.sync.SyncBackend =
+        com.contrail.contrail.core.network.sync.SupabaseBackend(client, json)
+
+    @Provides @Singleton
     fun liveTraffic(client: HttpClient): LiveTrafficSource = FailoverLiveTrafficSource(
         listOf(ReadsbApiSource.adsbFi(client), ReadsbApiSource.adsbLol(client)),
         onProviderFailed = { name, e -> android.util.Log.w("ContrailTraffic", "$name failed: $e") },

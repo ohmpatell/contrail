@@ -25,10 +25,11 @@ import com.contrail.contrail.core.data.repository.SightingEntity
         ConnectionPrefEntity::class,
         LoungeEntity::class,
         LoungeVisitEntity::class,
+        SyncStateEntity::class,
     ],
-    version = 4,
+    version = 5,
     exportSchema = true,
-    autoMigrations = [AutoMigration(from = 1, to = 2), AutoMigration(from = 2, to = 3), AutoMigration(from = 3, to = 4)],
+    autoMigrations = [AutoMigration(from = 1, to = 2), AutoMigration(from = 2, to = 3), AutoMigration(from = 3, to = 4), AutoMigration(from = 4, to = 5, spec = FillUids::class)],
 )
 abstract class ContrailDatabase : RoomDatabase() {
     abstract fun liveAircraftDao(): LiveAircraftDao
@@ -42,4 +43,5 @@ abstract class ContrailDatabase : RoomDatabase() {
     abstract fun sightingDao(): SightingDao
     abstract fun tripDao(): TripDao
     abstract fun loungeDao(): LoungeDao
+    abstract fun syncDao(): SyncDao
 }

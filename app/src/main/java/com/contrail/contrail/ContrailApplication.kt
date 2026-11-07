@@ -25,6 +25,7 @@ import kotlinx.coroutines.FlowPreview
 import kotlinx.coroutines.SupervisorJob
 import kotlinx.coroutines.flow.combine
 import kotlinx.coroutines.flow.debounce
+import kotlinx.coroutines.flow.first
 import kotlinx.coroutines.flow.distinctUntilChanged
 import kotlinx.coroutines.flow.map
 import kotlinx.coroutines.flow.drop
@@ -50,6 +51,8 @@ class ContrailApplication : Application(), SingletonImageLoader.Factory, Configu
     @Inject lateinit var tripSettings: Lazy<TripSettings>
     @Inject lateinit var liveFlights: Lazy<LiveFlightUpdates>
     @Inject lateinit var themes: Lazy<ThemeResolver>
+    @Inject lateinit var account: Lazy<com.contrail.contrail.core.data.sync.AccountRepository>
+    @Inject lateinit var database: Lazy<com.contrail.contrail.core.database.ContrailDatabase>
 
     private val appScope = CoroutineScope(SupervisorJob() + Dispatchers.Default)
 
@@ -65,6 +68,18 @@ class ContrailApplication : Application(), SingletonImageLoader.Factory, Configu
             @OptIn(FlowPreview::class)
             trips.get().trips.drop(1).debounce(1_500).collect { Widgets.updateTrips(this@ContrailApplication) }
         }
+        // Signed in: sync shortly after anything that syncs changes here, and whenever the app opens.
+        appScope.launch {
+            if (account.get().signedIn.first()) com.contrail.contrail.core.data.sync.SyncScheduler.start(this@ContrailApplication)
+            database.get().invalidationTracker.createFlow("trip", "segment", "connection_pref", "lounge_visit", "lounge", "watch_item", "airport_user", emitInitialState = false)
+                .debounce(3_000)
+                .collect { if (account.get().signedIn.first()) com.contrail.contrail.core.data.sync.SyncScheduler.soon(this@ContrailApplication) }
+        }
+        androidx.lifecycle.ProcessLifecycleOwner.get().lifecycle.addObserver(object : androidx.lifecycle.DefaultLifecycleObserver {
+            override fun onStart(owner: androidx.lifecycle.LifecycleOwner) {
+                appScope.launch { if (account.get().signedIn.first()) com.contrail.contrail.core.data.sync.SyncScheduler.soon(this@ContrailApplication, delaySeconds = 0) }
+            }
+        })
         // Widgets repaint in the new colours when the theme changes.
         appScope.launch {
             themes.get().theme.map { it.colors }.distinctUntilChanged().drop(1).collect { Widgets.updateAll(this@ContrailApplication) }

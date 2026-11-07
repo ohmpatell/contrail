@@ -62,10 +62,17 @@ Releases: every push to `master` publishes a signed APK to GitHub Releases for O
   - Trips shows your list beside the open trip.
   - The Stamp book opens flat, two pages at a time.
   - Other pages keep a comfortable reading width.
+- ✅ **Account and sync** (Settings → Account and sync): an optional username and password, with no email. While signed in, these stay in step on every device you sign in on:
+  - trips and flights
+  - connection choices
+  - lounge visits and lounges
+  - your watchlist
+  - favourite airports
+
+  Sync runs about 5 seconds after a change, whenever the app opens, and hourly. Your Supabase project's tables are set up; the schema is in `supabase/migrations`.
 
 Still to do:
 
-4. Optional username-and-password sign-in and sync (Supabase)
 5. Real departures and arrivals (AeroDataBox)
 6. Automatic actual takeoff and landing times
 7. Follow a flight, shared trips, flights together

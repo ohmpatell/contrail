@@ -13,10 +13,15 @@ import androidx.room.Update
 import androidx.room.Upsert
 import kotlinx.coroutines.flow.Flow
 
+/** A random id that stays the same across devices. */
+fun newUid(): String = java.util.UUID.randomUUID().toString()
+
 /** A journey made of one or more flight segments. */
-@Entity(tableName = "trip")
+@Entity(tableName = "trip", indices = [Index("uid")])
 data class TripEntity(
     @PrimaryKey(autoGenerate = true) val id: Long = 0,
+    /** The same on every device, for sync. Local [id]s differ between devices. */
+    @ColumnInfo(defaultValue = "") val uid: String = newUid(),
     val title: String,
     val pnr: String?,
     val passengerName: String?,
@@ -29,10 +34,11 @@ data class TripEntity(
 @Entity(
     tableName = "segment",
     foreignKeys = [ForeignKey(entity = TripEntity::class, parentColumns = ["id"], childColumns = ["tripId"], onDelete = ForeignKey.CASCADE)],
-    indices = [Index("tripId"), Index("departureUtcMs"), Index("tail")],
+    indices = [Index("tripId"), Index("departureUtcMs"), Index("tail"), Index("uid")],
 )
 data class SegmentEntity(
     @PrimaryKey(autoGenerate = true) val id: Long = 0,
+    @ColumnInfo(defaultValue = "") val uid: String = newUid(),
     val tripId: Long,
     val ordinal: Int,
     val airlineIata: String,
@@ -89,9 +95,10 @@ data class LoungeEntity(
  * so your lounge history survives deleting a trip). [phase] is "Departure" (before that flight,
  * at its origin, which covers connections) or "Arrival" (after it lands).
  */
-@Entity(tableName = "lounge_visit", indices = [Index("segmentId"), Index("loungeKey")])
+@Entity(tableName = "lounge_visit", indices = [Index("segmentId"), Index("loungeKey"), Index("uid")])
 data class LoungeVisitEntity(
     @PrimaryKey(autoGenerate = true) val id: Long = 0,
+    @ColumnInfo(defaultValue = "") val uid: String = newUid(),
     val segmentId: Long?,
     val phase: String,
     val loungeKey: String,

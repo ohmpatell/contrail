@@ -226,4 +226,9 @@ Checked against the OpenAPI spec, the terms (Sept 3, 2026) and live probes with 
 - **Sun maths moved to `core/common/Sun`** so the theme code doesn't depend on the radar feature.
 - **Window size from `LocalConfiguration`** (`ContrailTheme.layout`) rather than adding material3-adaptive. Wide means 840 dp or more, or 600 dp or more in landscape, so phones on their side get the rail too. List-and-detail Trips needs 840 dp ("roomy").
 - **Phone-shaped pages are centred at 720 dp** on wide screens, not redesigned one by one. Radar, Trips and the Stamp book have their own wide layouts.
+- **One `records` table for everything that syncs** (kind, id, JSON data, a deleted flag), not a table per entity. New kinds need no schema change. Row-level security keeps each user to their own rows; a trigger numbers every write (`seq`), so devices pull "after N" without trusting clocks.
+- **Plain Ktor REST (GoTrue + PostgREST) instead of the supabase-kt SDK.** Six endpoints didn't justify another dependency tree. It runs on the shared client, so the User-Agent is included.
+- **Cross-device uids** on trips, flights and lounge visits (Room 4 → 5, existing rows filled by the migration). Local row ids still drive the app; records carry uids only.
+- **Conflict rule:** a record changed on this device since its last sync is kept and sent; otherwise the server's version wins. With one person per account that's last-sync-wins, which is enough.
+- **Usernames map to `<name>@users.contrail.invalid`** with email confirmation off, so nothing is ever emailed. Verified against the live project with a throwaway account, which was deleted after. No password reset by email: reset from the Supabase dashboard if needed.
 

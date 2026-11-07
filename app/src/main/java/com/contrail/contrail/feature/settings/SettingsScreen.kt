@@ -38,6 +38,9 @@ import com.contrail.contrail.core.data.settings.ApiKeys
 import com.contrail.contrail.core.data.settings.Appearance
 import com.contrail.contrail.core.data.settings.AppearanceRepository
 import com.contrail.contrail.core.data.settings.ThemeResolver
+import com.contrail.contrail.core.data.sync.AccountRepository
+import com.contrail.contrail.core.data.sync.AccountState
+import kotlinx.coroutines.flow.MutableStateFlow
 import com.contrail.contrail.core.designsystem.theme.ThemeChoice
 import com.contrail.contrail.core.data.settings.ApiService
 import com.contrail.contrail.core.data.settings.KeySource
@@ -71,6 +74,9 @@ data class SettingsUiState(
     val appearance: Appearance = Appearance(),
     val sunElevationDeg: Double? = null,
     val liveryAirline: String? = null,
+    val account: AccountState = AccountState(),
+    val accountBusy: Boolean = false,
+    val accountError: String? = null,
 )
 
 @HiltViewModel
@@ -80,7 +86,11 @@ class SettingsViewModel @Inject constructor(
     private val tripSettings: TripSettings,
     private val appearance: AppearanceRepository,
     themes: ThemeResolver,
+    private val account: AccountRepository,
 ) : ViewModel() {
+    /** The sign-in form's own progress and error, separate from background syncs. */
+    private val entering = MutableStateFlow(false to (null as String?))
+
     val state: StateFlow<SettingsUiState> = combine(
         combine(ApiService.entries.map { apiKeys.status(it) }) { it.toList() },
         usage.logostream,
@@ -90,10 +100,28 @@ class SettingsViewModel @Inject constructor(
     ) { keys, u, o, t, live -> SettingsUiState(keys, u, o, t, live) }
         .combine(themes.theme) { s, theme -> s.copy(sunElevationDeg = theme.sunElevationDeg, liveryAirline = theme.liveryAirline) }
         .combine(appearance.appearance) { s, a -> s.copy(appearance = a) }
+        .combine(account.state) { s, a -> s.copy(account = a) }
+        .combine(entering) { s, (busy, err) -> s.copy(accountBusy = busy, accountError = err) }
         .stateIn(viewModelScope, SharingStarted.WhileSubscribed(5_000), SettingsUiState())
 
     fun setThresholds(t: TurnThresholds) {
         viewModelScope.launch { tripSettings.setThresholds(t) }
+    }
+
+    fun enter(username: String, password: String, create: Boolean) {
+        viewModelScope.launch {
+            entering.value = true to null
+            val r = runCatching { if (create) account.signUp(username, password) else account.signIn(username, password) }
+            entering.value = false to r.exceptionOrNull()?.let { it.message ?: "Couldn't sign in." }
+        }
+    }
+
+    fun syncNow() {
+        viewModelScope.launch { account.syncNow() }
+    }
+
+    fun signOut() {
+        viewModelScope.launch { account.signOut() }
     }
 
     fun setTheme(choice: ThemeChoice) {
@@ -127,8 +155,16 @@ fun SettingsRoute(viewModel: SettingsViewModel = hiltViewModel()) {
         onLiveUpdates = { on -> if (on) notify.launch(Manifest.permission.POST_NOTIFICATIONS) else viewModel.setLiveUpdates(false) },
         onTheme = viewModel::setTheme,
         onLivery = viewModel::setLivery,
+        accountActions = AccountActions(viewModel::enter, viewModel::syncNow, viewModel::signOut),
     )
 }
+
+/** What the Account section can do. */
+data class AccountActions(
+    val enter: (String, String, Boolean) -> Unit = { _, _, _ -> },
+    val syncNow: () -> Unit = {},
+    val signOut: () -> Unit = {},
+)
 
 @Composable
 fun SettingsScreen(
@@ -139,10 +175,15 @@ fun SettingsScreen(
     onLiveUpdates: (Boolean) -> Unit = {},
     onTheme: (ThemeChoice) -> Unit = {},
     onLivery: (Boolean) -> Unit = {},
+    accountActions: AccountActions = AccountActions(),
+    nowMs: Long = System.currentTimeMillis(),
 ) {
     DetailScaffold(title = "Settings", eyebrow = "Contrail ${BuildConfig.VERSION_NAME}", onBack = onBack) {
         SectionCard("Appearance") {
             AppearancePicker(state.appearance.choice, state.sunElevationDeg, state.appearance.livery, state.liveryAirline, onTheme, onLivery)
+        }
+        SectionCard("Account and sync") {
+            AccountSection(state.account, state.accountBusy, state.accountError, nowMs, accountActions.enter, accountActions.syncNow, accountActions.signOut)
         }
         SectionCard("API keys") {
             Text(
@@ -374,6 +415,6 @@ private fun Credits() {
                 modifier = Modifier.fillMaxWidth().clickable(role = Role.Button) { uri.openUri(url) },
             )
         }
-        Eyebrow("No accounts, no ads, no tracking")
+        Eyebrow("Optional account · no ads, no tracking")
     }
 }
