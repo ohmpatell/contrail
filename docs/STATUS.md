@@ -4,10 +4,9 @@ Last updated Nov 7, 2026.
 
 ## Waiting on you
 
-Three free sign-ups for Stage 5, needed only from step 4 (sync) onward. Steps 1 to 3 don't wait on them. Put each value in `local.properties`; Claude adds the GitHub Secrets.
+Two free sign-ups and one Supabase setting for Stage 5, needed only from step 4 (sync) onward. Steps 1 to 3 don't wait on them. Put each value in `local.properties`; Claude adds the GitHub Secrets.
 
-- **Supabase:** `SUPABASE_ACCESS_TOKEN` (used once to set up the project, then you can delete it).
-- **Google Cloud sign-in client:** `CONTRAIL_GOOGLE_WEB_CLIENT_ID`.
+- **Supabase:** token added. Still to do: turn off "Confirm email" and add `CONTRAIL_SUPABASE_KEY` (the publishable key).
 - **AeroDataBox on RapidAPI (Basic, free):** `CONTRAIL_AERODATABOX_API_KEY`.
 
 Releases: every push to `master` publishes a signed APK to GitHub Releases for Obtainium. Keep `C:\Users\ohm20\contrail-signing\contrail-release.jks` and its password backed up.
@@ -48,7 +47,7 @@ Releases: every push to `master` publishes a signed APK to GitHub Releases for O
 1. Live Update notification for flights in progress, new widgets
 2. Themes: Night Cockpit, Chart, Golden Hour, Glass Cockpit, Livery mode
 3. Tablet layouts
-4. Optional Google sign-in and sync (Supabase)
+4. Optional username-and-password sign-in and sync (Supabase)
 5. Real departures and arrivals (AeroDataBox)
 6. Automatic actual takeoff and landing times
 7. Follow a flight, shared trips, flights together

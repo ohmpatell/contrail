@@ -208,7 +208,9 @@ Checked against the OpenAPI spec, the terms (Sept 3, 2026) and live probes with 
 
 ## Stage 5 planning (Nov 7, 2026)
 - **Optional sign-in with Supabase, not Google Drive or Firebase (your call).** Drive sync asks for Drive access, which looks alarming to anyone else using the app. Firebase's free plan has no server functions and was ruled out in CLAUDE.md. Supabase gives Postgres, Google sign-in, row-level security and realtime on a free plan. It pauses after a week with no activity, which daily use prevents, and the app keeps working offline if it does.
-- **Google sign-in, not email.** Supabase's built-in email only delivers to the project's own team members, at 2 messages an hour, so email codes wouldn't reach anyone else without setting up a mail service. Google sign-in asks only for name and email.
+- ~~**Google sign-in, not email.**~~ Replaced the same day, see below.
+- **Original reasoning:** Supabase's built-in email only delivers to the project's own team members, at 2 messages an hour, so email codes wouldn't reach anyone else without setting up a mail service. Google sign-in asks only for name and email.
 - **AeroDataBox (RapidAPI Basic, free) for schedules and airport boards.** It's the only free source with live departure and arrival boards, gates and delays. 400 units a month is small, so your own flights come first, boards load on demand, and every result is shared through Supabase.
 - **Keys-free work first.** Live Updates, widgets, themes and tablet layouts are built before anything that needs the new accounts, so setup never blocks progress.
-
+- **Username and password instead of Google sign-in (your call).** It skips the Google Cloud setup. Supabase's "Confirm email" is turned off, so signing up sends no email, and usernames map to `<name>@users.contrail.invalid` (a reserved domain that can never receive mail). The cost is no self-service password reset; with two users, a reset from the Supabase dashboard is fine.
+- **Reusing the empty Supabase project you created** (`hppyekxenuyoyjlbmmud`, us-east-2) instead of making a second one. The free plan allows two active projects.
