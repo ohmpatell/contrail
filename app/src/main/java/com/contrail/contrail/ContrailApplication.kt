@@ -53,6 +53,7 @@ class ContrailApplication : Application(), SingletonImageLoader.Factory, Configu
     @Inject lateinit var themes: Lazy<ThemeResolver>
     @Inject lateinit var account: Lazy<com.contrail.contrail.core.data.sync.AccountRepository>
     @Inject lateinit var database: Lazy<com.contrail.contrail.core.database.ContrailDatabase>
+    @Inject lateinit var hangar: Lazy<com.contrail.contrail.core.data.hangar.HangarRepository>
 
     private val appScope = CoroutineScope(SupervisorJob() + Dispatchers.Default)
 
@@ -68,10 +69,16 @@ class ContrailApplication : Application(), SingletonImageLoader.Factory, Configu
             @OptIn(FlowPreview::class)
             trips.get().trips.drop(1).debounce(1_500).collect { Widgets.updateTrips(this@ContrailApplication) }
         }
+        // The Hangar check runs while anything is pinned.
+        appScope.launch {
+            hangar.get().observe().map { it.isNotEmpty() }.distinctUntilChanged().collect { any ->
+                com.contrail.contrail.feature.hangar.HangarAlerts.schedule(this@ContrailApplication, any)
+            }
+        }
         // Signed in: sync shortly after anything that syncs changes here, and whenever the app opens.
         appScope.launch {
             if (account.get().signedIn.first()) com.contrail.contrail.core.data.sync.SyncScheduler.start(this@ContrailApplication)
-            database.get().invalidationTracker.createFlow("trip", "segment", "connection_pref", "lounge_visit", "lounge", "watch_item", "airport_user", emitInitialState = false)
+            database.get().invalidationTracker.createFlow("trip", "segment", "connection_pref", "lounge_visit", "lounge", "watch_item", "airport_user", "hangar_plane", emitInitialState = false)
                 .debounce(3_000)
                 .collect { if (account.get().signedIn.first()) com.contrail.contrail.core.data.sync.SyncScheduler.soon(this@ContrailApplication) }
         }

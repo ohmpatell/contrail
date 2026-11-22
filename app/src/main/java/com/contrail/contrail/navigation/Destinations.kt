@@ -68,6 +68,14 @@ data object SkyViewKey : NavKey
 @Serializable
 data object ShareCardKey : NavKey
 
+/** My Hangar: your pinned planes. */
+@Serializable
+data object HangarKey : NavKey
+
+/** One pinned plane: its story, photo and last week of flights. */
+@Serializable
+data class HangarPlaneKey(val registration: String) : NavKey
+
 /** How any screen opens a detail page or goes back. */
 interface Navigator {
     fun openAircraft(hex: String)
@@ -84,6 +92,10 @@ interface Navigator {
     fun openStampBook()
     fun openSkyView()
     fun openShareCard()
+    fun openHangar()
+    fun openHangarPlane(registration: String)
+    /** Closes every page, switches to the radar and flies to the plane. */
+    fun showOnRadar(hex: String?, lat: Double, lon: Double)
     fun back()
 }
 
@@ -103,6 +115,9 @@ val LocalNavigator = staticCompositionLocalOf<Navigator> {
         override fun openStampBook() = Unit
         override fun openSkyView() = Unit
         override fun openShareCard() = Unit
+        override fun openHangar() = Unit
+        override fun openHangarPlane(registration: String) = Unit
+        override fun showOnRadar(hex: String?, lat: Double, lon: Double) = Unit
         override fun back() = Unit
     }
 }

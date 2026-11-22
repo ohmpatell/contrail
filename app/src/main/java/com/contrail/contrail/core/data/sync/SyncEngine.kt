@@ -11,6 +11,7 @@ import com.contrail.contrail.core.database.SyncDao
 import com.contrail.contrail.core.database.SyncStateEntity
 import com.contrail.contrail.core.database.TripEntity
 import com.contrail.contrail.core.database.WatchItemEntity
+import com.contrail.contrail.core.database.HangarPlaneEntity
 import com.contrail.contrail.core.network.sync.RemoteRecord
 import com.contrail.contrail.core.network.sync.Session
 import com.contrail.contrail.core.network.sync.SyncBackend
@@ -24,7 +25,7 @@ import java.security.MessageDigest
 
 /** The record kinds that sync, in the order they're applied (flights before lounge visits that point at them). */
 enum class RecordKind(val key: String) {
-    Trip("trip"), Lounge("lounge"), Visit("visit"), Watch("watch"), Airport("airport");
+    Trip("trip"), Lounge("lounge"), Visit("visit"), Watch("watch"), Airport("airport"), Hangar("hangar");
 
     companion object {
         fun of(key: String) = entries.firstOrNull { it.key == key }
@@ -88,6 +89,18 @@ class SyncCodec(private val json: Json) {
     @Serializable
     data class AirportDoc(val favourite: Boolean, val visited: Boolean, val updatedAtMs: Long)
 
+    /** A pinned plane. Your own photo stays on the device it was added on. */
+    @Serializable
+    data class HangarDoc(
+        val hex: String? = null,
+        val typeCode: String? = null,
+        val airlineIcao: String? = null,
+        val operator: String? = null,
+        val story: String? = null,
+        val addedAtMs: Long,
+        val alerts: Boolean = true,
+    )
+
     private inline fun <reified T> obj(v: T): JsonObject = json.encodeToJsonElement(v).jsonObject
 
     /** Everything on this phone that syncs. */
@@ -112,7 +125,8 @@ class SyncCodec(private val json: Json) {
         val lounges = dao.lounges().map { LocalRecord(RecordKind.Lounge, it.key, obj(LoungeDoc(it.airport, it.terminal, it.name, it.userAdded, it.favourite, it.addedAtMs))) }
         val watch = dao.watch().map { LocalRecord(RecordKind.Watch, "${it.kind}:${it.value}", obj(WatchDoc(it.kind, it.value, it.label, it.addedAtMs))) }
         val airports = dao.airportUser().map { LocalRecord(RecordKind.Airport, it.icao, obj(AirportDoc(it.favourite, it.visited, it.updatedAtMs))) }
-        return trips + visits + lounges + watch + airports
+        val hangar = dao.hangar().map { LocalRecord(RecordKind.Hangar, it.registration, obj(HangarDoc(it.hex, it.typeCode, it.airlineIcao, it.operator, it.story, it.addedAtMs, it.alerts))) }
+        return trips + visits + lounges + watch + airports + hangar
     }
 
     /** Writes one record from another device into the database (or removes it). */
@@ -146,6 +160,13 @@ class SyncCodec(private val json: Json) {
                 dao.deleteAirportUser(id)
             } else {
                 json.decodeFromJsonElement<AirportDoc>(data).let { dao.upsertAirportUser(AirportUserEntity(id, it.favourite, it.visited, it.updatedAtMs)) }
+            }
+            RecordKind.Hangar -> if (deleted) {
+                dao.deleteHangar(id)
+            } else {
+                val d = json.decodeFromJsonElement<HangarDoc>(data)
+                val photo = dao.hangarPlane(id)?.photoPath
+                dao.upsertHangar(HangarPlaneEntity(id, d.hex, d.typeCode, d.airlineIcao, d.operator, d.story, photo, d.addedAtMs, d.alerts))
             }
         }
     }

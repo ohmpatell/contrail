@@ -9,6 +9,7 @@ import com.contrail.contrail.core.data.model.LiveAircraft
 import com.contrail.contrail.core.data.model.WatchItem
 import com.contrail.contrail.core.data.repository.RadarLayers
 import com.contrail.contrail.core.data.route.RouteVerdict
+import com.contrail.contrail.core.data.hangar.HangarPlane
 
 /** What the map is looking at. [radiusNm] is centre-to-corner. */
 data class Viewport(val center: LatLon, val radiusNm: Double, val zoom: Double)
@@ -20,7 +21,33 @@ sealed interface FeedStatus {
     data class Offline(val lastSuccessMs: Long?) : FeedStatus
 }
 
-enum class RadarPanel { None, Filters, Layers }
+enum class RadarPanel { None, Filters, Layers, Search }
+
+/** An airport offered by the radar search. */
+data class AirportHit(val icao: String, val code: String, val name: String, val city: String, val lat: Double, val lon: Double)
+
+/** What one search found, for the text it was run on ([query], upper case). */
+data class SearchResults(
+    val query: String = "",
+    val searching: Boolean = false,
+    val aircraft: List<LiveAircraft> = emptyList(),
+    val airports: List<AirportHit> = emptyList(),
+    /** Every lookup failed (offline, or the feeds are down). */
+    val failed: Boolean = false,
+    /** The text could be read as a flight, callsign, registration or transponder code. */
+    val tried: Boolean = false,
+)
+
+data class SearchUiState(
+    val query: String = "",
+    /** How the text is being read, e.g. "Flight CX 888 · callsign CPA888". */
+    val readings: List<String> = emptyList(),
+    val results: SearchResults = SearchResults(),
+    val recent: List<String> = emptyList(),
+)
+
+/** A camera move the map should make once: to a search result or a pinned plane. */
+data class CameraMove(val to: LatLon, val zoom: Double)
 
 sealed interface Lookup<out T> {
     data object Loading : Lookup<Nothing>
@@ -108,4 +135,13 @@ data class RadarUiState(
     val watchlist: List<WatchItem> = emptyList(),
     /** How many contacts on screen match the watchlist. */
     val watchedCount: Int = 0,
-)
+    /** Middle of the map, for "how far away" in search results. */
+    val viewCenter: LatLon? = null,
+    val search: SearchUiState = SearchUiState(),
+    /** Your pinned planes. */
+    val hangar: List<HangarPlane> = emptyList(),
+) {
+    /** True when the selected plane is pinned to My Hangar. */
+    val selectedPinned: Boolean
+        get() = selected?.aircraft?.let { a -> hangar.any { it.registration == a.registration?.uppercase() || it.hex == a.hex } } == true
+}

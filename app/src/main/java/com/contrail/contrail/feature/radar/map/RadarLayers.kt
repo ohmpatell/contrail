@@ -36,6 +36,7 @@ internal object RadarLayers {
     const val L_ME = "contrail-me"
     const val SRC_ROUTE = "contrail-route"
     const val L_WATCH = "contrail-watch"
+    const val L_HANGAR = "contrail-hangar"
     const val L_ROUTE_GLOW = "contrail-route-glow"
     const val L_ROUTE_FLOWN = "contrail-route-flown"
     const val L_ROUTE_REMAINING = "contrail-route-remaining"
@@ -64,6 +65,7 @@ internal object RadarLayers {
     const val P_SORT = "sort"
     const val P_SCALE = "scale"
     const val P_WATCHED = "watch"
+    const val P_HANGAR = "hangar"
 
     private val colors = NightCockpitColors
     private val legendary = RarityPalette.Legendary.first().toArgb()
@@ -267,6 +269,17 @@ internal object RadarLayers {
     ).withFilter(
         Expression.all(isPoint, Expression.toBool(get(P_WATCHED)), Expression.not(Expression.toBool(get(P_SELECTED)))),
     )
+
+    /** Your pinned planes: a gold double ring that reads at any zoom, even when selected. */
+    fun hangarRing(): CircleLayer = CircleLayer(L_HANGAR, SRC_AIRCRAFT).withProperties(
+        PropertyFactory.circleRadius(byZoom(3 to 12f, 8 to 19f, 13 to 28f)),
+        PropertyFactory.circleColor(Expression.color(RarityPalette.Legendary.first().toArgb())),
+        PropertyFactory.circleOpacity(Expression.product(literal(0.16f), fresh)),
+        PropertyFactory.circleBlur(0.5f),
+        PropertyFactory.circleStrokeColor(Expression.color(RarityPalette.Legendary.first().toArgb())),
+        PropertyFactory.circleStrokeWidth(2.2f),
+        PropertyFactory.circleStrokeOpacity(Expression.product(literal(0.95f), fresh)),
+    ).withFilter(Expression.all(isPoint, Expression.toBool(get(P_HANGAR))))
 
     private val isRoutePart = { part: String -> Expression.eq(get(P_PART), literal(part)) }
 

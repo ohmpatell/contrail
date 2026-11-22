@@ -86,9 +86,11 @@ import java.util.Locale
 @Composable
 fun PassportRoute(viewModel: PassportViewModel = hiltViewModel()) {
     val state by viewModel.state.collectAsStateWithLifecycle()
+    val hangar by viewModel.hangar.collectAsStateWithLifecycle()
     val nav = LocalNavigator.current
     PassportScreen(
         state,
+        hangar = hangar,
         actions = PassportActions(
             onYearInReview = nav::openYearInReview,
             onImport = nav::openLogImport,
@@ -99,6 +101,7 @@ fun PassportRoute(viewModel: PassportViewModel = hiltViewModel()) {
             onAirport = nav::openAirport,
             onSelectYear = viewModel::selectYear,
             onShare = nav::openShareCard,
+            onHangar = nav::openHangar,
         ),
     )
 }
@@ -114,10 +117,17 @@ data class PassportActions(
     val onAirport: (String) -> Unit = {},
     val onSelectYear: (Int?) -> Unit = {},
     val onShare: () -> Unit = {},
+    val onHangar: () -> Unit = {},
 )
 
 @Composable
-fun PassportScreen(state: PassportUiState, actions: PassportActions, modifier: Modifier = Modifier, autoplay: Boolean = false) {
+fun PassportScreen(
+    state: PassportUiState,
+    actions: PassportActions,
+    modifier: Modifier = Modifier,
+    autoplay: Boolean = false,
+    hangar: List<com.contrail.contrail.core.data.hangar.HangarPlane> = emptyList(),
+) {
     val spacing = ContrailTheme.spacing
     val colors = ContrailTheme.colors
     val s = state.stats
@@ -164,6 +174,7 @@ fun PassportScreen(state: PassportUiState, actions: PassportActions, modifier: M
                 val stamps: @Composable () -> Unit = { if (s.stamps.isNotEmpty()) RiseIn(3) { StampStrip(s.stamps, actions.onStamps) } }
                 val together: @Composable () -> Unit = { if (state.together.isNotEmpty()) RiseIn(4) { FlownTogetherCard(state.together) } }
                 val medals: @Composable () -> Unit = { RiseIn(4) { AchievementsCard(s.achievements) } }
+                val pinned: @Composable () -> Unit = { RiseIn(4) { HangarPreview(hangar, actions.onHangar) } }
                 val year: @Composable () -> Unit = { s.years.firstOrNull()?.let { y -> RiseIn(5) { YearCard(state.selectedYear ?: y, s.years, actions.onYearInReview) } } }
                 val years: @Composable () -> Unit = { if (state.selectedYear == null) RiseIn(6) { YearsChart(s.insights) } }
                 val calendar: @Composable () -> Unit = { RiseIn(7) { FlyingCalendar(s.insights) } }
@@ -191,6 +202,7 @@ fun PassportScreen(state: PassportUiState, actions: PassportActions, modifier: M
                         Column(Modifier.weight(1f), verticalArrangement = Arrangement.spacedBy(spacing.lg)) {
                             headline()
                             logbook()
+                            pinned()
                         }
                     }
                     Row(Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.spacedBy(spacing.lg), verticalAlignment = Alignment.Top) {
@@ -202,11 +214,41 @@ fun PassportScreen(state: PassportUiState, actions: PassportActions, modifier: M
                         }
                     }
                 } else {
-                    globe(); headline(); logbook(); stamps(); together(); medals(); year(); years(); calendar()
+                    globe(); headline(); logbook(); pinned(); stamps(); together(); medals(); year(); years(); calendar()
                     airlines(); airports(); routes(); types(); how(); edges(); countries(); places(); records(); collection(); lounges()
                 }
             }
             if (s.flights == 0 && s.lounges.visits > 0) RiseIn(18) { Lounges(s.lounges) }
+        }
+    }
+}
+
+/** The planes you've pinned, one tap from your flying life. */
+@Composable
+private fun HangarPreview(hangar: List<com.contrail.contrail.core.data.hangar.HangarPlane>, onOpen: () -> Unit) {
+    val colors = ContrailTheme.colors
+    val spacing = ContrailTheme.spacing
+    val gold = com.contrail.contrail.core.designsystem.theme.RarityPalette.Legendary.first()
+    GlassSurface(
+        Modifier.fillMaxWidth().clip(ContrailTheme.shapes.medium).clickable(role = Role.Button, onClickLabel = "Open My Hangar", onClick = onOpen),
+        shape = ContrailTheme.shapes.medium,
+        glow = gold.copy(alpha = 0.45f),
+    ) {
+        Row(Modifier.padding(spacing.lg), verticalAlignment = Alignment.CenterVertically, horizontalArrangement = Arrangement.spacedBy(spacing.md)) {
+            Icon(ContrailIcons.StarFilled, null, tint = gold, modifier = Modifier.size(28.dp))
+            Column(Modifier.weight(1f), verticalArrangement = Arrangement.spacedBy(spacing.xxs)) {
+                Eyebrow("My Hangar", color = gold)
+                Text(
+                    if (hangar.isEmpty()) "Pin the planes that mean something" else hangar.joinToString("  ·  ") { it.registration },
+                    style = if (hangar.isEmpty()) ContrailTheme.type.body else ContrailTheme.type.numeric,
+                    color = colors.textPrimary,
+                    maxLines = 1,
+                    overflow = androidx.compose.ui.text.style.TextOverflow.Ellipsis,
+                )
+                val flying = hangar.count { it.lastAirborne == true && (System.currentTimeMillis() - (it.lastSeenMs ?: 0)) < 5 * 60_000 }
+                if (flying > 0) Text(if (flying == 1) "1 flying now" else "$flying flying now", style = ContrailTheme.type.label, color = gold)
+            }
+            Icon(ContrailIcons.ChevronRight, null, tint = colors.textTertiary, modifier = Modifier.size(ContrailTheme.sizes.iconSmall))
         }
     }
 }

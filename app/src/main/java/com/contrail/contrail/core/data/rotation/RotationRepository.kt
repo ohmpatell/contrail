@@ -65,6 +65,36 @@ class RotationRepository @Inject constructor(
         return Rotation(false, tail, hex, live, legs, turn, error)
     }
 
+    /** Registration → transponder hex, for planes pinned to My Hangar. */
+    suspend fun hexForTail(tail: String): String? = runCatching { hexFor(tail) }.getOrNull()
+
+    /**
+     * An aircraft's flights over the last [days] days, newest first. OpenSky answers at most two
+     * days per call, so the week is asked in day-aligned two-day windows: finished windows are
+     * cached for good, the current one for an hour. Empty without an OpenSky account.
+     */
+    suspend fun recentFlights(hex: String, days: Int = 7): List<EarlierLeg> {
+        if (!hasOpenSky()) return emptyList()
+        val nowSec = clock.nowMs() / 1000
+        val today = nowSec / 86_400 * 86_400
+        val flights = mutableListOf<HistoricFlight>()
+        var start = today - (days - 1) * 86_400L
+        while (start <= today) {
+            val end = minOf(start + 2 * 86_400L, nowSec)
+            val finished = end < nowSec
+            val key = "week:$hex:$start" + if (finished) "" else ":${nowSec / 3_600}"
+            val window = cache.get(key)?.let { json.decodeFromString<List<HistoricFlight>>(it.body) }
+                ?: callOpenSky { history.flightsByAircraft(hex, start, end) }.also {
+                    cache.put(CachedResponseEntity(key, json.encodeToString(it), clock.nowMs()))
+                }
+            flights += window
+            start += 2 * 86_400L
+        }
+        return flights.distinctBy { it.firstSeen }.sortedByDescending { it.lastSeen }.map { f ->
+            EarlierLeg(f.cleanCallsign, airports.iataForIcao(f.from) ?: f.from, airports.iataForIcao(f.to) ?: f.to, f.firstSeen, f.lastSeen)
+        }
+    }
+
     /** Registration → transponder hex, cached for good (it never changes for a tail). */
     private suspend fun hexFor(tail: String): String? {
         val key = "hex:${tail.uppercase()}"

@@ -64,11 +64,16 @@ class PassportViewModel @Inject constructor(
     lounges: LoungeRepository,
     airports: AirportRepository,
     clock: Clock,
+    hangar: com.contrail.contrail.core.data.hangar.HangarRepository,
 ) : ViewModel() {
     private val year = MutableStateFlow<Int?>(null)
 
     val state: StateFlow<PassportUiState> = year.flatMapLatest { y -> passportFlow(trips, lounges, airports, clock, y) }
         .stateIn(viewModelScope, SharingStarted.WhileSubscribed(5_000), PassportUiState())
+
+    /** Your pinned planes, for the My Hangar card. */
+    val hangar: StateFlow<List<com.contrail.contrail.core.data.hangar.HangarPlane>> = hangar.observe()
+        .stateIn(viewModelScope, SharingStarted.WhileSubscribed(5_000), emptyList())
 
     fun selectYear(y: Int?) { year.value = y }
 }

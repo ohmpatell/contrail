@@ -30,6 +30,11 @@ interface RadarPreferencesRepository {
     val layers: Flow<RadarLayers>
     suspend fun saveCamera(camera: RadarCamera)
     suspend fun saveLayers(layers: RadarLayers)
+
+    /** What was searched for on the radar, newest first. */
+    val recentSearches: Flow<List<String>> get() = kotlinx.coroutines.flow.flowOf(emptyList())
+    suspend fun addRecentSearch(query: String) {}
+    suspend fun clearRecentSearches() {}
 }
 
 @Singleton
@@ -63,6 +68,23 @@ class DataStoreRadarPreferences @Inject constructor(
         }
     }
 
+    override val recentSearches: Flow<List<String>> = store.data.map { p ->
+        p[RECENT]?.split(SEP)?.filter { it.isNotBlank() }.orEmpty()
+    }
+
+    override suspend fun addRecentSearch(query: String) {
+        val q = query.trim().uppercase()
+        if (q.isEmpty()) return
+        store.edit {
+            val list = listOf(q) + it[RECENT]?.split(SEP)?.filter { s -> s.isNotBlank() && s != q }.orEmpty()
+            it[RECENT] = list.take(MAX_RECENT).joinToString(SEP.toString())
+        }
+    }
+
+    override suspend fun clearRecentSearches() {
+        store.edit { it.remove(RECENT) }
+    }
+
     override suspend fun saveLayers(layers: RadarLayers) {
         store.edit {
             it[L_AIRPORTS] = layers.airportLabels
@@ -74,6 +96,9 @@ class DataStoreRadarPreferences @Inject constructor(
     }
 
     private companion object {
+        val RECENT = androidx.datastore.preferences.core.stringPreferencesKey("radar.search.recent")
+        const val MAX_RECENT = 8
+        const val SEP = '|'
         val CAM_LAT = doublePreferencesKey("radar.camera.lat")
         val CAM_LON = doublePreferencesKey("radar.camera.lon")
         val CAM_ZOOM = doublePreferencesKey("radar.camera.zoom")

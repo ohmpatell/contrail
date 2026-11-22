@@ -72,6 +72,7 @@ import com.contrail.contrail.core.designsystem.livery.Profiles
 import com.contrail.contrail.core.designsystem.theme.AltitudeRamp
 import com.contrail.contrail.core.designsystem.theme.ContrailTheme
 import com.contrail.contrail.core.designsystem.theme.RarityPalette
+import com.contrail.contrail.core.designsystem.component.AccentButton
 import com.contrail.contrail.core.data.reference.Airlines
 import com.contrail.contrail.feature.radar.RadarFormat
 import com.contrail.contrail.navigation.LocalNavigator
@@ -87,6 +88,8 @@ fun AircraftRoute(hex: String) {
         onHero = viewModel::showHero,
         onToggleWatch = viewModel::toggleWatch,
         onOpenAirport = { iata -> nav.openAirport(iata) },
+        onTogglePin = viewModel::togglePin,
+        onOpenHangarPlane = nav::openHangarPlane,
     )
 }
 
@@ -97,6 +100,8 @@ fun AircraftScreen(
     onHero: (HeroMode) -> Unit,
     onToggleWatch: (WatchItem, Boolean) -> Unit,
     onOpenAirport: (String) -> Unit,
+    onTogglePin: () -> Unit = {},
+    onOpenHangarPlane: (String) -> Unit = {},
 ) {
     val colors = ContrailTheme.colors
     val accent = Airlines.byIcao(state.airlineIcao)?.let { Color(it.accentArgb) } ?: colors.accent
@@ -122,7 +127,31 @@ fun AircraftScreen(
             state.typeName?.let { Text(it, style = ContrailTheme.type.bodySmall, color = colors.textTertiary) }
         }
         SightingsCard(state)
+        HangarCard(state, onTogglePin, onOpenHangarPlane)
         WatchCard(state, onToggleWatch)
+    }
+}
+
+/** Pin to My Hangar, or open its Hangar page once pinned. */
+@Composable
+private fun HangarCard(state: AircraftUiState, onTogglePin: () -> Unit, onOpenHangarPlane: (String) -> Unit) {
+    val reg = state.registration ?: return
+    val gold = RarityPalette.Legendary.first()
+    val colors = ContrailTheme.colors
+    SectionCard("My Hangar", trailing = { Icon(if (state.pinned) ContrailIcons.StarFilled else ContrailIcons.Star, null, tint = gold, modifier = Modifier.size(16.dp)) }) {
+        Text(
+            if (state.pinned) "$reg is in your Hangar: always on your radar, with alerts when it takes off and lands." else "Pin $reg to keep it on your radar wherever it flies, with your own story and photo.",
+            style = ContrailTheme.type.bodySmall,
+            color = colors.textSecondary,
+        )
+        Row(horizontalArrangement = Arrangement.spacedBy(ContrailTheme.spacing.sm)) {
+            if (state.pinned) {
+                AccentButton("Open in My Hangar", { onOpenHangarPlane(reg) }, accent = gold, modifier = Modifier.weight(1f))
+                AccentButton("Unpin", onTogglePin, accent = gold, secondary = true, modifier = Modifier.weight(0.6f))
+            } else {
+                AccentButton("Pin to My Hangar", onTogglePin, icon = ContrailIcons.Star, accent = gold, modifier = Modifier.fillMaxWidth())
+            }
+        }
     }
 }
 

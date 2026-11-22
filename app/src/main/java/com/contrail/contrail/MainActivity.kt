@@ -47,6 +47,11 @@ import com.contrail.contrail.feature.trips.add.AddFlightRoute
 import com.contrail.contrail.feature.trips.importing.LogImportRoute
 import com.contrail.contrail.feature.trips.importing.LogImportViewModel
 import com.contrail.contrail.navigation.AddFlightKey
+import com.contrail.contrail.navigation.HangarKey
+import com.contrail.contrail.navigation.HangarRequests
+import com.contrail.contrail.navigation.HangarPlaneKey
+import com.contrail.contrail.feature.hangar.HangarRoute
+import com.contrail.contrail.feature.hangar.HangarPlaneRoute
 import com.contrail.contrail.navigation.LogImportKey
 import com.contrail.contrail.navigation.LogbookKey
 import com.contrail.contrail.navigation.FlightKey
@@ -121,11 +126,15 @@ class MainActivity : ComponentActivity() {
 
         /** Opens this flight's page (a segment id), from the Live Update. */
         const val EXTRA_FLIGHT = "contrail.flight"
+
+        /** Opens this pinned plane's page (a registration), from a Hangar alert. */
+        const val EXTRA_HANGAR = "contrail.hangar"
     }
 
     private fun requestFlight(intent: Intent?) {
         val id = intent?.getLongExtra(EXTRA_FLIGHT, 0L) ?: 0L
         if (id != 0L) FlightRequests.requested.value = id
+        intent?.getStringExtra(EXTRA_HANGAR)?.let { HangarRequests.requested.value = it }
     }
 
     /** "Share to Contrail" from another app: hand the files or text to the import screen. */
@@ -162,12 +171,27 @@ private fun ContrailNavHost(inbox: SharedTicketInbox) {
             override fun openStampBook() = push(StampBookKey)
             override fun openSkyView() = push(SkyViewKey)
             override fun openShareCard() = push(ShareCardKey)
+            override fun openHangar() = push(HangarKey)
+            override fun openHangarPlane(registration: String) = push(HangarPlaneKey(registration.uppercase()))
+            override fun showOnRadar(hex: String?, lat: Double, lon: Double) {
+                while (backStack.size > 1) backStack.removeAt(backStack.lastIndex)
+                com.contrail.contrail.navigation.RadarRequests.focus.value = com.contrail.contrail.navigation.RadarFocus(hex, lat, lon)
+                com.contrail.contrail.navigation.TabRequests.requested.value = TopLevelDestination.Radar
+            }
             override fun back() {
                 if (backStack.size > 1) backStack.removeAt(backStack.lastIndex)
             }
 
             private fun push(key: NavKey) {
                 if (backStack.lastOrNull() != key) backStack.add(key)
+            }
+        }
+    }
+    LaunchedEffect(Unit) {
+        HangarRequests.requested.collect { reg ->
+            if (reg != null) {
+                navigator.openHangarPlane(reg)
+                HangarRequests.requested.value = null
             }
         }
     }
@@ -227,6 +251,8 @@ private fun ContrailNavHost(inbox: SharedTicketInbox) {
                 entry<StampBookKey>(metadata = DetailOverlayStrategy.detail) { StampBookRoute() }
                 entry<SkyViewKey>(metadata = DetailOverlayStrategy.detail) { SkyViewRoute() }
                 entry<ShareCardKey>(metadata = DetailOverlayStrategy.detail) { ShareCardRoute() }
+                entry<HangarKey>(metadata = DetailOverlayStrategy.detail) { HangarRoute() }
+                entry<HangarPlaneKey>(metadata = DetailOverlayStrategy.detail) { HangarPlaneRoute(it.registration) }
             },
         )
     }

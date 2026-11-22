@@ -20,6 +20,18 @@ object FlightRequests {
     val requested = kotlinx.coroutines.flow.MutableStateFlow<Long?>(null)
 }
 
+/** A plane to show on the radar, asked for from another page (My Hangar). */
+data class RadarFocus(val hex: String?, val lat: Double, val lon: Double)
+
+object RadarRequests {
+    val focus = kotlinx.coroutines.flow.MutableStateFlow<RadarFocus?>(null)
+}
+
+/** A pinned plane's page asked for from a Hangar alert. */
+object HangarRequests {
+    val requested = kotlinx.coroutines.flow.MutableStateFlow<String?>(null)
+}
+
 object TabRequests {
     val requested = kotlinx.coroutines.flow.MutableStateFlow<TopLevelDestination?>(null)
 

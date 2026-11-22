@@ -55,6 +55,13 @@ fun RadarHud(
         Row(verticalAlignment = Alignment.CenterVertically) {
             FeedPill(state)
             Spacer(Modifier.weight(1f))
+            GlassIconButton(
+                ContrailIcons.Search,
+                contentDescription = "Search flights, planes and airports",
+                onClick = { onTogglePanel(RadarPanel.Search) },
+                active = state.panel == RadarPanel.Search,
+            )
+            Spacer(Modifier.width(spacing.sm))
             Box {
                 GlassIconButton(
                     ContrailIcons.Filter,

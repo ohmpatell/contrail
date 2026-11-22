@@ -50,6 +50,9 @@ import com.contrail.contrail.core.designsystem.icon.ContrailIcons
 import com.contrail.contrail.core.designsystem.theme.ContrailTheme
 import com.contrail.contrail.feature.radar.components.AircraftSheet
 import com.contrail.contrail.feature.radar.components.AircraftSheetPeek
+import com.contrail.contrail.feature.radar.components.SearchActions
+import com.contrail.contrail.feature.radar.components.SearchPanel
+import com.contrail.contrail.core.data.model.LiveAircraft
 import com.contrail.contrail.feature.radar.components.FilterPanel
 import com.contrail.contrail.feature.radar.components.FollowHud
 import com.contrail.contrail.feature.radar.components.LayersPanel
@@ -72,6 +75,9 @@ data class RadarActions(
     val onViewInsets: (Int, Int, Int, Int) -> Unit = { _, _, _, _ -> },
     val onRecentre: () -> Unit = {},
     val onExpandSheet: () -> Unit = {},
+    val search: SearchActions = SearchActions(),
+    /** Pins the plane to My Hangar, or unpins it. */
+    val onTogglePin: (LiveAircraft) -> Unit = {},
     val onWatch: (WatchItem) -> Unit = {},
     val onUnwatch: (WatchKind, String) -> Unit = { _, _ -> },
     val onOpenAircraft: (String) -> Unit = {},
@@ -87,6 +93,8 @@ fun RadarScreen(
     actions: RadarActions,
     modifier: Modifier = Modifier,
     sheetStartsExpanded: Boolean = false,
+    /** Drawn over the map, under the HUD and sheet: markers pointing to pinned planes off screen. */
+    overlay: @Composable () -> Unit = {},
     map: @Composable (Modifier) -> Unit,
 ) {
     val mapHaze = rememberHazeState()
@@ -105,6 +113,7 @@ fun RadarScreen(
         BoxWithConstraints(modifier.fillMaxSize()) {
             val panelMaxHeight = maxHeight * 0.62f
             map(Modifier.fillMaxSize().hazeSource(mapHaze))
+            overlay()
 
             // Tell the map what's covered, so the selected plane is framed in the clear space.
             val railPx = with(density) { layout.railInset.roundToPx() }
@@ -168,6 +177,7 @@ fun RadarScreen(
                                 maxHeight = panelMaxHeight,
                             )
                             RadarPanel.Layers -> LayersPanel(state.layers, actions.onLayersChange)
+                            RadarPanel.Search -> SearchPanel(state.search, state.hangar, state.viewCenter, actions.search, maxHeight = panelMaxHeight)
                             RadarPanel.None -> Box(Modifier)
                         }
                     }
@@ -216,6 +226,8 @@ fun RadarScreen(
                 onOpenAircraft = actions.onOpenAircraft,
                 panel = layout.wide,
                 startExpanded = sheetStartsExpanded,
+                pinned = state.selectedPinned,
+                onTogglePin = { state.selected?.aircraft?.let(actions.onTogglePin) },
             ) }
         }
     }

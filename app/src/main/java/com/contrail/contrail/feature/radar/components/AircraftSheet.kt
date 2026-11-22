@@ -117,6 +117,8 @@ fun AircraftSheet(
     onWatch: (WatchItem) -> Unit = {},
     onUnwatch: (WatchKind, String) -> Unit = { _, _ -> },
     onOpenAircraft: (String) -> Unit = {},
+    pinned: Boolean = false,
+    onTogglePin: () -> Unit = {},
 ) {
     // Keep showing the last aircraft while the sheet animates away.
     var shown by remember { mutableStateOf(selected) }
@@ -199,7 +201,7 @@ fun AircraftSheet(
                 .offset { IntOffset(0, offset.value.roundToInt()) }
                 .nestedScroll(connection),
         ) {
-            SheetContent(current, progress, following, onFollow, onDismiss, Watchlist(watchlist), onWatch, onUnwatch, onOpenAircraft, scroll, expand = {
+            SheetContent(current, progress, following, onFollow, onDismiss, Watchlist(watchlist), onWatch, onUnwatch, onOpenAircraft, scroll, pinned, onTogglePin, expand = {
                 scope.launch { offset.animateTo(anchorOffset(if (progress > 0.5f) SheetAnchor.Peek else SheetAnchor.Expanded), motion.gentle()) }
             })
         }
@@ -218,6 +220,8 @@ private fun SheetContent(
     onUnwatch: (WatchKind, String) -> Unit,
     onOpenAircraft: (String) -> Unit,
     scroll: ScrollState,
+    pinned: Boolean,
+    onTogglePin: () -> Unit,
     expand: () -> Unit,
 ) {
     val a = selected.aircraft
@@ -254,7 +258,7 @@ private fun SheetContent(
                     PhotoHero(selected.photo, a, accent, progress, selected.tailArtUrl, selected.brandColorHex)
                 }
                 Spacer(Modifier.height(spacing.md))
-                HeaderRow(a, accent, following, onFollow, onDismiss, selected.airlineLogoUrl)
+                HeaderRow(a, accent, following, onFollow, onDismiss, selected.airlineLogoUrl, pinned, onTogglePin)
                 Spacer(Modifier.height(spacing.md))
                 RouteRow(selected.route, selected.verdict, accent)
                 Spacer(Modifier.height(spacing.lg))
@@ -357,7 +361,16 @@ private fun SilhouettePlaceholder(a: LiveAircraft, accent: Color, loading: Boole
 }
 
 @Composable
-private fun HeaderRow(a: LiveAircraft, accent: Color, following: Boolean, onFollow: () -> Unit, onDismiss: () -> Unit, logoUrl: String?) {
+private fun HeaderRow(
+    a: LiveAircraft,
+    accent: Color,
+    following: Boolean,
+    onFollow: () -> Unit,
+    onDismiss: () -> Unit,
+    logoUrl: String?,
+    pinned: Boolean,
+    onTogglePin: () -> Unit,
+) {
     val colors = ContrailTheme.colors
     val spacing = ContrailTheme.spacing
     Row(verticalAlignment = Alignment.CenterVertically) {
@@ -387,6 +400,10 @@ private fun HeaderRow(a: LiveAircraft, accent: Color, following: Boolean, onFoll
             }
         }
         Row(horizontalArrangement = Arrangement.spacedBy(spacing.sm)) {
+            // Pinning needs a registration: that's what a plane is known by in your Hangar.
+            if (a.registration != null) {
+                PinButton(pinned, onTogglePin, size = ContrailTheme.sizes.touchTarget - spacing.xs)
+            }
             GlassIconButton(
                 ContrailIcons.Follow,
                 if (following) "Stop following" else "Follow this aircraft",
@@ -524,6 +541,23 @@ private fun DetailsGrid(a: LiveAircraft) {
                     row.forEach { (label, value) -> StatTile(label, value, Modifier.weight(1f)) }
                 }
             }
+        }
+    }
+}
+
+/** Pin to My Hangar: a gold star once pinned. */
+@Composable
+private fun PinButton(pinned: Boolean, onToggle: () -> Unit, size: androidx.compose.ui.unit.Dp) {
+    val gold = RarityPalette.Legendary.first()
+    Box(contentAlignment = Alignment.Center) {
+        GlassIconButton(
+            if (pinned) ContrailIcons.StarFilled else ContrailIcons.Star,
+            if (pinned) "Remove from My Hangar" else "Pin to My Hangar",
+            onToggle,
+            size = size,
+        )
+        if (pinned) {
+            Icon(ContrailIcons.StarFilled, null, tint = gold, modifier = Modifier.size(ContrailTheme.sizes.iconSmall))
         }
     }
 }

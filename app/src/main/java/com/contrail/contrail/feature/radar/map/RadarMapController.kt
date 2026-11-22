@@ -57,6 +57,9 @@ class RadarMapController(
         fun onViewportChanged(viewport: Viewport)
         /** The user dragged the map with one finger (a pinch is not a drag). */
         fun onUserGesture()
+
+        /** The camera moved (any reason): overlays pinned to map positions re-place themselves. */
+        fun onCameraMoved() {}
     }
 
     private val motion = MotionModel(extrapolate = !reducedMotion)
@@ -75,6 +78,8 @@ class RadarMapController(
     private var routeStatic: List<Feature> = emptyList()
     private var lastRouteUpdate = 0L
     private var watchlist = Watchlist(emptyList())
+    /** Pinned planes, by transponder code and registration. */
+    private var hangar: Set<String> = emptySet()
 
     private var selectedHex: String? = null
     private var following = false
@@ -107,6 +112,7 @@ class RadarMapController(
         style.addLayer(RadarLayers.routeRemaining())
         style.addLayer(RadarLayers.routeFlown())
         style.addLayer(RadarLayers.watchRing())
+        style.addLayer(RadarLayers.hangarRing())
         style.addLayer(RadarLayers.rareGlow())
         style.addLayer(RadarLayers.emergency())
         style.addLayer(RadarLayers.selected())
@@ -126,6 +132,7 @@ class RadarMapController(
 
         map.addOnMapClickListener { latLng -> handleTap(map.projection.toScreenLocation(latLng)); true }
         map.addOnCameraIdleListener { callbacks.onViewportChanged(currentViewport()) }
+        map.addOnCameraMoveListener { callbacks.onCameraMoved() }
         map.addOnMoveListener(object : MapLibreMap.OnMoveListener {
             override fun onMoveBegin(detector: org.maplibre.android.gestures.MoveGestureDetector) {
                 focusPendingUntil = 0L
@@ -250,6 +257,36 @@ class RadarMapController(
     }
 
     /** Watched aircraft get a glowing ring. */
+    fun setHangar(keys: Set<String>) {
+        if (keys == hangar) return
+        hangar = keys
+        motion.hexes.forEach { h -> motion.fix(h)?.let { props[h] = staticProps(it) } }
+        dirty = true
+        if (!running) renderFrame()
+    }
+
+    /** Where the camera is looking: the middle of the uncovered area, and the map's rotation. */
+    fun cameraCenter(): Pair<LatLon, Double>? {
+        val cam = map.cameraPosition
+        val t = cam.target ?: return null
+        return LatLon(t.latitude, t.longitude) to cam.bearing
+    }
+
+    /** True when [p] is inside the uncovered part of the screen. */
+    fun isInView(p: LatLon): Boolean {
+        val bounds = map.projection.visibleRegion.latLngBounds
+        if (!bounds.contains(LatLng(p.lat, p.lon))) return false
+        val s = map.projection.toScreenLocation(LatLng(p.lat, p.lon))
+        val (w, h) = viewSize()
+        return s.x >= insets[0] && s.x <= w - insets[2] && s.y >= insets[1] && s.y <= h - insets[3]
+    }
+
+    /** The uncovered part of the screen, in px: left, top, right, bottom. */
+    fun clearArea(): IntArray {
+        val (w, h) = viewSize()
+        return intArrayOf(insets[0], insets[1], w - insets[2], h - insets[3])
+    }
+
     fun setWatchlist(list: Watchlist) {
         watchlist = list
         motion.hexes.forEach { h -> motion.fix(h)?.let { props[h] = staticProps(it) } }
@@ -414,6 +451,7 @@ class RadarMapController(
         addProperty(RadarLayers.P_SELECTED, a.hex == selectedHex)
         addProperty(RadarLayers.P_EMERGENCY, a.isEmergency)
         addProperty(RadarLayers.P_WATCHED, watchlist.matches(a))
+        addProperty(RadarLayers.P_HANGAR, a.hex in hangar || (a.registration != null && a.registration.uppercase() in hangar))
         addProperty(
             RadarLayers.P_RARITY,
             when (a.rarity) {

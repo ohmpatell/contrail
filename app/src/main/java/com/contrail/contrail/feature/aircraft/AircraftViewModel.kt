@@ -17,6 +17,7 @@ import com.contrail.contrail.core.data.repository.CutoutRepository
 import com.contrail.contrail.core.data.repository.CutoutStatus
 import com.contrail.contrail.core.common.LatLon
 import com.contrail.contrail.core.data.repository.AirportRepository
+import com.contrail.contrail.core.data.hangar.HangarRepository
 import com.contrail.contrail.core.data.route.RouteCheck
 import com.contrail.contrail.core.data.route.RouteVerdict
 import com.contrail.contrail.core.data.repository.LiveTrafficRepository
@@ -62,6 +63,8 @@ data class AircraftUiState(
     val hero: HeroMode = HeroMode.Photo,
     /** While live: the route on file checked against what the plane is doing. */
     val verdict: RouteVerdict? = null,
+    /** In My Hangar. */
+    val pinned: Boolean = false,
     val watchlist: Watchlist = Watchlist(emptyList()),
 ) {
     val typeName: String? get() = AircraftTypes.nameFor(typeCode)
@@ -90,6 +93,7 @@ class AircraftViewModel @AssistedInject constructor(
     private val cutouts: CutoutRepository,
     private val watchlist: WatchlistRepository,
     private val airports: AirportRepository,
+    private val hangar: HangarRepository,
 ) : ViewModel() {
 
     @AssistedFactory
@@ -139,8 +143,8 @@ class AircraftViewModel @AssistedInject constructor(
         combine(live, identity, seen) { l, id, s -> Triple(l, id, s) },
         combine(airline, photo, route) { a, p, r -> Triple(a, p, r) },
         combine(cutout, hero) { c, h -> c to h },
-        combine(watchlist.observe().map { Watchlist(it) }, verdict) { w, v -> w to v },
-    ) { (l, id, s), (a, p, r), (c, h), (watch, v) ->
+        combine(watchlist.observe().map { Watchlist(it) }, verdict, hangar.observe()) { w, v, pins -> Triple(w, v, pins) },
+    ) { (l, id, s), (a, p, r), (c, h), (watch, v, pins) ->
         AircraftUiState(
             hex = hex, live = l, registration = id.registration, typeCode = id.typeCode, callsign = id.callsign,
             airlineIcao = id.airlineIcao, airline = a, photo = p, route = r, sightings = s,
@@ -153,6 +157,7 @@ class AircraftViewModel @AssistedInject constructor(
             },
             watchlist = watch,
             verdict = v,
+            pinned = pins.any { it.hex == hex || (id.registration != null && it.registration == id.registration.uppercase()) },
         )
     }.stateIn(viewModelScope, SharingStarted.WhileSubscribed(5_000), AircraftUiState(hex))
 
@@ -189,6 +194,14 @@ class AircraftViewModel @AssistedInject constructor(
         hero.value = mode
         // A failed cutout (no model yet, photo didn't load) is retried each time Cutout is tapped.
         if (mode == HeroMode.Cutout) viewModelScope.launch { makeCutout() }
+    }
+
+    fun togglePin() {
+        val s = state.value
+        val reg = s.registration ?: return
+        viewModelScope.launch {
+            if (s.pinned) hangar.unpin(reg) else hangar.pin(reg, hex, s.typeCode, s.airlineIcao, s.airlineName)
+        }
     }
 
     fun toggleWatch(item: WatchItem, on: Boolean) {

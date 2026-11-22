@@ -37,6 +37,12 @@ interface LiveTrafficRepository {
 
     /** Drops anything too old to be useful (e.g. after a long time offline). */
     suspend fun pruneStale()
+
+    /**
+     * Adds aircraft found some other way (a search, a pinned plane) to the live picture, so they
+     * show on the radar and keep a trail like everything else until they go stale.
+     */
+    suspend fun addFound(aircraft: List<LiveAircraft>)
 }
 
 @Singleton
@@ -66,9 +72,18 @@ class DefaultLiveTrafficRepository @Inject constructor(
         val fetched = source.fetchAround(center.lat, center.lon, radiusNm)
         // Vehicles and obstacles are not aircraft: they never reach the database.
         val snapshot = fetched.copy(aircraft = fetched.aircraft.filterNot { AircraftClassifier.isClutter(it.category, it.typeCode, it.onGround) })
+        store(snapshot.aircraft, prune = true)
+        return RefreshResult(snapshot.aircraft.size, snapshot.source, snapshot.receivedAtMs)
+    }
+
+    override suspend fun addFound(aircraft: List<LiveAircraft>) {
+        if (aircraft.isNotEmpty()) store(aircraft, prune = false)
+    }
+
+    private suspend fun store(aircraft: List<LiveAircraft>, prune: Boolean) {
         val now = clock.nowMs()
         val points = trailMutex.withLock {
-            snapshot.aircraft.mapNotNull { aircraft ->
+            aircraft.mapNotNull { aircraft ->
                 val candidate = TrailPointEntity(
                     hex = aircraft.hex,
                     timeMs = aircraft.positionTimeMs,
@@ -89,12 +104,13 @@ class DefaultLiveTrafficRepository @Inject constructor(
             }
         }
         db.withTransaction {
-            liveDao.upsertAll(snapshot.aircraft.map { it.toEntity() })
+            liveDao.upsertAll(aircraft.map { it.toEntity() })
             trailDao.upsertAll(points)
-            liveDao.deleteOlderThan(now - STALE_AFTER_MS)
-            trailDao.deleteOlderThan(now - TRAIL_WINDOW_MS)
+            if (prune) {
+                liveDao.deleteOlderThan(now - STALE_AFTER_MS)
+                trailDao.deleteOlderThan(now - TRAIL_WINDOW_MS)
+            }
         }
-        return RefreshResult(snapshot.aircraft.size, snapshot.source, snapshot.receivedAtMs)
     }
 
     override suspend fun pruneStale() {

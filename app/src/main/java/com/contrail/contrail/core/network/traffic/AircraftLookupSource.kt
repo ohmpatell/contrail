@@ -13,6 +13,8 @@ interface AircraftLookupSource {
     val name: String
     suspend fun byCallsign(callsign: String): List<LiveAircraft>
     suspend fun byRegistration(registration: String): List<LiveAircraft>
+    /** By ICAO 24-bit transponder address (6 hex digits). */
+    suspend fun byHex(hex: String): List<LiveAircraft>
 }
 
 /** readsb-style lookups (adsb.fi, adsb.lol), sharing each host's throttle with the radar. */
@@ -21,6 +23,7 @@ class ReadsbLookupSource(
     private val client: HttpClient,
     private val callsignUrl: (String) -> String,
     private val registrationUrl: (String) -> String,
+    private val hexUrl: (String) -> String,
     private val clock: () -> Long = System::currentTimeMillis,
 ) : AircraftLookupSource {
     private val throttle = HostThrottles.of(name)
@@ -28,6 +31,8 @@ class ReadsbLookupSource(
     override suspend fun byCallsign(callsign: String) = fetch(callsignUrl(callsign.trim().uppercase().encodeURLPathPart()))
 
     override suspend fun byRegistration(registration: String) = fetch(registrationUrl(registration.trim().uppercase().encodeURLPathPart()))
+
+    override suspend fun byHex(hex: String) = fetch(hexUrl(hex.trim().lowercase().encodeURLPathPart()))
 
     private suspend fun fetch(url: String): List<LiveAircraft> {
         val response = throttle.run { client.get(url) }
@@ -41,12 +46,14 @@ class ReadsbLookupSource(
             "adsb.fi", client,
             callsignUrl = { "https://opendata.adsb.fi/api/v2/callsign/$it" },
             registrationUrl = { "https://opendata.adsb.fi/api/v2/registration/$it" },
+            hexUrl = { "https://opendata.adsb.fi/api/v2/hex/$it" },
         )
 
         fun adsbLol(client: HttpClient) = ReadsbLookupSource(
             "adsb.lol", client,
             callsignUrl = { "https://api.adsb.lol/v2/callsign/$it" },
             registrationUrl = { "https://api.adsb.lol/v2/reg/$it" },
+            hexUrl = { "https://api.adsb.lol/v2/hex/$it" },
         )
     }
 }
@@ -58,6 +65,8 @@ class FailoverLookupSource(private val providers: List<AircraftLookupSource>) : 
     override suspend fun byCallsign(callsign: String) = first { it.byCallsign(callsign) }
 
     override suspend fun byRegistration(registration: String) = first { it.byRegistration(registration) }
+
+    override suspend fun byHex(hex: String) = first { it.byHex(hex) }
 
     private suspend fun first(block: suspend (AircraftLookupSource) -> List<LiveAircraft>): List<LiveAircraft> {
         var error: Throwable? = null

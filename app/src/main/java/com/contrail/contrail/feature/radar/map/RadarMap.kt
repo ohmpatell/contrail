@@ -90,6 +90,7 @@ fun RadarMap(
                         override fun onViewportChanged(viewport: com.contrail.contrail.feature.radar.Viewport) =
                             latestCallbacks.value.onViewportChanged(viewport)
                         override fun onUserGesture() = latestCallbacks.value.onUserGesture()
+                        override fun onCameraMoved() = latestCallbacks.value.onCameraMoved()
                     },
                     viewSize = { mapView.width to mapView.height },
                 )

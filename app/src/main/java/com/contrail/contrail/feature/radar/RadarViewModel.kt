@@ -47,6 +47,11 @@ import kotlinx.coroutines.flow.stateIn
 import kotlinx.coroutines.flow.update
 import kotlinx.coroutines.launch
 import javax.inject.Inject
+import com.contrail.contrail.core.data.hangar.HangarPlane
+import com.contrail.contrail.core.data.hangar.HangarRepository
+import com.contrail.contrail.core.data.search.SearchQuery
+import com.contrail.contrail.core.data.search.SearchTarget
+import com.contrail.contrail.core.network.traffic.AircraftLookupSource
 import com.contrail.contrail.core.data.repository.AirportRepository
 import com.contrail.contrail.core.data.route.RouteCheck
 import com.contrail.contrail.core.data.route.RouteVerdict
@@ -62,6 +67,8 @@ class RadarViewModel @Inject constructor(
     private val tracks: FlightTrackRepository,
     private val logostream: LogostreamRepository,
     private val airports: AirportRepository,
+    private val lookup: AircraftLookupSource,
+    private val hangarRepo: HangarRepository,
     private val watchlist: WatchlistRepository,
     private val clock: Clock,
 ) : ViewModel() {
@@ -72,6 +79,34 @@ class RadarViewModel @Inject constructor(
     private val selectedHex = MutableStateFlow<String?>(null)
     private val following = MutableStateFlow(FollowState())
     private val panel = MutableStateFlow(RadarPanel.None)
+    private val searchText = MutableStateFlow("")
+    private val searchResults = MutableStateFlow(SearchResults())
+
+    /** A camera move the map should make once it's showing (search results, Hangar markers); cleared when done. */
+    private val _cameraMove = MutableStateFlow<CameraMove?>(null)
+    val cameraMove: StateFlow<CameraMove?> = _cameraMove
+
+    fun cameraMoved() {
+        _cameraMove.value = null
+    }
+
+    /** Your pinned planes, with where each was last seen. */
+    val hangar: StateFlow<List<HangarPlane>> = hangarRepo.observe().stateIn(viewModelScope, SharingStarted.Eagerly, emptyList())
+
+    /** Transponder codes and registrations of pinned planes, for the gold ring on the map. */
+    val hangarKeys: StateFlow<Set<String>> = hangar
+        .map { list -> list.flatMap { listOfNotNull(it.hex?.lowercase(), it.registration.uppercase()) }.toSet() }
+        .distinctUntilChanged()
+        .stateIn(viewModelScope, SharingStarted.Eagerly, emptySet())
+
+    private val search: StateFlow<SearchUiState> = combine(searchText, searchResults, prefs.recentSearches) { text, results, recent ->
+        SearchUiState(
+            query = text,
+            readings = SearchQuery.targets(text).map { it.label },
+            results = results.takeIf { it.query == text.trim().uppercase() } ?: SearchResults(),
+            recent = recent,
+        )
+    }.stateIn(viewModelScope, SharingStarted.Eagerly, SearchUiState())
     private val feed = MutableStateFlow<FeedStatus>(FeedStatus.Connecting)
     private var lastSuccessMs: Long? = null
     private var lastRequestMs = 0L
@@ -185,8 +220,10 @@ class RadarViewModel @Inject constructor(
     }.stateIn(viewModelScope, SharingStarted.Eagerly, null)
 
     private val chrome = combine(filters, layers, panel, following, viewport) { f, l, p, follow, vp ->
-        Chrome(f, l, p, follow, (vp?.radiusNm ?: 0.0) > ReadsbApiSource.MAX_RADIUS_NM)
+        Chrome(f, l, p, follow, (vp?.radiusNm ?: 0.0) > ReadsbApiSource.MAX_RADIUS_NM, center = vp?.center)
     }.combine(watch) { c, w -> c.copy(watch = w) }
+        .combine(search) { c, s -> c.copy(search = s) }
+        .combine(hangar) { c, h -> c.copy(hangar = h) }
 
     val uiState: StateFlow<RadarUiState> =
         combine(feed, allTraffic, mapTraffic, chrome, selectionState) { feed, all, shown, c, sel ->
@@ -206,6 +243,9 @@ class RadarViewModel @Inject constructor(
                 emergencies = all.filter { it.isEmergency },
                 watchlist = c.watch.items,
                 watchedCount = if (c.watch.isEmpty) 0 else all.count { c.watch.matches(it) },
+                search = c.search,
+                hangar = c.hangar,
+                viewCenter = c.center,
             )
         }.stateIn(viewModelScope, SharingStarted.WhileSubscribed(5_000), RadarUiState())
 
@@ -216,11 +256,26 @@ class RadarViewModel @Inject constructor(
         val following: FollowState,
         val radiusCapped: Boolean,
         val watch: Watchlist = Watchlist(emptyList()),
+        val search: SearchUiState = SearchUiState(),
+        val hangar: List<HangarPlane> = emptyList(),
+        val center: LatLon? = null,
     )
 
     init {
         viewModelScope.launch { traffic.pruneStale() }
         viewModelScope.launch { pollLoop() }
+        viewModelScope.launch { searchLoop() }
+        viewModelScope.launch { hangarLoop() }
+        // Another page asked to show a plane here.
+        viewModelScope.launch {
+            com.contrail.contrail.navigation.RadarRequests.focus.filterNotNull().collect { f ->
+                com.contrail.contrail.navigation.RadarRequests.focus.value = null
+                panel.value = RadarPanel.None
+                following.value = FollowState()
+                f.hex?.let { selectedHex.value = it }
+                _cameraMove.value = (CameraMove(LatLon(f.lat, f.lon), zoom = 7.5))
+            }
+        }
         // If the selected aircraft drops out of the feed, close its sheet.
         viewModelScope.launch {
             allTraffic.collect { list ->
@@ -285,7 +340,133 @@ class RadarViewModel @Inject constructor(
 
     fun togglePanel(target: RadarPanel) {
         panel.update { if (it == target) RadarPanel.None else target }
+        if (panel.value != RadarPanel.Search) searchText.value = ""
     }
+
+    // region Search
+
+    fun onSearchText(text: String) {
+        searchText.value = text.take(24)
+    }
+
+    /** Looks the typed text up now (the keyboard's search key) instead of waiting for the pause. */
+    fun submitSearch() {
+        viewModelScope.launch { runSearch(searchText.value, remember = true) }
+    }
+
+    fun clearRecentSearches() {
+        viewModelScope.launch { prefs.clearRecentSearches() }
+    }
+
+    /** Opens a live result: it joins the radar, the camera flies to it and its sheet opens. */
+    fun openSearchResult(aircraft: LiveAircraft) {
+        viewModelScope.launch {
+            prefs.addRecentSearch(searchText.value.ifBlank { aircraft.displayCallsign })
+            traffic.addFound(listOf(aircraft))
+            panel.value = RadarPanel.None
+            searchText.value = ""
+            following.value = FollowState()
+            selectedHex.value = aircraft.hex
+            _cameraMove.value = (CameraMove(LatLon(aircraft.lat, aircraft.lon), zoom = 8.5))
+        }
+    }
+
+    fun openSearchAirport(hit: AirportHit) {
+        viewModelScope.launch { prefs.addRecentSearch(hit.code) }
+        panel.value = RadarPanel.None
+        searchText.value = ""
+        _cameraMove.value = (CameraMove(LatLon(hit.lat, hit.lon), zoom = 10.5))
+    }
+
+    private suspend fun searchLoop() {
+        searchText.debounce(450).distinctUntilChanged().collectLatest { runSearch(it, remember = false) }
+    }
+
+    private suspend fun runSearch(raw: String, remember: Boolean) {
+        val q = raw.trim().uppercase()
+        if (q.length < 2) {
+            searchResults.value = SearchResults()
+            return
+        }
+        val targets = SearchQuery.targets(q)
+        searchResults.value = SearchResults(q, searching = true)
+        val planes = mutableListOf<LiveAircraft>()
+        var failed = false
+        for (t in targets.take(3)) {
+            try {
+                planes += when (t) {
+                    is SearchTarget.Callsign -> lookup.byCallsign(t.callsign)
+                    is SearchTarget.Registration -> lookup.byRegistration(t.registration)
+                    is SearchTarget.Hex -> lookup.byHex(t.hex)
+                }
+            } catch (e: CancellationException) {
+                throw e
+            } catch (_: Exception) {
+                failed = true
+            }
+        }
+        val places = if (q.length >= 3) {
+            airports.search(q).first().filter { it.iata.isNotBlank() }.take(4).map { AirportHit(it.icao, it.iata, it.name, it.city, it.lat, it.lon) }
+        } else {
+            emptyList()
+        }
+        val here = viewport.value?.center
+        val found = planes.distinctBy { it.hex }.sortedBy { a -> here?.let { Geo.distanceM(it, LatLon(a.lat, a.lon)) } ?: 0.0 }
+        searchResults.value = SearchResults(
+            query = q,
+            aircraft = found,
+            airports = places,
+            failed = failed && found.isEmpty(),
+            tried = targets.isNotEmpty(),
+        )
+        if (remember && (found.isNotEmpty() || places.isNotEmpty())) prefs.addRecentSearch(q)
+    }
+
+    // endregion
+
+    // region Hangar
+
+    /** Pins or unpins the selected plane. Needs its registration. */
+    fun togglePin(aircraft: LiveAircraft) {
+        val reg = aircraft.registration ?: return
+        viewModelScope.launch {
+            if (hangar.value.any { it.registration == reg.uppercase() }) {
+                hangarRepo.unpin(reg)
+            } else {
+                hangarRepo.pin(reg, aircraft.hex, aircraft.typeCode, aircraft.airline?.icao, aircraft.airline?.name)
+            }
+        }
+    }
+
+    /** Pins a registration found by search (it needn't be flying). */
+    fun pinRegistration(registration: String) {
+        viewModelScope.launch { hangarRepo.pin(registration, null, null, null, null) }
+    }
+
+    /** Flies to a pinned plane wherever it is, and opens it. */
+    fun openHangarPlane(plane: HangarPlane) {
+        val lat = plane.lastLat ?: return
+        val lon = plane.lastLon ?: return
+        panel.value = RadarPanel.None
+        following.value = FollowState()
+        plane.hex?.let { selectedHex.value = it }
+        _cameraMove.value = (CameraMove(LatLon(lat, lon), zoom = 7.5))
+    }
+
+    /** While the radar is open, your pinned planes are looked up worldwide every minute so they're always on it. */
+    private suspend fun hangarLoop() {
+        combine(active, hangar.map { it.size }.distinctUntilChanged()) { a, n -> a && n > 0 }
+            .distinctUntilChanged()
+            .collectLatest { on ->
+                if (!on) return@collectLatest
+                while (true) {
+                    runCatching { hangarRepo.refreshLive() }
+                    delay(HANGAR_REFRESH_MS)
+                }
+            }
+    }
+
+    // endregion
 
     fun updateFilters(transform: (RadarFilters) -> RadarFilters) = filters.update(transform)
 
@@ -373,6 +554,7 @@ class RadarViewModel @Inject constructor(
 
     companion object {
         const val NEARBY_AIRPORTS_M = 160_000.0
+        const val HANGAR_REFRESH_MS = 60_000L
         private const val TAG = "ContrailRadar"
         /** Polite to adsb.fi (1/s) and to adsb.lol's 500/day backup budget; dead reckoning hides the gap. */
         const val POLL_INTERVAL_MS = 5_000L

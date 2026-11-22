@@ -29,6 +29,13 @@ import com.contrail.contrail.core.data.repository.RadarCamera
 import com.contrail.contrail.core.designsystem.theme.ContrailTheme
 import com.contrail.contrail.feature.radar.map.RadarMap
 import com.contrail.contrail.feature.radar.map.RadarMapController
+import com.contrail.contrail.feature.radar.components.HangarEdgeLayer
+import com.contrail.contrail.feature.radar.components.HangarEdges
+import com.contrail.contrail.feature.radar.components.SearchActions
+import com.contrail.contrail.navigation.LocalNavigator
+import androidx.compose.runtime.mutableIntStateOf
+import androidx.compose.ui.platform.LocalDensity
+import androidx.compose.ui.unit.dp
 import kotlinx.coroutines.flow.collectLatest
 
 /** The live radar tab: wires the view model to the MapLibre controller and the overlays. */
@@ -78,6 +85,19 @@ fun RadarRoute(onOpenAircraft: (String) -> Unit = {}, viewModel: RadarViewModel 
         val c = controller ?: return@LaunchedEffect
         viewModel.watch.collectLatest { c.setWatchlist(it) }
     }
+    LaunchedEffect(controller) {
+        val c = controller ?: return@LaunchedEffect
+        viewModel.hangarKeys.collectLatest { c.setHangar(it) }
+    }
+    LaunchedEffect(controller) {
+        val c = controller ?: return@LaunchedEffect
+        viewModel.cameraMove.collect { move ->
+            if (move != null) {
+                c.flyTo(move.to, move.zoom)
+                viewModel.cameraMoved()
+            }
+        }
+    }
     LaunchedEffect(controller, userLocation) { controller?.setUserLocation(userLocation) }
     var insets by remember { mutableStateOf(listOf(0, 0, 0, 0)) }
     LaunchedEffect(controller, insets) { controller?.setViewInsets(insets[0], insets[1], insets[2], insets[3]) }
@@ -96,14 +116,21 @@ fun RadarRoute(onOpenAircraft: (String) -> Unit = {}, viewModel: RadarViewModel 
         if (state.panel != RadarPanel.None) viewModel.togglePanel(state.panel) else viewModel.clearSelection()
     }
 
+    // Bumped on every camera move; only the edge-marker overlay reads it, so only it redraws.
+    val cameraTick = remember { mutableIntStateOf(0) }
     val callbacks = remember(viewModel) {
         object : RadarMapController.Callbacks {
             override fun onAircraftTapped(hex: String) = viewModel.onAircraftTapped(hex)
             override fun onMapTapped() = viewModel.onMapTapped()
             override fun onViewportChanged(viewport: Viewport) = viewModel.onViewportChanged(viewport)
             override fun onUserGesture() = viewModel.onUserGesture()
+            override fun onCameraMoved() {
+                cameraTick.intValue++
+            }
         }
     }
+    val nav = LocalNavigator.current
+    val density = LocalDensity.current
 
     RadarScreen(
         state = state,
@@ -125,10 +152,38 @@ fun RadarRoute(onOpenAircraft: (String) -> Unit = {}, viewModel: RadarViewModel 
             onViewInsets = { l, t, r, b -> insets = listOf(l, t, r, b) },
             onRecentre = viewModel::recentre,
             onExpandSheet = viewModel::expandSheet,
+            search = SearchActions(
+                onText = viewModel::onSearchText,
+                onSubmit = viewModel::submitSearch,
+                onAircraft = viewModel::openSearchResult,
+                onAirport = viewModel::openSearchAirport,
+                onClearRecent = viewModel::clearRecentSearches,
+                onHangarPlane = viewModel::openHangarPlane,
+                onOpenHangar = nav::openHangar,
+                onPinRegistration = viewModel::pinRegistration,
+            ),
+            onTogglePin = viewModel::togglePin,
             onWatch = viewModel::watch,
             onUnwatch = viewModel::unwatch,
             onOpenAircraft = onOpenAircraft,
         ),
+        overlay = {
+            val c = controller
+            cameraTick.intValue
+            val pinned = state.hangar
+            if (c != null && pinned.isNotEmpty()) {
+                val (center, bearing) = c.cameraCenter() ?: (null to 0.0)
+                if (center != null) {
+                    val markers = HangarEdges.place(
+                        pinned, center, bearing, c.clearArea(),
+                        marginPx = with(density) { 36.dp.toPx() },
+                        now = System.currentTimeMillis(),
+                        inView = c::isInView,
+                    )
+                    HangarEdgeLayer(markers, onTap = viewModel::openHangarPlane)
+                }
+            }
+        },
     ) { mapModifier ->
         val initial = camera
         AnimatedVisibility(visible = initial != null, enter = fadeIn(ContrailTheme.motion.fade(500))) {
