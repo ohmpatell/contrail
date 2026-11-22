@@ -1,6 +1,6 @@
 # Status
 
-Last updated Nov 7, 2026.
+Last updated Nov 22, 2026.
 
 ## Waiting on you
 
@@ -76,6 +76,13 @@ Releases: every push to `master` publishes a signed APK to GitHub Releases for O
   - Your edits reach them, and Stop sharing takes it back.
   - They can tap **I'm on this trip too**, which turns it into their own trip, in their log and Passport. Their Passport then gets a **Flown together** card.
 - 188 unit and screenshot tests green, lint clean. Verified on the Pixel 9 emulator: the database upgrade keeps existing trips, sign-up and sync with the real Supabase project (with a throwaway account that was deleted after), the new Settings, and the Chart theme with its map.
+
+## In progress: Stage 6 (spotting, flying and 3D)
+Plan: `docs/DESIGN.md` → Stage 6.
+- ✅ Fixes: pages opened from other pages (logbook → flight → Edit) now appear; selecting a plane keeps it in view above the sheet; follow survives map taps (tap the readout to bring the sheet back, Recentre after a drag); the sheet scrolls, with Tail / Type / Airline watch toggles and the Aircraft page button always reachable; Sky and Passport in two columns on tablets; the aircraft page opens on the photo; the cutout says what it's doing; the logo row lines up.
+- ✅ Route check: two route databases, and a route is only shown when it fits how the plane is flying ("Landing at Toronto · from its approach" otherwise).
+- ✅ Search (radar, magnifier) and My Hangar (star on a plane's sheet; Passport card; alerts on take-off and landing).
+- Next: Happening now, Spotter's board and runways from traffic, then stamps and Moments, in-flight mode, contrail forecast, 3D.
 
 ## Next
 - Feedback from your phones. Optional ideas from the planning chat: a Wear OS tile, and an "at gate" alert if a free source for it turns up.
