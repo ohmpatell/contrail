@@ -19,6 +19,7 @@ import androidx.compose.runtime.Composable
 import androidx.compose.runtime.getValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
+import com.contrail.contrail.core.network.airport.windFromDeg
 import androidx.compose.ui.draw.clip
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.graphics.graphicsLayer
@@ -100,12 +101,10 @@ fun AirportScreen(
         WeatherCard(state.weather?.metar, state.weather?.taf?.rawTAF)
         ScheduleBoardCard(state, nowMs, onBoard, onLoadSchedule)
         BoardCard(state, onBoard, onOpenAircraft)
-        val activeEnd = LiveBoard.likelyActiveEnd(state.runways, windFrom(state.weather?.metar))
+        val use = state.runwayUse
         SectionCard("Airfield", trailing = { Eyebrow("© OpenStreetMap") }) {
-            RunwayDiagram(LatLon(a.lat, a.lon), state.runways, state.geometry, activeEnd)
-            if (activeEnd != null) {
-                Text("Runway $activeEnd is likely in use, into the wind.", style = ContrailTheme.type.bodySmall, color = colors.statusOnTime)
-            }
+            RunwayDiagram(LatLon(a.lat, a.lon), state.runways, state.geometry, use?.all.orEmpty())
+            if (use != null) RunwaysInUseText(use)
             state.runways.take(6).forEach { r ->
                 Row {
                     Text("${r.leIdent}/${r.heIdent}", style = ContrailTheme.type.numeric, color = colors.textPrimary, modifier = Modifier.width(96.dp))
@@ -183,7 +182,36 @@ private fun StatsStrip(state: AirportUiState) {
     }
 }
 
-private fun windFrom(m: Metar?): Double? = m?.wdir?.jsonPrimitive?.doubleOrNull?.takeIf { (m.wspd ?: 0) > 0 }
+private fun windFrom(m: Metar?): Double? = m.windFromDeg
+
+/**
+ * "Landing 23 · 24R, departing 24L: seen on 6 planes in the last 20 min", or a guess that says it's
+ * one. Shared with the Spotter's board.
+ */
+@Composable
+fun RunwaysInUseText(use: com.contrail.contrail.core.data.airport.RunwaysInUse) {
+    val colors = ContrailTheme.colors
+    Column(verticalArrangement = Arrangement.spacedBy(ContrailTheme.spacing.xxs)) {
+        val arr = use.arrivals.joinToString(" · ")
+        val dep = use.departures.joinToString(" · ")
+        val line = when {
+            arr.isNotEmpty() && dep.isNotEmpty() && arr != dep -> "Landing $arr, departing $dep"
+            arr.isNotEmpty() && dep == arr -> "Using $arr"
+            arr.isNotEmpty() -> "Landing $arr"
+            else -> "Departing $dep"
+        }
+        Text(line, style = ContrailTheme.type.title, color = if (use.observed) colors.statusOnTime else colors.textPrimary)
+        Text(
+            if (use.observed) {
+                "Seen on ${use.planes} ${if (use.planes == 1) "plane" else "planes"} in the last 20 minutes."
+            } else {
+                "Estimated from the wind and what's usual here. Nothing seen landing or taking off in the last 20 minutes."
+            },
+            style = ContrailTheme.type.bodySmall,
+            color = colors.textTertiary,
+        )
+    }
+}
 
 @Composable
 private fun WeatherCard(m: Metar?, taf: String?) {

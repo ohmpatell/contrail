@@ -32,6 +32,9 @@ import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.SharingStarted
 import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.flow.combine
+import kotlinx.coroutines.flow.debounce
+import kotlinx.coroutines.flow.mapLatest
+import com.contrail.contrail.core.network.airport.windFromDeg
 import kotlinx.coroutines.flow.filterNotNull
 import kotlinx.coroutines.flow.first
 import kotlinx.coroutines.flow.flatMapLatest
@@ -80,6 +83,8 @@ data class AirportUiState(
     val scheduleNote: com.contrail.contrail.core.data.repository.BoardRefresh? = null,
     val scheduleLoading: Boolean = false,
     val unitsLeft: Int? = null,
+    /** Runways in use: seen from live traffic, or a labelled guess. */
+    val runwayUse: com.contrail.contrail.core.data.airport.RunwaysInUse? = null,
 )
 
 @OptIn(ExperimentalCoroutinesApi::class)
@@ -93,6 +98,7 @@ class AirportViewModel @AssistedInject constructor(
     private val details: AircraftDetailsRepository,
     private val schedule: com.contrail.contrail.core.data.repository.ScheduleRepository,
     private val clock: Clock,
+    private val runwayLog: com.contrail.contrail.core.data.airport.RunwayLog,
 ) : ViewModel() {
     private val scheduleStatus = MutableStateFlow<Pair<com.contrail.contrail.core.data.repository.BoardRefresh?, Boolean>>(null to false)
 
@@ -157,6 +163,20 @@ class AirportViewModel @AssistedInject constructor(
 
     private val stats = airport.filterNotNull().flatMapLatest { logostream.observeAirportStats(it.iata) }
 
+    /** Runways in use from planes seen landing and taking off here, re-read as traffic updates. */
+    @OptIn(kotlinx.coroutines.FlowPreview::class)
+    private val runwayUse = combine(basics, nearbyTraffic, traffic.observeTrails()) { b, near, trails -> Triple(b, near, trails) }
+        .debounce(1_500)
+        .mapLatest { (b, near, trails) ->
+            val a = b.airport ?: return@mapLatest null
+            val metar = b.weather?.metar
+            val hexes = near.mapTo(HashSet()) { it.hex }
+            runCatching {
+                runwayLog.update(a.icao, a.elevationFt, b.runways, near, trails.filterKeys { it in hexes }, metar.windFromDeg, metar?.wspd)
+            }.getOrNull()
+        }
+        .onStart { emit(null) }
+
     val state: StateFlow<AirportUiState> = combine(basics, stats, routesAndAirlines, combine(nearbyTraffic, boards) { n, b -> n to b }, board) { b, s, (served, dest), (near, bd), kind ->
         AirportUiState(
             airport = b.airport, runways = b.runways, frequencies = b.frequencies, weather = b.weather,
@@ -166,6 +186,7 @@ class AirportViewModel @AssistedInject constructor(
     }.combine(airport.filterNotNull().flatMapLatest { schedule.board(it.iata) }.onStart { emit(null) }) { s, b -> s.copy(schedule = b) }
         .combine(scheduleStatus) { s, (note, loading) -> s.copy(scheduleNote = note, scheduleLoading = loading) }
         .combine(schedule.units) { s, u -> s.copy(unitsLeft = u.remaining) }
+        .combine(runwayUse) { s, r -> s.copy(runwayUse = r) }
         .stateIn(viewModelScope, SharingStarted.WhileSubscribed(5_000), AirportUiState())
 
     private data class Basics(

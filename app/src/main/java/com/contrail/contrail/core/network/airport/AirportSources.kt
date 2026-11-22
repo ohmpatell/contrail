@@ -44,6 +44,10 @@ data class Metar(
     val wxString: String? = null,
 )
 
+/** Where the wind blows from, in degrees; null when calm or variable. */
+val Metar?.windFromDeg: Double?
+    get() = this?.wdir?.let { (it as? kotlinx.serialization.json.JsonPrimitive)?.content?.toDoubleOrNull() }?.takeIf { (this.wspd ?: 0) > 0 }
+
 @Serializable
 data class Taf(val icaoId: String, val rawTAF: String? = null, val issueTime: String? = null)
 

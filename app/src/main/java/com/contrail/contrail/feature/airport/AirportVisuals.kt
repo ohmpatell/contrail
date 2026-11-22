@@ -66,7 +66,7 @@ fun RunwayDiagram(
     center: LatLon,
     runways: List<RunwayEntity>,
     geometry: OsmResult?,
-    activeEnd: String?,
+    activeEnds: Set<String>,
     modifier: Modifier = Modifier,
 ) {
     val colors = ContrailTheme.colors
@@ -130,7 +130,7 @@ fun RunwayDiagram(
             val push = 14.dp.toPx()
             listOf(r.leIdent to le + dir * push, r.heIdent to he - dir * push).forEach { (ident, o) ->
                 if (ident.isBlank()) return@forEach
-                val active = ident == activeEnd
+                val active = ident in activeEnds
                 if (active) {
                     drawCircle(Brush.radialGradient(listOf(colors.statusOnTime.copy(alpha = 0.55f), Color.Transparent), o, 26.dp.toPx()), 26.dp.toPx(), o)
                 }
