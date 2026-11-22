@@ -222,7 +222,8 @@ The Passport is the heart of the app: everything you've flown, made beautiful.
 
 - Search every airport with scheduled service by code, name or city, instantly and offline.
 - Favourites and visited airports, one tap from the list.
-- Aviation news feed, filterable by airline and airport (your favourites appear as quick filters).
+- **Happening now** (replaced the news feed in Stage 6): go-arounds, holds, diversions and rare visitors near your favourites, emergencies worldwide, your Hangar planes moving.
+- **Spotter's board** for each favourite: runways in use from live traffic, wind, light for photos, and what's worth seeing in the next 40 minutes.
 
 ### Home-screen widgets
 
