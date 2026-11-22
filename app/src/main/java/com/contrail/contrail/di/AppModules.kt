@@ -19,6 +19,8 @@ import com.contrail.contrail.core.network.ContrailHttp
 import com.contrail.contrail.core.network.photo.PhotoSource
 import com.contrail.contrail.core.network.photo.PlanespottersPhotoSource
 import com.contrail.contrail.core.network.route.AdsbdbRouteSource
+import com.contrail.contrail.core.network.route.CombinedRouteSource
+import com.contrail.contrail.core.network.route.StandingDataRouteSource
 import com.contrail.contrail.core.network.route.RouteSource
 import com.contrail.contrail.core.network.traffic.FailoverLiveTrafficSource
 import com.contrail.contrail.core.network.traffic.LiveTrafficSource
@@ -94,7 +96,8 @@ object NetworkModule {
     )
 
     @Provides @Singleton
-    fun routes(client: HttpClient, json: Json): RouteSource = AdsbdbRouteSource(client, json)
+    fun routes(client: HttpClient, json: Json): RouteSource =
+        CombinedRouteSource(listOf(StandingDataRouteSource(client, json), AdsbdbRouteSource(client, json)))
 
     @Provides @Singleton
     fun photos(client: HttpClient): PhotoSource = PlanespottersPhotoSource(client)

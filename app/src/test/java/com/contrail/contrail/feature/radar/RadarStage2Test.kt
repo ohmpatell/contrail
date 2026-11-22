@@ -151,7 +151,7 @@ class RouteOverlayTest {
     @Test
     fun `uses the real track when there is one`() {
         val track = listOf(LatLon(43.7, -79.6), LatLon(44.5, -77.0))
-        val o = RouteOverlay.build(route, track, trail = emptyList(), current = LatLon(45.0, -75.0))
+        val o = RouteOverlay.build(route.origin, route.destination, track, trail = emptyList(), current = LatLon(45.0, -75.0))
         assertTrue(o.tracked)
         assertEquals(3, o.flown.size)
     }
@@ -159,7 +159,7 @@ class RouteOverlayTest {
     @Test
     fun `without a track, leads from the origin into our trail`() {
         val trail = listOf(LatLon(46.0, -70.0), LatLon(46.4, -69.0))
-        val o = RouteOverlay.build(route, null, trail, current = LatLon(46.5, -68.6))
+        val o = RouteOverlay.build(route.origin, route.destination, null, trail, current = LatLon(46.5, -68.6))
         assertFalse(o.tracked)
         assertEquals(yyz.lat, o.flown.first().lat, 1e-6)
         assertEquals(-68.6, o.flown.last().lon, 1e-6)

@@ -133,6 +133,19 @@ class AirportRepository @Inject constructor(
 
     @Volatile private var icaoIndex: Map<String, String>? = null
 
+    /** Airports with scheduled service within [radiusM] of [p], nearest first: where a plane might be landing or leaving. */
+    suspend fun near(p: com.contrail.contrail.core.common.LatLon, radiusM: Double): List<com.contrail.contrail.core.data.model.AirportRef> {
+        directory()
+        val latSpan = radiusM / 111_000.0 + 0.05
+        return directoryCache.orEmpty().values.asSequence()
+            .filter { kotlin.math.abs(it.lat - p.lat) < latSpan }
+            .map { it to com.contrail.contrail.core.common.Geo.distanceM(p.lat, p.lon, it.lat, it.lon) }
+            .filter { it.second <= radiusM }
+            .sortedBy { it.second }
+            .map { (a, _) -> com.contrail.contrail.core.data.model.AirportRef(a.iata, a.icao, a.city, a.city, a.countryIso, a.lat, a.lon) }
+            .toList()
+    }
+
     /** The nearest airport with scheduled service to [p], for naming where you are. */
     suspend fun nearest(p: com.contrail.contrail.core.common.LatLon): AirportInfo? {
         directory()

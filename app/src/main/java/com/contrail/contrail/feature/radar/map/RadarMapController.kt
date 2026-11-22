@@ -272,7 +272,7 @@ class RadarMapController(
             LineString.fromLngLats(overlay.flown.map { Point.fromLngLat(it.lon, it.lat) }),
             JsonObject().apply { addProperty(RadarLayers.P_PART, "flown") },
         )
-        val ends = listOf(overlay.origin, overlay.destination).map { ap ->
+        val ends = listOfNotNull(overlay.origin, overlay.destination).map { ap ->
             Feature.fromGeometry(
                 Point.fromLngLat(ap.lon, ap.lat),
                 JsonObject().apply {

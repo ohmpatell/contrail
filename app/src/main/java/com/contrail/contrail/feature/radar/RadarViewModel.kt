@@ -47,6 +47,9 @@ import kotlinx.coroutines.flow.stateIn
 import kotlinx.coroutines.flow.update
 import kotlinx.coroutines.launch
 import javax.inject.Inject
+import com.contrail.contrail.core.data.repository.AirportRepository
+import com.contrail.contrail.core.data.route.RouteCheck
+import com.contrail.contrail.core.data.route.RouteVerdict
 import kotlin.math.min
 
 @OptIn(ExperimentalCoroutinesApi::class, FlowPreview::class)
@@ -58,6 +61,7 @@ class RadarViewModel @Inject constructor(
     private val weather: WeatherRadarSource,
     private val tracks: FlightTrackRepository,
     private val logostream: LogostreamRepository,
+    private val airports: AirportRepository,
     private val watchlist: WatchlistRepository,
     private val clock: Clock,
 ) : ViewModel() {
@@ -118,6 +122,14 @@ class RadarViewModel @Inject constructor(
             lookup(details.observePhoto(hex)) { details.refreshPhoto(hex, reg) }
         }
         val trail = traffic.observeTrail(hex)
+        // Airports around the plane, re-read only when it has moved about 10 km.
+        val nearbyFlow = aircraftFlow
+            .map { a -> a?.let { LatLon(kotlin.math.round(it.lat * 10) / 10, kotlin.math.round(it.lon * 10) / 10) } }
+            .distinctUntilChanged()
+            .map { p -> p?.let { airports.near(it, NEARBY_AIRPORTS_M) }.orEmpty() }
+        val verdictFlow = combine(aircraftFlow, routeFlow, nearbyFlow) { a, r, near ->
+            if (a == null || r is Lookup.Loading) null else RouteCheck.check((r as? Lookup.Found)?.value, a, near)
+        }
         val airlineFlow = callsignFlow.map { Airlines.icaoFromCallsign(it) }.distinctUntilChanged().flatMapLatest { icao ->
             if (icao == null) {
                 flowOf(null)
@@ -139,7 +151,7 @@ class RadarViewModel @Inject constructor(
                     brandColorHex = airline?.colors,
                 )
             }
-        }
+        }.combine(verdictFlow) { sel, verdict -> sel?.copy(verdict = verdict) }
     }
 
     private val selectionState: StateFlow<SelectedAircraft?> =
@@ -162,9 +174,14 @@ class RadarViewModel @Inject constructor(
 
     /** Whole-route overlay: only when the route is known; otherwise the trail stays as it is. */
     val routeOverlay: StateFlow<RouteOverlay?> = combine(selectionState, selectedTrack) { sel, track ->
-        val route = (sel?.route as? Lookup.Found)?.value ?: return@combine null
-        val a = sel.aircraft
-        RouteOverlay.build(route, track, sel.trail, LatLon(a.lat, a.lon))
+        val a = sel?.aircraft ?: return@combine null
+        val here = LatLon(a.lat, a.lon)
+        // Only a route that fits what the plane is doing gets drawn.
+        when (val v = sel.verdict) {
+            is RouteVerdict.OnRoute -> RouteOverlay.build(v.from, v.to, track, sel.trail, here)
+            is RouteVerdict.Landing -> RouteOverlay.build(null, v.at, track, sel.trail, here)
+            else -> null
+        }
     }.stateIn(viewModelScope, SharingStarted.Eagerly, null)
 
     private val chrome = combine(filters, layers, panel, following, viewport) { f, l, p, follow, vp ->
@@ -355,6 +372,7 @@ class RadarViewModel @Inject constructor(
     }.distinctUntilChanged()
 
     companion object {
+        const val NEARBY_AIRPORTS_M = 160_000.0
         private const val TAG = "ContrailRadar"
         /** Polite to adsb.fi (1/s) and to adsb.lol's 500/day backup budget; dead reckoning hides the gap. */
         const val POLL_INTERVAL_MS = 5_000L

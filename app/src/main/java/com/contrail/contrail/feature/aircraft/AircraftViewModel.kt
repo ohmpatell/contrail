@@ -15,6 +15,10 @@ import com.contrail.contrail.core.data.reference.Rarity
 import com.contrail.contrail.core.data.repository.AircraftDetailsRepository
 import com.contrail.contrail.core.data.repository.CutoutRepository
 import com.contrail.contrail.core.data.repository.CutoutStatus
+import com.contrail.contrail.core.common.LatLon
+import com.contrail.contrail.core.data.repository.AirportRepository
+import com.contrail.contrail.core.data.route.RouteCheck
+import com.contrail.contrail.core.data.route.RouteVerdict
 import com.contrail.contrail.core.data.repository.LiveTrafficRepository
 import com.contrail.contrail.core.data.repository.LogostreamRepository
 import com.contrail.contrail.core.data.repository.SightingEntity
@@ -56,6 +60,8 @@ data class AircraftUiState(
     val sightings: List<SightingEntity> = emptyList(),
     val cutoutStatus: CutoutStatus = CutoutStatus.Idle,
     val hero: HeroMode = HeroMode.Photo,
+    /** While live: the route on file checked against what the plane is doing. */
+    val verdict: RouteVerdict? = null,
     val watchlist: Watchlist = Watchlist(emptyList()),
 ) {
     val typeName: String? get() = AircraftTypes.nameFor(typeCode)
@@ -63,12 +69,12 @@ data class AircraftUiState(
     val airlineName: String? get() = airline?.name ?: Airlines.byIcao(airlineIcao)?.name
     val cutout: File? get() = (cutoutStatus as? CutoutStatus.Ready)?.file
 
-    /** Share of the great-circle distance already flown, when live and on a known route. */
+    /** Share of the great-circle distance already flown, when live and on a leg that fits. */
     val progress: Float? get() {
-        val r = route ?: return null
+        val leg = verdict as? RouteVerdict.OnRoute ?: return null
         val a = live ?: return null
-        val total = Geo.distanceM(r.origin.lat, r.origin.lon, r.destination.lat, r.destination.lon)
-        val left = Geo.distanceM(a.lat, a.lon, r.destination.lat, r.destination.lon)
+        val total = Geo.distanceM(leg.from.lat, leg.from.lon, leg.to.lat, leg.to.lon)
+        val left = Geo.distanceM(a.lat, a.lon, leg.to.lat, leg.to.lon)
         return (1 - left / total).toFloat().coerceIn(0f, 1f).takeIf { total > 0 }
     }
 }
@@ -83,6 +89,7 @@ class AircraftViewModel @AssistedInject constructor(
     private val sightings: SightingRepository,
     private val cutouts: CutoutRepository,
     private val watchlist: WatchlistRepository,
+    private val airports: AirportRepository,
 ) : ViewModel() {
 
     @AssistedFactory
@@ -119,12 +126,21 @@ class AircraftViewModel @AssistedInject constructor(
         if (cs == null) flowOf(null) else details.observeRoute(cs)
     }
 
+    /** Only while the plane is live: does its route fit how it's flying? */
+    private val verdict = combine(
+        live,
+        route,
+        live.map { a -> a?.let { LatLon(kotlin.math.round(it.lat * 10) / 10, kotlin.math.round(it.lon * 10) / 10) } }
+            .distinctUntilChanged()
+            .map { p -> p?.let { airports.near(it, 160_000.0) }.orEmpty() },
+    ) { a, r, near -> a?.let { RouteCheck.check(r, it, near) } }
+
     val state: StateFlow<AircraftUiState> = combine(
         combine(live, identity, seen) { l, id, s -> Triple(l, id, s) },
         combine(airline, photo, route) { a, p, r -> Triple(a, p, r) },
         combine(cutout, hero) { c, h -> c to h },
-        watchlist.observe().map { Watchlist(it) },
-    ) { (l, id, s), (a, p, r), (c, h), watch ->
+        combine(watchlist.observe().map { Watchlist(it) }, verdict) { w, v -> w to v },
+    ) { (l, id, s), (a, p, r), (c, h), (watch, v) ->
         AircraftUiState(
             hex = hex, live = l, registration = id.registration, typeCode = id.typeCode, callsign = id.callsign,
             airlineIcao = id.airlineIcao, airline = a, photo = p, route = r, sightings = s,
@@ -136,6 +152,7 @@ class AircraftViewModel @AssistedInject constructor(
                 else -> HeroMode.Livery
             },
             watchlist = watch,
+            verdict = v,
         )
     }.stateIn(viewModelScope, SharingStarted.WhileSubscribed(5_000), AircraftUiState(hex))
 

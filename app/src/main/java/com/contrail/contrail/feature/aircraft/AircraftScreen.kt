@@ -30,6 +30,8 @@ import androidx.compose.foundation.layout.offset
 import androidx.compose.foundation.layout.widthIn
 import androidx.compose.ui.text.style.TextAlign
 import com.contrail.contrail.core.data.repository.CutoutStatus
+import com.contrail.contrail.core.data.model.AirportRef
+import com.contrail.contrail.core.data.route.RouteVerdict
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.layout.width
@@ -106,7 +108,7 @@ fun AircraftScreen(
         hero = { Hero(state, accent, onHero) },
     ) {
         IdentityRow(state)
-        state.route?.let { RouteCard(state, it, onOpenAirport) }
+        RouteSection(state, onOpenAirport)
         SectionCard("Airframe") {
             Row(Modifier.fillMaxWidth()) {
                 StatTile("Registration", state.registration ?: "—", Modifier.weight(1f))
@@ -304,14 +306,42 @@ fun HoloBadge(rarity: Rarity, modifier: Modifier = Modifier) {
 }
 
 @Composable
-private fun RouteCard(state: AircraftUiState, route: com.contrail.contrail.core.data.model.FlightRoute, onOpenAirport: (String) -> Unit) {
+private fun RouteSection(state: AircraftUiState, onOpenAirport: (String) -> Unit) {
+    val claimed = state.route?.airports?.joinToString(" → ") { it.code }
+    when (val v = state.verdict) {
+        // Not live: the route on file, as it was last seen.
+        null -> state.route?.let { RouteCard(state, it.origin, it.destination, "route from callsign", null, onOpenAirport) }
+        is RouteVerdict.OnRoute -> RouteCard(
+            state, v.from, v.to, "route from callsign",
+            if (v.multiStop) "Leg ${v.leg + 1} of ${v.stops.size - 1}: ${v.stops.joinToString(" → ") { it.code }}" else null,
+            onOpenAirport,
+        )
+        is RouteVerdict.Landing -> RouteCard(state, null, v.at, "estimated", "Landing at ${v.at.city ?: v.at.name}, worked out from its approach." + (claimed?.let { " Its callsign says $it, which doesn't fit." } ?: ""), onOpenAirport)
+        is RouteVerdict.Departing -> RouteCard(state, v.from, null, "estimated", "Climbing out of ${v.from.city ?: v.from.name}." + (claimed?.let { " Its callsign says $it, which doesn't fit." } ?: ""), onOpenAirport)
+        is RouteVerdict.Mismatch -> SectionCard("Today's flight · ${state.callsign}") {
+            Text("Route unknown", style = ContrailTheme.type.title, color = ContrailTheme.colors.textPrimary)
+            Text("Its callsign says $claimed, but it isn't flying that way, so that route isn't shown.", style = ContrailTheme.type.bodySmall, color = ContrailTheme.colors.textTertiary)
+        }
+        RouteVerdict.NoRoute -> Unit
+    }
+}
+
+@Composable
+private fun RouteCard(
+    state: AircraftUiState,
+    from: AirportRef?,
+    to: AirportRef?,
+    tag: String,
+    note: String?,
+    onOpenAirport: (String) -> Unit,
+) {
     val colors = ContrailTheme.colors
     val spacing = ContrailTheme.spacing
-    SectionCard(if (state.live != null) "Today's flight · ${state.callsign}" else "Last seen route · ${state.callsign}", trailing = { Eyebrow("route from callsign") }) {
+    SectionCard(if (state.live != null) "Today's flight · ${state.callsign}" else "Last seen route · ${state.callsign}", trailing = { Eyebrow(tag) }) {
         Row(verticalAlignment = Alignment.CenterVertically) {
-            Column(Modifier.weight(1f).clickable(role = Role.Button) { route.origin.icao?.let(onOpenAirport) }) {
-                Text(route.origin.code, style = ContrailTheme.type.displayMedium, color = colors.textPrimary)
-                Text(route.origin.city ?: route.origin.name, style = ContrailTheme.type.bodySmall, color = colors.textTertiary, maxLines = 1)
+            Column(Modifier.weight(1f).clickable(role = Role.Button, enabled = from?.icao != null) { from?.icao?.let(onOpenAirport) }) {
+                Text(from?.code ?: "···", style = ContrailTheme.type.displayMedium, color = if (from != null) colors.textPrimary else colors.textTertiary)
+                Text(from?.let { it.city ?: it.name } ?: "Unknown", style = ContrailTheme.type.bodySmall, color = colors.textTertiary, maxLines = 1)
             }
             val p = state.progress
             Box(Modifier.weight(1.2f).height(28.dp), contentAlignment = Alignment.CenterStart) {
@@ -321,11 +351,12 @@ private fun RouteCard(state: AircraftUiState, route: com.contrail.contrail.core.
                     Icon(ContrailIcons.Plane, null, tint = colors.accent, modifier = Modifier.size(18.dp).graphicsLayer { rotationZ = 90f })
                 }
             }
-            Column(Modifier.weight(1f).clickable(role = Role.Button) { route.destination.icao?.let(onOpenAirport) }, horizontalAlignment = Alignment.End) {
-                Text(route.destination.code, style = ContrailTheme.type.displayMedium, color = colors.textPrimary)
-                Text(route.destination.city ?: route.destination.name, style = ContrailTheme.type.bodySmall, color = colors.textTertiary, maxLines = 1)
+            Column(Modifier.weight(1f).clickable(role = Role.Button, enabled = to?.icao != null) { to?.icao?.let(onOpenAirport) }, horizontalAlignment = Alignment.End) {
+                Text(to?.code ?: "···", style = ContrailTheme.type.displayMedium, color = if (to != null) colors.textPrimary else colors.textTertiary)
+                Text(to?.let { it.city ?: it.name } ?: "Unknown", style = ContrailTheme.type.bodySmall, color = colors.textTertiary, maxLines = 1)
             }
         }
+        note?.let { Text(it, style = ContrailTheme.type.bodySmall, color = colors.textTertiary) }
         state.live?.let { a ->
             Row(Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.SpaceBetween) {
                 val alt = RadarFormat.altitude(a)

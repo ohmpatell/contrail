@@ -85,6 +85,7 @@ import com.contrail.contrail.core.designsystem.icon.ContrailIcons
 import com.contrail.contrail.core.designsystem.theme.AltitudeRamp
 import com.contrail.contrail.core.designsystem.theme.ContrailTheme
 import com.contrail.contrail.core.designsystem.theme.RarityPalette
+import com.contrail.contrail.core.data.route.RouteVerdict
 import com.contrail.contrail.feature.radar.Lookup
 import com.contrail.contrail.feature.radar.RadarFormat
 import com.contrail.contrail.feature.radar.SelectedAircraft
@@ -255,7 +256,7 @@ private fun SheetContent(
                 Spacer(Modifier.height(spacing.md))
                 HeaderRow(a, accent, following, onFollow, onDismiss, selected.airlineLogoUrl)
                 Spacer(Modifier.height(spacing.md))
-                RouteRow(selected.route, accent)
+                RouteRow(selected.route, selected.verdict, accent)
                 Spacer(Modifier.height(spacing.lg))
                 StatsRow(a)
                 Column(
@@ -399,27 +400,54 @@ private fun HeaderRow(a: LiveAircraft, accent: Color, following: Boolean, onFoll
 }
 
 @Composable
-private fun RouteRow(route: Lookup<FlightRoute>, accent: Color) {
+private fun RouteRow(route: Lookup<FlightRoute>, verdict: RouteVerdict?, accent: Color) {
     val colors = ContrailTheme.colors
     val spacing = ContrailTheme.spacing
-    when (route) {
-        is Lookup.Found -> Column(verticalArrangement = Arrangement.spacedBy(spacing.xs)) {
+    val small = ContrailTheme.type.bodySmall
+    fun claim(r: FlightRoute) = r.airports.joinToString(" → ") { it.code }
+    when {
+        route is Lookup.Loading || verdict == null -> Text("Looking up route…", style = small, color = colors.textTertiary)
+        verdict is RouteVerdict.OnRoute -> Column(verticalArrangement = Arrangement.spacedBy(spacing.xs)) {
             Row(verticalAlignment = Alignment.CenterVertically) {
-                AirportCode(route.value.origin.code, route.value.origin.city ?: route.value.origin.name, Modifier.weight(1f))
+                AirportCode(verdict.from.code, verdict.from.city ?: verdict.from.name, Modifier.weight(1f))
                 RouteLine(accent, Modifier.weight(1f))
-                AirportCode(route.value.destination.code, route.value.destination.city ?: route.value.destination.name, Modifier.weight(1f), end = true)
+                AirportCode(verdict.to.code, verdict.to.city ?: verdict.to.name, Modifier.weight(1f), end = true)
             }
-            Eyebrow("Route from callsign", color = colors.textTertiary)
+            Eyebrow(
+                if (verdict.multiStop) "Route from callsign · leg ${verdict.leg + 1} of ${verdict.stops.size - 1} · ${verdict.stops.joinToString(" → ") { it.code }}" else "Route from callsign",
+                color = colors.textTertiary,
+            )
         }
-        Lookup.Loading -> Text("Looking up route…", style = ContrailTheme.type.bodySmall, color = colors.textTertiary)
-        Lookup.Missing -> Text("Route unknown for this callsign", style = ContrailTheme.type.bodySmall, color = colors.textTertiary)
+        verdict is RouteVerdict.Landing -> Column(verticalArrangement = Arrangement.spacedBy(spacing.xs)) {
+            Row(verticalAlignment = Alignment.CenterVertically) {
+                AirportCode("···", "From somewhere", Modifier.weight(1f), dim = true)
+                RouteLine(accent, Modifier.weight(1f))
+                AirportCode(verdict.at.code, verdict.at.city ?: verdict.at.name, Modifier.weight(1f), end = true)
+            }
+            Eyebrow("Landing · from its approach · estimated", color = accent)
+            verdict.claimed?.let { Text("Its callsign says ${claim(it)}, which doesn't fit how it's flying.", style = small, color = colors.textTertiary) }
+        }
+        verdict is RouteVerdict.Departing -> Column(verticalArrangement = Arrangement.spacedBy(spacing.xs)) {
+            Row(verticalAlignment = Alignment.CenterVertically) {
+                AirportCode(verdict.from.code, verdict.from.city ?: verdict.from.name, Modifier.weight(1f))
+                RouteLine(accent, Modifier.weight(1f))
+                AirportCode("···", "Somewhere", Modifier.weight(1f), end = true, dim = true)
+            }
+            Eyebrow("Departed · from its climb · estimated", color = accent)
+            verdict.claimed?.let { Text("Its callsign says ${claim(it)}, which doesn't fit how it's flying.", style = small, color = colors.textTertiary) }
+        }
+        verdict is RouteVerdict.Mismatch -> Column(verticalArrangement = Arrangement.spacedBy(spacing.xs)) {
+            Text("Route unknown", style = ContrailTheme.type.title, color = colors.textPrimary)
+            Text("Its callsign says ${claim(verdict.claimed)}, but it isn't flying that way, so that route isn't shown.", style = small, color = colors.textTertiary)
+        }
+        else -> Text("Route unknown for this callsign", style = small, color = colors.textTertiary)
     }
 }
 
 @Composable
-private fun AirportCode(code: String, city: String, modifier: Modifier, end: Boolean = false) {
+private fun AirportCode(code: String, city: String, modifier: Modifier, end: Boolean = false, dim: Boolean = false) {
     Column(modifier, horizontalAlignment = if (end) Alignment.End else Alignment.Start) {
-        Text(code, style = ContrailTheme.type.displayMedium, color = ContrailTheme.colors.textPrimary)
+        Text(code, style = ContrailTheme.type.displayMedium, color = if (dim) ContrailTheme.colors.textTertiary else ContrailTheme.colors.textPrimary)
         Text(city, style = ContrailTheme.type.bodySmall, color = ContrailTheme.colors.textTertiary, maxLines = 1, overflow = TextOverflow.Ellipsis)
     }
 }

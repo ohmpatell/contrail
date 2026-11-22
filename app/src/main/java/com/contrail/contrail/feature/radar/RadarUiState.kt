@@ -8,6 +8,7 @@ import com.contrail.contrail.core.data.model.FlightRoute
 import com.contrail.contrail.core.data.model.LiveAircraft
 import com.contrail.contrail.core.data.model.WatchItem
 import com.contrail.contrail.core.data.repository.RadarLayers
+import com.contrail.contrail.core.data.route.RouteVerdict
 
 /** What the map is looking at. [radiusNm] is centre-to-corner. */
 data class Viewport(val center: LatLon, val radiusNm: Double, val zoom: Double)
@@ -39,11 +40,14 @@ data class SelectedAircraft(
     val airlineLogoUrl: String? = null,
     val tailArtUrl: String? = null,
     val brandColorHex: String? = null,
+    /** The route on file checked against what the plane is doing; null while the route is loading. */
+    val verdict: RouteVerdict? = null,
 )
 
 /** The selected aircraft's whole journey: flown so far, then the rest to its destination. */
 data class RouteOverlay(
-    val origin: AirportRef,
+    /** Null when only the destination is known (landing, worked out from the approach). */
+    val origin: AirportRef?,
     val destination: AirportRef,
     /** From the origin to the latest known position. */
     val flown: List<LatLon>,
@@ -55,16 +59,18 @@ data class RouteOverlay(
          * Uses the provider's track when there is one; otherwise draws a great circle from the
          * origin to where our trail begins, then the trail itself.
          */
-        fun build(route: FlightRoute, track: List<LatLon>?, trail: List<LatLon>, current: LatLon): RouteOverlay {
-            val origin = LatLon(route.origin.lat, route.origin.lon)
+        fun build(from: AirportRef?, to: AirportRef, track: List<LatLon>?, trail: List<LatLon>, current: LatLon): RouteOverlay {
             val flown = if (!track.isNullOrEmpty()) {
                 track + current
-            } else {
+            } else if (from != null) {
+                val origin = LatLon(from.lat, from.lon)
                 val start = trail.firstOrNull() ?: current
                 val lead = if (Geo.distanceM(origin, start) > 20_000) Geo.greatCircle(origin, start, 48) else listOf(origin)
                 lead + trail + current
+            } else {
+                trail + current
             }
-            return RouteOverlay(route.origin, route.destination, unwrap(flown), tracked = !track.isNullOrEmpty())
+            return RouteOverlay(from, to, unwrap(flown), tracked = !track.isNullOrEmpty())
         }
 
         /** Keeps consecutive longitudes within 180 degrees so lines cross the antimeridian cleanly. */

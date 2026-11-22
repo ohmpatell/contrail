@@ -92,7 +92,14 @@ data class FlightRoute(
     val origin: AirportRef,
     val destination: AirportRef,
     val airlineName: String?,
-)
+    /** Every airport in order when the flight number makes stops (origin and destination included); empty for a single leg. */
+    val stops: List<AirportRef> = emptyList(),
+    /** Other routes on file for this callsign from a second database, which may disagree. */
+    val alternatives: List<FlightRoute> = emptyList(),
+) {
+    /** Airports in order: the stops, or just origin and destination. */
+    val airports: List<AirportRef> get() = stops.ifEmpty { listOf(origin, destination) }
+}
 
 /** A Planespotters photo. Credit and link must always be shown with it. */
 data class AircraftPhoto(

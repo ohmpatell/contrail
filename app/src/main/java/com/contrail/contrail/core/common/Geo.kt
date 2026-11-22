@@ -58,6 +58,25 @@ object Geo {
         return l - 180.0
     }
 
+    /**
+     * Signed distance from [p] to the great circle through [a] and [b], in metres: positive to the
+     * right of the path when travelling from [a] to [b].
+     */
+    fun crossTrackM(p: LatLon, a: LatLon, b: LatLon): Double {
+        val d13 = distanceM(a, p) / EARTH_RADIUS_M
+        val delta = toRad(bearingDeg(a, p) - bearingDeg(a, b))
+        return asin((sin(d13) * sin(delta)).coerceIn(-1.0, 1.0)) * EARTH_RADIUS_M
+    }
+
+    /** How far along the path from [a] towards [b] the point nearest to [p] lies, in metres (negative if behind [a]). */
+    fun alongTrackM(p: LatLon, a: LatLon, b: LatLon): Double {
+        val d13 = distanceM(a, p) / EARTH_RADIUS_M
+        val xt = crossTrackM(p, a, b) / EARTH_RADIUS_M
+        val at = kotlin.math.acos((cos(d13) / cos(xt)).coerceIn(-1.0, 1.0)) * EARTH_RADIUS_M
+        val delta = toRad(bearingDeg(a, p) - bearingDeg(a, b))
+        return if (cos(delta) < 0) -at else at
+    }
+
     /** Shortest signed difference `to - from` between two headings, in (-180, 180]. */
     fun headingDelta(from: Double, to: Double): Double {
         var d = (to - from) % 360.0

@@ -3,6 +3,10 @@ package com.contrail.contrail.core.database
 import androidx.room.Entity
 import androidx.room.Index
 import androidx.room.PrimaryKey
+import androidx.room.migration.AutoMigrationSpec
+import androidx.sqlite.db.SupportSQLiteDatabase
+import kotlinx.serialization.Serializable
+import kotlinx.serialization.json.Json
 import com.contrail.contrail.core.data.model.AircraftPhoto
 import com.contrail.contrail.core.data.model.AirportRef
 import com.contrail.contrail.core.data.model.FlightRoute
@@ -81,14 +85,22 @@ data class RouteEntity(
     val destCountry: String? = null,
     val destLat: Double? = null,
     val destLon: Double? = null,
+    /** Stops and the other database's answer, as JSON ([RouteExtra]). */
+    val extraJson: String? = null,
 ) {
     fun toModel(): FlightRoute? {
         if (!found) return null
+        val extra = extraJson?.let { runCatching { ExtraJson.decodeFromString<RouteExtra>(it) }.getOrNull() }
         return FlightRoute(
             callsign = callsign,
             origin = AirportRef(originIata, originIcao, originName ?: "", originCity, originCountry, originLat ?: 0.0, originLon ?: 0.0),
             destination = AirportRef(destIata, destIcao, destName ?: "", destCity, destCountry, destLat ?: 0.0, destLon ?: 0.0),
             airlineName = airlineName,
+            stops = extra?.stops.orEmpty().map { it.toRef() },
+            alternatives = extra?.alternatives.orEmpty().filter { it.size >= 2 }.map { airports ->
+                val refs = airports.map { it.toRef() }
+                FlightRoute(callsign, refs.first(), refs.last(), airlineName, stops = if (refs.size > 2) refs else emptyList())
+            },
         )
     }
 
@@ -106,7 +118,43 @@ data class RouteEntity(
             destIata = route.destination.iata, destIcao = route.destination.icao, destName = route.destination.name,
             destCity = route.destination.city, destCountry = route.destination.countryIso,
             destLat = route.destination.lat, destLon = route.destination.lon,
+            extraJson = if (route.stops.isEmpty() && route.alternatives.isEmpty()) {
+                null
+            } else {
+                ExtraJson.encodeToString(
+                    RouteExtra(route.stops.map { AirportDto.of(it) }, route.alternatives.map { alt -> alt.airports.map { AirportDto.of(it) } }),
+                )
+            },
         )
+    }
+}
+
+private val ExtraJson = Json { ignoreUnknownKeys = true }
+
+@Serializable
+internal data class RouteExtra(val stops: List<AirportDto> = emptyList(), val alternatives: List<List<AirportDto>> = emptyList())
+
+@Serializable
+internal data class AirportDto(
+    val iata: String? = null,
+    val icao: String? = null,
+    val name: String = "",
+    val city: String? = null,
+    val country: String? = null,
+    val lat: Double,
+    val lon: Double,
+) {
+    fun toRef() = AirportRef(iata, icao, name, city, country, lat, lon)
+
+    companion object {
+        fun of(a: AirportRef) = AirportDto(a.iata, a.icao, a.name, a.city, a.countryIso, a.lat, a.lon)
+    }
+}
+
+/** Routes cached before the second database was asked are refreshed once. */
+class RefreshRoutes : AutoMigrationSpec {
+    override fun onPostMigrate(db: SupportSQLiteDatabase) {
+        db.execSQL("UPDATE route_cache SET fetchedAtMs = 0")
     }
 }
 
