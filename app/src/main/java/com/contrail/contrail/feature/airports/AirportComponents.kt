@@ -35,7 +35,6 @@ import com.contrail.contrail.core.designsystem.component.Eyebrow
 import com.contrail.contrail.core.designsystem.component.GlassSurface
 import com.contrail.contrail.core.designsystem.icon.ContrailIcons
 import com.contrail.contrail.core.designsystem.theme.ContrailTheme
-import com.contrail.contrail.core.network.news.NewsArticle
 import kotlinx.coroutines.delay
 import java.time.Instant
 import java.time.ZoneId
@@ -124,36 +123,6 @@ fun AirportRow(
                     .clickable(role = Role.Button, onClick = onToggleFavourite)
                     .padding(spacing.sm),
             )
-        }
-    }
-}
-
-/** One headline: image, title, source and age. Tapping opens the original article. */
-@Composable
-fun NewsCard(article: NewsArticle, nowMs: Long, modifier: Modifier = Modifier) {
-    val spacing = ContrailTheme.spacing
-    val colors = ContrailTheme.colors
-    val uri = LocalUriHandler.current
-    GlassSurface(
-        modifier.fillMaxWidth().clickable(role = Role.Button) { uri.openUri(article.link) },
-        shape = ContrailTheme.shapes.medium,
-    ) {
-        Row(Modifier.padding(spacing.md), horizontalArrangement = Arrangement.spacedBy(spacing.md)) {
-            Column(Modifier.weight(1f), verticalArrangement = Arrangement.spacedBy(spacing.xs)) {
-                Eyebrow("${article.source} · ${age(nowMs, article.publishedAtMs)}", color = colors.accent)
-                Text(article.title, style = ContrailTheme.type.title, color = colors.textPrimary, maxLines = 3, overflow = TextOverflow.Ellipsis)
-                if (article.summary.isNotBlank()) {
-                    Text(article.summary, style = ContrailTheme.type.bodySmall, color = colors.textTertiary, maxLines = 2, overflow = TextOverflow.Ellipsis)
-                }
-            }
-            if (article.imageUrl != null) {
-                AsyncImage(
-                    model = article.imageUrl,
-                    contentDescription = null,
-                    contentScale = ContentScale.Crop,
-                    modifier = Modifier.size(84.dp).aspectRatio(1f).clip(ContrailTheme.shapes.small).background(colors.canvasRaised),
-                )
-            }
         }
     }
 }

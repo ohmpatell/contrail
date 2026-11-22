@@ -19,7 +19,6 @@ import com.contrail.contrail.core.designsystem.livery.Liveries
 import com.contrail.contrail.core.designsystem.livery.Profiles
 import com.contrail.contrail.core.network.airport.WeatherParser
 import com.contrail.contrail.core.network.logostream.LogostreamParser
-import com.contrail.contrail.core.network.news.RssParser
 import com.contrail.contrail.feature.airport.LiveBoard
 import com.contrail.contrail.testing.aircraft
 import kotlinx.coroutines.flow.first
@@ -39,11 +38,6 @@ private const val LS_AIRLINE = """{"data":[{"id":96627,"iata":"EY","icao":"ETD",
 private const val LS_ROUTES = """{"data":[{"id":349547,"departure_iata":"YYZ","arrival_iata":"FCO","airlines":[{"airline_iata":"AC","airline_icao":"ACA","alliance":"star_alliance","weekdays":["mon"]},{"airline_iata":"TS","airline_icao":"TSC","alliance":null,"weekdays":[]}],"distance_km":7086,"duration_min":560}],"total":181,"truncated":true,"page":1,"limit":1}"""
 private const val LS_STATS = """{"type":"airport","airport":{"iata":"YYZ","icao":"CYYZ","name":"Lester B. Pearson International","timezone":"America/Toronto"},"stats":{"destinations_count":181,"airlines_count":81,"countries_reached":61},"hubs":[{"iata":"AC","icao":"ACA","name":"Air Canada"}],"focus_cities":[]}"""
 private const val METAR = """[{"icaoId":"CYYZ","obsTime":1792548000,"temp":11,"dewp":6,"wdir":240,"wspd":12,"visib":"15","altim":1029.2,"rawOb":"METAR CYYZ 210200Z 24012KT 15SM SKC 11/06 A3039","clouds":[],"fltCat":"VFR"}]"""
-private const val RSS = """<?xml version="1.0"?><rss version="2.0" xmlns:media="http://search.yahoo.com/mrss/"><channel><title>Feed</title>
-<item><title>Etihad adds &amp; expands A350 flying</title><link>https://example.org/a</link><description><![CDATA[<p><img src="https://example.org/a.jpg"/>Etihad will fly its <b>A350</b> to Toronto.</p>]]></description><pubDate>Tue, 20 Oct 2026 18:00:00 +0000</pubDate></item>
-<item><title>Cathay unveils new lounge - Simple Flying</title><link>https://example.org/b</link><pubDate>Mon, 19 Oct 2026 08:30:00 GMT</pubDate><source url="x">Simple Flying</source><media:content url="https://example.org/b.jpg" type="image/jpeg"/></item>
-</channel></rss>"""
-
 class LogostreamParserTest {
     @Test
     fun `airline profile with logo urls and brand colour`() {
@@ -145,24 +139,6 @@ class LiveryTest {
         assertEquals(EngineLayout.Rear, Profiles.forType("CRJ9").engines)
         assertEquals(EngineLayout.Tail, Profiles.forType("MD11").engines)
         assertEquals(EngineLayout.Props, Profiles.forType("DH8D").engines)
-    }
-}
-
-@RunWith(AndroidJUnit4::class)
-class RssParserTest {
-    @Test
-    fun `reads titles, links, images, dates and Google News publishers`() {
-        val items = RssParser.parse(RSS, publisher = null)
-        assertEquals(2, items.size)
-        val a = items[0]
-        assertEquals("Etihad adds & expands A350 flying", a.title)
-        assertEquals("https://example.org/a.jpg", a.imageUrl)
-        assertTrue(a.summary.contains("A350 to Toronto"))
-        assertEquals(1792519200000L, a.publishedAtMs)
-        val b = items[1]
-        assertEquals("Simple Flying", b.source)
-        assertEquals("Cathay unveils new lounge", b.title)
-        assertEquals("https://example.org/b.jpg", b.imageUrl)
     }
 }
 

@@ -77,12 +77,8 @@ object RunwayUse {
         val p = LatLon(s.lat, s.lon)
         val track = s.track ?: return null
         if (abs(Geo.headingDelta(track, e.headingDeg)) > 20) return null
-        // Take-off roll: fast on the ground, on the runway itself.
-        if (s.onGround) {
-            if ((s.gs ?: 0f) < 70f) return null
-            val (along, cross) = axis(p, e.threshold, e.headingDeg)
-            return if (abs(cross) < 80 && along > -100) RunwaySighting.Kind.Departure else null
-        }
+        // On the ground a landing roll-out looks just like a take-off roll, so only airborne planes count.
+        if (s.onGround) return null
         val agl = (s.alt ?: return null) - elevationFt
         // On final: lined up before the threshold, near the 3° glide path (planes often join it from above).
         val (along, cross) = axis(p, e.threshold, e.headingDeg)

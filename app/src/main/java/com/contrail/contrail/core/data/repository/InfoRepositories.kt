@@ -7,7 +7,6 @@ import androidx.room.Upsert
 import com.contrail.contrail.core.common.Clock
 import com.contrail.contrail.core.database.CachedResponseEntity
 import com.contrail.contrail.core.database.ContrailDatabase
-import com.contrail.contrail.core.database.NewsItemEntity
 import com.contrail.contrail.core.network.airport.AviationWeatherSource
 import com.contrail.contrail.core.network.airport.Metar
 import com.contrail.contrail.core.network.airport.OsmResult
@@ -15,50 +14,10 @@ import com.contrail.contrail.core.network.airport.OverpassParser
 import com.contrail.contrail.core.network.airport.OverpassSource
 import com.contrail.contrail.core.network.airport.Taf
 import com.contrail.contrail.core.network.airport.WeatherParser
-import com.contrail.contrail.core.network.news.NewsArticle
-import com.contrail.contrail.core.network.news.NewsFeed
-import com.contrail.contrail.core.network.news.RssNewsSource
 import kotlinx.coroutines.flow.Flow
 import kotlinx.coroutines.flow.map
 import javax.inject.Inject
 import javax.inject.Singleton
-
-/** Aviation news, cached in Room and refreshed at most once an hour per feed. */
-@Singleton
-class NewsRepository @Inject constructor(
-    db: ContrailDatabase,
-    private val source: RssNewsSource,
-    private val clock: Clock,
-) {
-    private val news = db.newsDao()
-    private val cache = db.cacheDao()
-
-    fun observe(feed: NewsFeed): Flow<List<NewsArticle>> = news.observe(feed.key).map { rows ->
-        rows.map { NewsArticle(it.title, it.summary, it.link, it.source, it.imageUrl, it.publishedAtMs) }
-    }
-
-    /** Returns false when the refresh was skipped or failed. */
-    suspend fun refresh(feed: NewsFeed, force: Boolean = false): Boolean {
-        val stamp = "news:fetched:${feed.key}"
-        val last = cache.get(stamp)?.fetchedAtMs ?: 0
-        val now = clock.nowMs()
-        if (!force && now - last < NEWS_TTL_MS) return false
-        val articles = runCatching { source.fetch(feed) }.getOrNull() ?: return false
-        if (articles.isEmpty()) return false
-        news.upsertAll(
-            articles.take(80).map {
-                NewsItemEntity(it.link, feed.key, it.title, it.summary, it.source, it.imageUrl, it.publishedAtMs.takeIf { t -> t > 0 } ?: now, now)
-            },
-        )
-        cache.put(CachedResponseEntity(stamp, "", now))
-        news.deleteOlderThan(now - 14 * 86_400_000L)
-        return true
-    }
-
-    companion object {
-        const val NEWS_TTL_MS = 3_600_000L
-    }
-}
 
 data class AirportWeather(val metar: Metar?, val taf: Taf?, val fetchedAtMs: Long)
 

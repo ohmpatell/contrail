@@ -30,7 +30,6 @@ import com.contrail.contrail.core.data.settings.SecretCipher
 import com.contrail.contrail.core.network.airport.AviationWeatherSource
 import com.contrail.contrail.core.network.airport.OverpassSource
 import com.contrail.contrail.core.network.logostream.LogostreamSource
-import com.contrail.contrail.core.network.news.RssNewsSource
 import com.contrail.contrail.core.network.track.OpenSkyTrackSource
 import com.contrail.contrail.core.network.track.TrackSource
 import com.contrail.contrail.core.network.weather.RainViewerSource
@@ -111,8 +110,6 @@ object NetworkModule {
     @Provides @Singleton
     fun logostream(client: HttpClient): LogostreamSource = LogostreamSource(client)
 
-    @Provides @Singleton
-    fun news(client: HttpClient): RssNewsSource = RssNewsSource(client)
 
     @Provides @Singleton
     fun aviationWeather(client: HttpClient): AviationWeatherSource = AviationWeatherSource(client)

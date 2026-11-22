@@ -86,7 +86,7 @@ class ScreenshotTests {
                 TopLevelDestination.Radar -> RadarScreen(radar, RadarActions()) { FakeRadarBackdrop(it) }
                 TopLevelDestination.Sky -> com.contrail.contrail.feature.sky.SkyScreen(skyState, 30f, true, com.contrail.contrail.feature.sky.SkyActions())
                 TopLevelDestination.Passport -> PassportScreen(passportState, com.contrail.contrail.feature.passport.PassportActions())
-                TopLevelDestination.Airports -> AirportsScreen(airportsState, {}, {}, {}, {}, {}, nowMs = NOW)
+                TopLevelDestination.Airports -> AirportsScreen(airportsState, com.contrail.contrail.feature.airports.AirportsActions(), nowMs = NOW)
             }
         }
     }

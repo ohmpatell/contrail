@@ -59,6 +59,7 @@ class HangarRepository @Inject constructor(
     private val lookup: AircraftLookupSource,
     private val traffic: LiveTrafficRepository,
     private val rotation: RotationRepository,
+    private val happenings: com.contrail.contrail.core.data.events.HappeningRepository,
     @ApplicationContext private val context: Context,
     private val clock: Clock,
 ) {
@@ -132,11 +133,22 @@ class HangarRepository @Inject constructor(
                 before?.airborne == false && airborne -> events += HangarEvent(model, HangarEvent.Kind.TookOff, found)
                 before?.airborne == true && !airborne -> events += HangarEvent(model, HangarEvent.Kind.Landed, found)
             }
+            events.lastOrNull()?.takeIf { it.plane.registration == p.registration }?.let { e -> happenings.record(listOf(e.toHappening(clock.nowMs()))) }
             dao.upsertSeen(HangarSeenEntity(p.registration, found.hex, clock.nowMs(), found.lat, found.lon, found.callsign?.trim()?.ifEmpty { null }, airborne))
             if (p.hex == null) dao.upsert(p.copy(hex = found.hex))
         }
         return events
     }
+
+    private fun HangarEvent.toHappening(now: Long) = com.contrail.contrail.core.data.events.Happening(
+        id = "hangar:${plane.registration}:${kind.name}:${now / 600_000}",
+        kind = if (kind == HangarEvent.Kind.TookOff) com.contrail.contrail.core.data.events.HappeningKind.HangarTookOff else com.contrail.contrail.core.data.events.HappeningKind.HangarLanded,
+        scope = com.contrail.contrail.core.data.events.Happening.Scope.Hangar,
+        hex = aircraft.hex, callsign = aircraft.callsign?.trim(), registration = plane.registration, typeCode = aircraft.typeCode,
+        title = if (kind == HangarEvent.Kind.TookOff) "${plane.registration} is in the air" else "${plane.registration} has landed",
+        detail = listOfNotNull(aircraft.callsign?.trim()?.ifEmpty { null }, aircraft.typeName, plane.airlineName).joinToString(" · "),
+        airportIcao = null, lat = aircraft.lat, lon = aircraft.lon, timeMs = now,
+    )
 
     /** The pinned plane's flights over the last week (OpenSky; empty without an account). */
     suspend fun recentFlights(plane: HangarPlane): List<EarlierLeg> {

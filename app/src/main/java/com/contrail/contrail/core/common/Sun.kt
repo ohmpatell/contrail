@@ -33,4 +33,34 @@ object Sun {
         val h = Geo.toRad(lon - sun.lon)
         return Geo.toDeg(asin(sin(p) * sin(d) + cos(p) * cos(d) * cos(h)))
     }
+
+    /** Compass direction of the sun from a point, degrees from north. */
+    fun azimuthDeg(timeMs: Long, lat: Double, lon: Double): Double = Geo.bearingDeg(LatLon(lat, lon), subSolarPoint(timeMs))
+
+    /**
+     * The next time after [fromMs] (within [withinMs]) that the sun crosses [elevationDeg] going
+     * down ([setting]) or up, to the minute. Null if it doesn't (polar day or night, or too far off).
+     */
+    fun nextCrossing(fromMs: Long, lat: Double, lon: Double, elevationDeg: Double = -0.833, setting: Boolean = true, withinMs: Long = 26 * 3_600_000L): Long? {
+        var t = fromMs
+        var prev = elevationDeg(t, lat, lon)
+        val step = 5 * 60_000L
+        while (t - fromMs < withinMs) {
+            val next = elevationDeg(t + step, lat, lon)
+            val crossed = if (setting) prev >= elevationDeg && next < elevationDeg else prev <= elevationDeg && next > elevationDeg
+            if (crossed) {
+                // Refine to the minute.
+                var a = t
+                while (a < t + step) {
+                    val e = elevationDeg(a + 60_000L, lat, lon)
+                    if (if (setting) e < elevationDeg else e > elevationDeg) return a + 60_000L
+                    a += 60_000L
+                }
+                return t + step
+            }
+            prev = next
+            t += step
+        }
+        return null
+    }
 }

@@ -15,6 +15,8 @@ interface AircraftLookupSource {
     suspend fun byRegistration(registration: String): List<LiveAircraft>
     /** By ICAO 24-bit transponder address (6 hex digits). */
     suspend fun byHex(hex: String): List<LiveAircraft>
+    /** Everyone squawking [code] worldwide (7700, 7600, 7500). */
+    suspend fun bySquawk(code: String): List<LiveAircraft> = emptyList()
 }
 
 /** readsb-style lookups (adsb.fi, adsb.lol), sharing each host's throttle with the radar. */
@@ -24,6 +26,7 @@ class ReadsbLookupSource(
     private val callsignUrl: (String) -> String,
     private val registrationUrl: (String) -> String,
     private val hexUrl: (String) -> String,
+    private val squawkUrl: ((String) -> String)? = null,
     private val clock: () -> Long = System::currentTimeMillis,
 ) : AircraftLookupSource {
     private val throttle = HostThrottles.of(name)
@@ -33,6 +36,8 @@ class ReadsbLookupSource(
     override suspend fun byRegistration(registration: String) = fetch(registrationUrl(registration.trim().uppercase().encodeURLPathPart()))
 
     override suspend fun byHex(hex: String) = fetch(hexUrl(hex.trim().lowercase().encodeURLPathPart()))
+
+    override suspend fun bySquawk(code: String) = squawkUrl?.let { fetch(it(code.filter(Char::isDigit))) }.orEmpty()
 
     private suspend fun fetch(url: String): List<LiveAircraft> {
         val response = throttle.run { client.get(url) }
@@ -47,6 +52,7 @@ class ReadsbLookupSource(
             callsignUrl = { "https://opendata.adsb.fi/api/v2/callsign/$it" },
             registrationUrl = { "https://opendata.adsb.fi/api/v2/registration/$it" },
             hexUrl = { "https://opendata.adsb.fi/api/v2/hex/$it" },
+            squawkUrl = { "https://opendata.adsb.fi/api/v2/sqk/$it" },
         )
 
         fun adsbLol(client: HttpClient) = ReadsbLookupSource(
@@ -54,6 +60,7 @@ class ReadsbLookupSource(
             callsignUrl = { "https://api.adsb.lol/v2/callsign/$it" },
             registrationUrl = { "https://api.adsb.lol/v2/reg/$it" },
             hexUrl = { "https://api.adsb.lol/v2/hex/$it" },
+            squawkUrl = { "https://api.adsb.lol/v2/sqk/$it" },
         )
     }
 }
@@ -67,6 +74,8 @@ class FailoverLookupSource(private val providers: List<AircraftLookupSource>) : 
     override suspend fun byRegistration(registration: String) = first { it.byRegistration(registration) }
 
     override suspend fun byHex(hex: String) = first { it.byHex(hex) }
+
+    override suspend fun bySquawk(code: String) = first { it.bySquawk(code) }
 
     private suspend fun first(block: suspend (AircraftLookupSource) -> List<LiveAircraft>): List<LiveAircraft> {
         var error: Throwable? = null

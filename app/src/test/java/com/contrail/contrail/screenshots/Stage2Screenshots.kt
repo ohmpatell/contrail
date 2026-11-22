@@ -35,8 +35,6 @@ import com.contrail.contrail.core.network.airport.MetarCloud
 import com.contrail.contrail.core.network.airport.Taf
 import com.contrail.contrail.core.network.logostream.LsAirportStats
 import com.contrail.contrail.core.network.logostream.LsStats
-import com.contrail.contrail.core.network.news.NewsArticle
-import com.contrail.contrail.core.network.news.NewsFeed
 import com.contrail.contrail.feature.aircraft.AircraftScreen
 import com.contrail.contrail.feature.aircraft.AircraftUiState
 import com.contrail.contrail.feature.aircraft.HeroMode
@@ -46,7 +44,13 @@ import com.contrail.contrail.feature.airport.AirportUiState
 import com.contrail.contrail.feature.airport.BoardRow
 import com.contrail.contrail.feature.airport.Destination
 import com.contrail.contrail.feature.airports.AirportsUiState
-import com.contrail.contrail.feature.airports.NewsFilter
+import com.contrail.contrail.feature.airports.SpotterBoardState
+import com.contrail.contrail.core.data.airport.RunwaysInUse
+import com.contrail.contrail.core.data.spotting.PhotoLight
+import com.contrail.contrail.core.data.spotting.SpotterArrival
+import com.contrail.contrail.core.data.spotting.Highlight
+import com.contrail.contrail.core.data.events.Happening
+import com.contrail.contrail.core.data.events.HappeningKind
 import com.contrail.contrail.feature.settings.SettingsScreen
 import com.contrail.contrail.feature.settings.SettingsUiState
 import com.contrail.contrail.testing.aircraft
@@ -71,12 +75,27 @@ private val hkg = airport("VHHH", "HKG", "Hong Kong International Airport", "Hon
 internal val airportsState = AirportsUiState(
     favourites = listOf(yyz, auh),
     visited = listOf(yyz, hkg),
-    filters = listOf(AirportsUiState.AllNews, NewsFilter("Toronto", NewsFeed.About("Toronto Pearson airport")), NewsFilter("Etihad Airways", NewsFeed.About("Etihad Airways"))),
-    news = listOf(
-        NewsArticle("Etihad brings the A350-1000 to Toronto for the winter season", "The upgauge adds premium seats on the Abu Dhabi route from December.", "https://example.org/1", "Simple Flying", "https://example.org/1.jpg", NOW - 42 * 60_000),
-        NewsArticle("Cathay Pacific confirms Toronto–Hong Kong frequency boost", "", "https://example.org/2", "AeroTime", null, NOW - 5 * 3_600_000),
-        NewsArticle("Pearson opens new Terminal 3 security hall", "Ten new lanes and automated bins aim to halve wait times.", "https://example.org/3", "AirlineGeeks", "https://example.org/3.jpg", NOW - 26 * 3_600_000),
+    boards = listOf(
+        SpotterBoardState(
+            airport = yyz,
+            runways = RunwaysInUse(listOf("23", "24R"), listOf("24L"), observed = true, planes = 7),
+            metar = Metar("CYYZ", wdir = JsonPrimitive(280), wspd = 14, wgst = 22),
+            light = PhotoLight("23", standSide = "south-east", litSide = "left", sunElevationDeg = 8.0, sunAzimuthDeg = 238.0, golden = true, night = false, sunsetMs = NOW + 41 * 60_000),
+            arrivals = listOf(
+                SpotterArrival(aircraft(hex = "780a1b", callsign = "CPA826", registration = "B-LXP", typeCode = "A35K", lat = 44.6, lon = -80.9, altitudeFt = 16_000), AirportRef("HKG", "VHHH", "Hong Kong", "Hong Kong", "HK", 22.3, 113.9), 14, listOf(Highlight.Hangar, Highlight.Widebody)),
+                SpotterArrival(aircraft(hex = "896123", callsign = "UAE241", registration = "A6-EVH", typeCode = "A388", lat = 45.0, lon = -77.9, altitudeFt = 24_000), AirportRef("DXB", "OMDB", "Dubai", "Dubai", "AE", 25.25, 55.36), 22, listOf(Highlight.Legendary, Highlight.Jumbo)),
+                SpotterArrival(aircraft(hex = "c0123a", callsign = "ACA857", registration = "C-FIUJ", typeCode = "B77W", lat = 44.1, lon = -78.2, altitudeFt = 11_000), AirportRef("LHR", "EGLL", "London", "London", "GB", 51.47, -0.45), 9, listOf(Highlight.Widebody)),
+            ),
+            watching = true,
+        ),
     ),
+    happenings = listOf(
+        Happening("ga:1", HappeningKind.GoAround, Happening.Scope.Near, "c0aa11", "JZA612", "C-GGBJ", "DH8D", "JZA612 went around at Toronto", "Dash 8-400 · climbing away after coming down to 1,050 ft", "CYYZ", 43.66, -79.6, NOW - 6 * 60_000),
+        Happening("emg:1", HappeningKind.Emergency, Happening.Scope.World, "3c6525", "DLH2506", "D-AIIE", "A20N", "DLH2506 is squawking 7700", "General emergency · A320neo · near Frankfurt", null, 50.0, 8.6, NOW - 14 * 60_000),
+        Happening("hangar:1", HappeningKind.HangarTookOff, Happening.Scope.Hangar, "780a1b", "CPA826", "B-LXP", "A35K", "B-LXP is in the air", "CPA826 · Airbus A350-1000 · Cathay Pacific", null, 22.3, 113.9, NOW - 15 * 3_600_000L),
+        Happening("hold:1", HappeningKind.Holding, Happening.Scope.Near, "a1b2c3", "DAL1287", "N802DN", "A321", "DAL1287 is holding near Toronto", "A321 · circling at 12,000 ft", "CYYZ", 43.9, -79.2, NOW - 32 * 60_000),
+    ),
+    nowMs = NOW,
 )
 
 private fun runway(le: String, he: String, lat1: Double, lon1: Double, lat2: Double, lon2: Double, h1: Double, len: Int) =

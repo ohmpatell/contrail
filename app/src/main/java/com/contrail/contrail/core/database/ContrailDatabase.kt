@@ -29,10 +29,11 @@ import com.contrail.contrail.core.data.repository.SightingEntity
         HangarPlaneEntity::class,
         HangarSeenEntity::class,
         RunwaySightingEntity::class,
+        HappeningEntity::class,
     ],
-    version = 9,
+    version = 10,
     exportSchema = true,
-    autoMigrations = [AutoMigration(from = 1, to = 2), AutoMigration(from = 2, to = 3), AutoMigration(from = 3, to = 4), AutoMigration(from = 4, to = 5, spec = FillUids::class), AutoMigration(from = 5, to = 6), AutoMigration(from = 6, to = 7, spec = RefreshRoutes::class), AutoMigration(from = 7, to = 8), AutoMigration(from = 8, to = 9)],
+    autoMigrations = [AutoMigration(from = 1, to = 2), AutoMigration(from = 2, to = 3), AutoMigration(from = 3, to = 4), AutoMigration(from = 4, to = 5, spec = FillUids::class), AutoMigration(from = 5, to = 6), AutoMigration(from = 6, to = 7, spec = RefreshRoutes::class), AutoMigration(from = 7, to = 8), AutoMigration(from = 8, to = 9), AutoMigration(from = 9, to = 10)],
 )
 abstract class ContrailDatabase : RoomDatabase() {
     abstract fun liveAircraftDao(): LiveAircraftDao
@@ -49,4 +50,5 @@ abstract class ContrailDatabase : RoomDatabase() {
     abstract fun syncDao(): SyncDao
     abstract fun hangarDao(): HangarDao
     abstract fun runwayLogDao(): RunwayLogDao
+    abstract fun happeningDao(): HappeningDao
 }

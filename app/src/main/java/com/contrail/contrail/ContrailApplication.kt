@@ -54,6 +54,7 @@ class ContrailApplication : Application(), SingletonImageLoader.Factory, Configu
     @Inject lateinit var account: Lazy<com.contrail.contrail.core.data.sync.AccountRepository>
     @Inject lateinit var database: Lazy<com.contrail.contrail.core.database.ContrailDatabase>
     @Inject lateinit var hangar: Lazy<com.contrail.contrail.core.data.hangar.HangarRepository>
+    @Inject lateinit var events: Lazy<com.contrail.contrail.core.data.events.EventMonitor>
 
     private val appScope = CoroutineScope(SupervisorJob() + Dispatchers.Default)
 
@@ -69,6 +70,8 @@ class ContrailApplication : Application(), SingletonImageLoader.Factory, Configu
             @OptIn(FlowPreview::class)
             trips.get().trips.drop(1).debounce(1_500).collect { Widgets.updateTrips(this@ContrailApplication) }
         }
+        // Happening now: watches whatever traffic the app already has.
+        events.get().start(appScope)
         // The Hangar check runs while anything is pinned.
         appScope.launch {
             hangar.get().observe().map { it.isNotEmpty() }.distinctUntilChanged().collect { any ->

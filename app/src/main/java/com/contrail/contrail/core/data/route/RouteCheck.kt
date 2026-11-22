@@ -21,8 +21,11 @@ sealed interface RouteVerdict {
         val multiStop: Boolean get() = stops.size > 2
     }
 
-    /** No route on file fits, but the plane is plainly coming down into [at]. */
-    data class Landing(val at: AirportRef, val claimed: FlightRoute?) : RouteVerdict
+    /**
+     * No route on file fits, but the plane is plainly coming down into [at]. [diverting] when its
+     * route did fit but it's landing far from that route's destination: likely a diversion.
+     */
+    data class Landing(val at: AirportRef, val claimed: FlightRoute?, val diverting: Boolean = false) : RouteVerdict
 
     /** No route on file fits, but the plane is climbing away from [from]. */
     data class Departing(val from: AirportRef, val claimed: FlightRoute?) : RouteVerdict
@@ -57,6 +60,7 @@ object RouteCheck {
             val landingElsewhere = approach != null && alt != null && alt < 8_000 &&
                 !same(approach, best.to) && Geo.distanceM(p, best.to.latLon) > 250_000
             if (!landingElsewhere) return best.verdict()
+            return RouteVerdict.Landing(approach!!, route, diverting = true)
         }
         // A leg that ends where it's landing, or starts where it's climbing out of, wins even if it bends.
         approach?.let { ap -> legs.firstOrNull { same(it.to, ap) }?.let { return it.verdict() } }
