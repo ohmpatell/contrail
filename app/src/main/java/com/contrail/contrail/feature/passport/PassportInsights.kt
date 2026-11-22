@@ -15,7 +15,19 @@ import java.time.LocalDate
 import java.util.Locale
 import kotlin.math.abs
 
-/** One passport stamp: the first time you landed somewhere. */
+/** What a stamp records. */
+enum class StampKind {
+    /** Arriving in a country from another one. */
+    Entry,
+    /** Leaving a country for another one. */
+    Exit,
+    /** A domestic airport, the first time you land there: a souvenir cachet rather than a border stamp. */
+    Visit,
+    /** Changing planes airside, without entering the country. */
+    Transit,
+}
+
+/** One passport stamp. */
 data class Stamp(
     val airport: String,
     val city: String,
@@ -23,9 +35,15 @@ data class Stamp(
     val date: LocalDate,
     /** Arrivals here, all time. */
     val visits: Int,
+    val kind: StampKind = StampKind.Visit,
+    /** A steady number for this stamp, like a border officer's. */
+    val seq: Int = 0,
+    /** The flight that brought or took you, "AC 870". */
+    val flight: String? = null,
+) {
     /** You only changed planes here. */
-    val transit: Boolean,
-)
+    val transit: Boolean get() = kind == StampKind.Transit
+}
 
 enum class Tier(val label: String) { Bronze("Bronze"), Silver("Silver"), Gold("Gold"), Platinum("Platinum") }
 
@@ -135,32 +153,8 @@ object PassportInsights {
         )
     }
 
-    /**
-     * One stamp per airport, in the order you first got there. The first origin counts too
-     * (you left from there). Layover-only airports get a transit stamp.
-     */
-    fun stamps(trips: List<Trip>, flown: Set<Long>, places: Map<String, AirportInfo>): List<Stamp> {
-        val first = LinkedHashMap<String, LocalDate>()
-        val visits = HashMap<String, Int>()
-        val visitedHere = HashSet<String>()
-        val segments = trips.flatMap { it.segments }.filter { it.id in flown }.sortedBy { it.departure }
-        segments.firstOrNull()?.let { first[it.origin] = it.departureLocal.toLocalDate(); visitedHere += it.origin }
-        for (t in trips) {
-            val done = t.segments.filter { it.id in flown }
-            if (done.isEmpty()) continue
-            if (done.first() == t.first) visitedHere += t.first.origin
-            visitedHere += done.last().destination
-            t.connections.filter { it.inbound in done && it.kind == ConnectionKind.Stopover }.forEach { visitedHere += it.airport }
-        }
-        for (s in segments) {
-            first.putIfAbsent(s.destination, s.arrivalLocal.toLocalDate())
-            visits[s.destination] = (visits[s.destination] ?: 0) + 1
-        }
-        return first.map { (code, date) ->
-            val p = places[code]
-            Stamp(code, p?.city ?: code, p?.countryIso.orEmpty(), date, visits[code] ?: 0, transit = code !in visitedHere)
-        }
-    }
+    /** Every stamp your flying would have earned, in order (see [StampRules]). */
+    fun stamps(trips: List<Trip>, flown: Set<Long>, places: Map<String, AirportInfo>): List<Stamp> = StampRules.stamps(trips, flown, places)
 
     fun achievements(
         trips: List<Trip>,

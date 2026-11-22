@@ -73,9 +73,11 @@ class SkyTest {
         assertEquals(40, stats.flights)
         assertEquals("AC", stats.insights.topAirlines.first().key)
         assertEquals("YYZ", stats.insights.topAirports.first().key)
-        // YYZ first, then every new airport in order.
+        // The book starts where you first left from; cachets mark each domestic airport once.
         assertEquals("YYZ", stats.stamps.first().airport)
-        assertEquals(stats.stamps.size, stats.stamps.map { it.airport }.distinct().size)
+        val cachets = stats.stamps.filter { it.kind == com.contrail.contrail.feature.passport.StampKind.Visit }.map { it.airport }
+        assertEquals(cachets.size, cachets.distinct().size)
+        assertTrue(stats.stamps.any { it.kind == com.contrail.contrail.feature.passport.StampKind.Entry })
         val medals = stats.achievements.associateBy { it.id }
         assertEquals(Tier.Platinum, medals.getValue("superjumbo").tier)
         assertEquals(Tier.Platinum, medals.getValue("dateline").tier) // Vancouver–Sydney.

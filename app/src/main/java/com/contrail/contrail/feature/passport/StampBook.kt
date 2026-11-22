@@ -11,6 +11,7 @@ import androidx.compose.foundation.background
 import androidx.compose.foundation.border
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
+import androidx.compose.foundation.layout.BoxWithConstraints
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.Spacer
@@ -75,7 +76,7 @@ fun StampBookRoute(viewModel: PassportViewModel = hiltViewModel()) {
     StampBookScreen(state, onBack = LocalNavigator.current::back)
 }
 
-private const val PER_PAGE = 6
+private const val PER_PAGE = 7
 
 /** Your passport as a book: the cover, an identity page, then every stamp, page by page. */
 @Composable
@@ -99,7 +100,7 @@ fun StampBookScreen(state: PassportUiState, onBack: () -> Unit, startPage: Int =
             Row(Modifier.fillMaxWidth().padding(horizontal = spacing.lg, vertical = spacing.sm), verticalAlignment = Alignment.CenterVertically) {
                 GlassIconButton(ContrailIcons.Back, "Back", onBack)
                 Column(Modifier.weight(1f).padding(start = spacing.md)) {
-                    Eyebrow("${s.stamps.count { !it.transit }} entries · ${s.stamps.count { it.transit }} transits", color = colors.passport)
+                    Eyebrow(stampSummary(s.stamps), color = colors.passport)
                     Text("Stamp book", style = ContrailTheme.type.displaySmall, color = colors.textPrimary)
                 }
             }
@@ -370,7 +371,18 @@ private fun IdField(label: String, value: String, modifier: Modifier = Modifier)
     }
 }
 
-/** Six stamps scattered like a real page: a loose grid, each a little off. */
+/** "52 stamps · 5 airports · 3 transits": border stamps, then domestic cachets and transits. */
+private fun stampSummary(stamps: List<Stamp>): String = listOfNotNull(
+    stamps.count { it.kind == StampKind.Entry || it.kind == StampKind.Exit }.takeIf { it > 0 }?.let { "$it ${if (it == 1) "stamp" else "stamps"}" },
+    stamps.count { it.kind == StampKind.Visit }.takeIf { it > 0 }?.let { "$it ${if (it == 1) "airport" else "airports"}" },
+    stamps.count { it.kind == StampKind.Transit }.takeIf { it > 0 }?.let { "$it ${if (it == 1) "transit" else "transits"}" },
+).joinToString(" · ").ifEmpty { "No stamps yet" }
+
+/**
+ * Up to seven stamps filling a page in order, like a real passport: a loose 2 × 4 grid, each
+ * stamp a little off its spot and sized by what it is, so border stamps overlap their neighbours
+ * and cachets tuck in between.
+ */
 @Composable
 private fun StampPage(stamps: List<Stamp>, number: Int, modifier: Modifier, animate: Boolean) {
     val colors = ContrailTheme.colors
@@ -385,21 +397,30 @@ private fun StampPage(stamps: List<Stamp>, number: Int, modifier: Modifier, anim
                     Text("Your stamps land here as you fly.", style = ContrailTheme.type.body, color = colors.textTertiary, textAlign = TextAlign.Center)
                 }
             } else {
-                Column(Modifier.weight(1f).fillMaxWidth(), verticalArrangement = Arrangement.SpaceEvenly) {
-                    stamps.chunked(2).forEachIndexed { row, pair ->
-                        Row(Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.SpaceEvenly) {
-                            pair.forEachIndexed { col, st ->
-                                val jitter = remember(st.airport) { Random(st.airport.hashCode()) }
-                                val dx = remember(st.airport) { (jitter.nextFloat() - 0.5f) * 18f }
-                                val dy = remember(st.airport) { (jitter.nextFloat() - 0.5f) * 14f }
-                                PassportStamp(
-                                    st,
-                                    Modifier.size(118.dp).offset(dx.dp, dy.dp),
-                                    delayMs = (row * 2 + col) * 140L + 150,
-                                    play = animate,
-                                )
-                            }
+                BoxWithConstraints(Modifier.weight(1f).fillMaxWidth()) {
+                    val cellW = maxWidth / 2
+                    val cellH = maxHeight / 4
+                    stamps.forEachIndexed { i, st ->
+                        val row = i / 2
+                        // Rows alternate which side they start on, the way a busy page fills.
+                        val col = if (row % 2 == 0) i % 2 else 1 - i % 2
+                        val jitter = remember(st) { Random((st.airport + st.date + st.kind).hashCode()) }
+                        val jx = remember(st) { (jitter.nextFloat() - 0.5f) * 0.32f }
+                        val jy = remember(st) { (jitter.nextFloat() - 0.5f) * 0.2f }
+                        val side = when (st.kind) {
+                            StampKind.Entry -> minOf(cellW * 0.98f, cellH * 1.1f)
+                            StampKind.Exit -> minOf(cellW * 0.9f, cellH * 1.02f)
+                            StampKind.Visit -> minOf(cellW * 0.7f, cellH * 0.9f)
+                            StampKind.Transit -> minOf(cellW * 0.62f, cellH * 0.84f)
                         }
+                        val x = cellW * col + (cellW - side) / 2 + cellW * jx
+                        val y = cellH * row + (cellH - side) / 2 + cellH * jy
+                        PassportStamp(
+                            st,
+                            Modifier.offset(x, y).size(side),
+                            delayMs = i * 140L + 150,
+                            play = animate,
+                        )
                     }
                 }
             }
