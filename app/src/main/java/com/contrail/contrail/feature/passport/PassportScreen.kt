@@ -15,6 +15,7 @@ import androidx.compose.foundation.gestures.detectHorizontalDragGestures
 import androidx.compose.foundation.interaction.MutableInteractionSource
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
+import androidx.compose.foundation.layout.BoxWithConstraints
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.ExperimentalLayoutApi
 import androidx.compose.foundation.layout.FlowRow
@@ -122,64 +123,91 @@ fun PassportScreen(state: PassportUiState, actions: PassportActions, modifier: M
     val s = state.stats
     val legs = remember(s.flown, state.places) { globeLegs(s.flown, state.places) }
     val markers = remember(s.visited, s.transited, state.places) { (s.visited + s.transited).mapNotNull { state.places[it]?.let { p -> LatLon(p.lat, p.lon) } } }
-    Column(
-        modifier
-            .fillMaxSize()
-            .verticalScroll(rememberScrollState())
-            .windowInsetsPadding(WindowInsets.statusBars)
-            .padding(horizontal = spacing.gutter)
-            .padding(top = spacing.xl, bottom = spacing.navBarClearance),
-        verticalArrangement = Arrangement.spacedBy(spacing.lg),
-    ) {
-        Row(verticalAlignment = Alignment.CenterVertically) {
-            Column(Modifier.weight(1f), verticalArrangement = Arrangement.spacedBy(spacing.sm)) {
-                Row(verticalAlignment = Alignment.CenterVertically, horizontalArrangement = Arrangement.spacedBy(spacing.sm)) {
-                    LivePulse(color = colors.passport)
-                    Eyebrow(s.years.lastOrNull()?.let { "Flying since $it" } ?: "Your flying life", color = colors.passport)
+    BoxWithConstraints(modifier.fillMaxSize()) {
+        val twoColumn = maxWidth >= ContrailTheme.layout.twoColumnMin
+        Column(
+            Modifier
+                .fillMaxSize()
+                .verticalScroll(rememberScrollState())
+                .windowInsetsPadding(WindowInsets.statusBars)
+                .padding(horizontal = spacing.gutter)
+                .padding(top = spacing.xl, bottom = spacing.navBarClearance),
+            verticalArrangement = Arrangement.spacedBy(spacing.lg),
+        ) {
+            Row(verticalAlignment = Alignment.CenterVertically) {
+                Column(Modifier.weight(1f), verticalArrangement = Arrangement.spacedBy(spacing.sm)) {
+                    Row(verticalAlignment = Alignment.CenterVertically, horizontalArrangement = Arrangement.spacedBy(spacing.sm)) {
+                        LivePulse(color = colors.passport)
+                        Eyebrow(s.years.lastOrNull()?.let { "Flying since $it" } ?: "Your flying life", color = colors.passport)
+                    }
+                    Text("Passport", style = ContrailTheme.type.displayLarge, color = colors.textPrimary)
                 }
-                Text("Passport", style = ContrailTheme.type.displayLarge, color = colors.textPrimary)
-            }
-            Row(horizontalArrangement = Arrangement.spacedBy(spacing.sm)) {
-                if (s.flights > 0) GlassIconButton(ContrailIcons.Share, "Share your Passport", actions.onShare)
-                GlassIconButton(ContrailIcons.List, "Logbook", actions.onLogbook)
-                GlassIconButton(ContrailIcons.Plus, "Add a flight", actions.onAdd)
-            }
-        }
-        if (s.years.size > 1 || state.selectedYear != null) {
-            Row(Modifier.horizontalScroll(rememberScrollState()), horizontalArrangement = Arrangement.spacedBy(spacing.sm)) {
-                ContrailChip("All time", state.selectedYear == null, onClick = { actions.onSelectYear(null) }, accent = colors.passport)
-                s.years.forEach { y -> ContrailChip("$y", state.selectedYear == y, onClick = { actions.onSelectYear(y) }, accent = colors.passport) }
-            }
-        }
-        if (s.flights == 0 && !state.loading) {
-            RiseIn(0) { EmptyPassport(state, actions) }
-            if (s.achievements.isNotEmpty()) RiseIn(1) { AchievementsCard(s.achievements) }
-        } else if (s.flights > 0) {
-            RiseIn(0) { PassportGlobe(legs, markers, autoplay = autoplay) }
-            RiseIn(1) { Headline(s) }
-            RiseIn(2) { LogbookPreview(s, state.places, actions) }
-            if (s.stamps.isNotEmpty()) RiseIn(3) { StampStrip(s.stamps, actions.onStamps) }
-            if (state.together.isNotEmpty()) RiseIn(4) { FlownTogetherCard(state.together) }
-            RiseIn(4) { AchievementsCard(s.achievements) }
-            s.years.firstOrNull()?.let { y -> RiseIn(5) { YearCard(state.selectedYear ?: y, s.years, actions.onYearInReview) } }
-            if (state.selectedYear == null) RiseIn(6) { YearsChart(s.insights) }
-            RiseIn(7) { FlyingCalendar(s.insights) }
-            RiseIn(8) { RankedCard("Top airlines", s.insights.topAirlines, tintFor = { airlineTint(it) }) }
-            RiseIn(9) {
-                RankedCard("Top airports", s.insights.topAirports, tintFor = { colors.passport }) { r ->
-                    state.places[r.key]?.icao?.let(actions.onAirport)
+                Row(horizontalArrangement = Arrangement.spacedBy(spacing.sm)) {
+                    if (s.flights > 0) GlassIconButton(ContrailIcons.Share, "Share your Passport", actions.onShare)
+                    GlassIconButton(ContrailIcons.List, "Logbook", actions.onLogbook)
+                    GlassIconButton(ContrailIcons.Plus, "Add a flight", actions.onAdd)
                 }
             }
-            RiseIn(10) { RankedCard("Top routes", s.insights.topRoutes, tintFor = { colors.statusAirborne }) }
-            RiseIn(11) { RankedCard("Aircraft you fly most", s.insights.topTypes, tintFor = { colors.statusOnTime }) }
-            RiseIn(12) { HowYouFlyCard(s.insights, s.flights) }
-            RiseIn(13) { ExtremesCard(s.insights, state.places) }
-            RiseIn(14) { CountriesCard(s.insights.countries) }
-            RiseIn(15) { Places(s, state.places) }
-            RiseIn(16) { Records(s, state.places) }
-            RiseIn(17) { Collection(s) }
+            if (s.years.size > 1 || state.selectedYear != null) {
+                Row(Modifier.horizontalScroll(rememberScrollState()), horizontalArrangement = Arrangement.spacedBy(spacing.sm)) {
+                    ContrailChip("All time", state.selectedYear == null, onClick = { actions.onSelectYear(null) }, accent = colors.passport)
+                    s.years.forEach { y -> ContrailChip("$y", state.selectedYear == y, onClick = { actions.onSelectYear(y) }, accent = colors.passport) }
+                }
+            }
+            if (s.flights == 0 && !state.loading) {
+                RiseIn(0) { EmptyPassport(state, actions) }
+                if (s.achievements.isNotEmpty()) RiseIn(1) { AchievementsCard(s.achievements) }
+            } else if (s.flights > 0) {
+                val globe: @Composable () -> Unit = { RiseIn(0) { PassportGlobe(legs, markers, autoplay = autoplay) } }
+                val headline: @Composable () -> Unit = { RiseIn(1) { Headline(s) } }
+                val logbook: @Composable () -> Unit = { RiseIn(2) { LogbookPreview(s, state.places, actions) } }
+                val stamps: @Composable () -> Unit = { if (s.stamps.isNotEmpty()) RiseIn(3) { StampStrip(s.stamps, actions.onStamps) } }
+                val together: @Composable () -> Unit = { if (state.together.isNotEmpty()) RiseIn(4) { FlownTogetherCard(state.together) } }
+                val medals: @Composable () -> Unit = { RiseIn(4) { AchievementsCard(s.achievements) } }
+                val year: @Composable () -> Unit = { s.years.firstOrNull()?.let { y -> RiseIn(5) { YearCard(state.selectedYear ?: y, s.years, actions.onYearInReview) } } }
+                val years: @Composable () -> Unit = { if (state.selectedYear == null) RiseIn(6) { YearsChart(s.insights) } }
+                val calendar: @Composable () -> Unit = { RiseIn(7) { FlyingCalendar(s.insights) } }
+                val airlines: @Composable () -> Unit = { RiseIn(8) { RankedCard("Top airlines", s.insights.topAirlines, tintFor = { airlineTint(it) }) } }
+                val airports: @Composable () -> Unit = {
+                    RiseIn(9) {
+                        RankedCard("Top airports", s.insights.topAirports, tintFor = { colors.passport }) { r ->
+                            state.places[r.key]?.icao?.let(actions.onAirport)
+                        }
+                    }
+                }
+                val routes: @Composable () -> Unit = { RiseIn(10) { RankedCard("Top routes", s.insights.topRoutes, tintFor = { colors.statusAirborne }) } }
+                val types: @Composable () -> Unit = { RiseIn(11) { RankedCard("Aircraft you fly most", s.insights.topTypes, tintFor = { colors.statusOnTime }) } }
+                val how: @Composable () -> Unit = { RiseIn(12) { HowYouFlyCard(s.insights, s.flights) } }
+                val edges: @Composable () -> Unit = { RiseIn(13) { ExtremesCard(s.insights, state.places) } }
+                val countries: @Composable () -> Unit = { RiseIn(14) { CountriesCard(s.insights.countries) } }
+                val places: @Composable () -> Unit = { RiseIn(15) { Places(s, state.places) } }
+                val records: @Composable () -> Unit = { RiseIn(16) { Records(s, state.places) } }
+                val collection: @Composable () -> Unit = { RiseIn(17) { Collection(s) } }
+                val lounges: @Composable () -> Unit = { if (s.lounges.visits > 0) RiseIn(18) { Lounges(s.lounges) } }
+                if (twoColumn) {
+                    // The globe beside the headline numbers, then the cards in two balanced columns.
+                    Row(Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.spacedBy(spacing.lg), verticalAlignment = Alignment.Top) {
+                        Box(Modifier.weight(1.1f)) { globe() }
+                        Column(Modifier.weight(1f), verticalArrangement = Arrangement.spacedBy(spacing.lg)) {
+                            headline()
+                            logbook()
+                        }
+                    }
+                    Row(Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.spacedBy(spacing.lg), verticalAlignment = Alignment.Top) {
+                        Column(Modifier.weight(1f), verticalArrangement = Arrangement.spacedBy(spacing.lg)) {
+                            stamps(); together(); year(); years(); calendar(); how(); countries(); collection()
+                        }
+                        Column(Modifier.weight(1f), verticalArrangement = Arrangement.spacedBy(spacing.lg)) {
+                            medals(); airlines(); airports(); routes(); types(); edges(); places(); records(); lounges()
+                        }
+                    }
+                } else {
+                    globe(); headline(); logbook(); stamps(); together(); medals(); year(); years(); calendar()
+                    airlines(); airports(); routes(); types(); how(); edges(); countries(); places(); records(); collection(); lounges()
+                }
+            }
+            if (s.flights == 0 && s.lounges.visits > 0) RiseIn(18) { Lounges(s.lounges) }
         }
-        if (s.lounges.visits > 0) RiseIn(18) { Lounges(s.lounges) }
     }
 }
 

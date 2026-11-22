@@ -23,7 +23,13 @@ import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.aspectRatio
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
+import androidx.compose.foundation.layout.BoxWithConstraints
+import androidx.compose.foundation.layout.fillMaxHeight
 import androidx.compose.foundation.layout.height
+import androidx.compose.foundation.layout.offset
+import androidx.compose.foundation.layout.widthIn
+import androidx.compose.ui.text.style.TextAlign
+import com.contrail.contrail.core.data.repository.CutoutStatus
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.layout.width
@@ -99,10 +105,7 @@ fun AircraftScreen(
         onBack = onBack,
         hero = { Hero(state, accent, onHero) },
     ) {
-        Row(verticalAlignment = Alignment.CenterVertically, horizontalArrangement = Arrangement.spacedBy(ContrailTheme.spacing.md)) {
-            state.airline?.logo?.logoWhite?.let { LiveLogo(it, state.airlineName, Modifier.height(26.dp).width(110.dp)) }
-            if (state.rarity < Rarity.Common) HoloBadge(state.rarity)
-        }
+        IdentityRow(state)
         state.route?.let { RouteCard(state, it, onOpenAirport) }
         SectionCard("Airframe") {
             Row(Modifier.fillMaxWidth()) {
@@ -157,7 +160,7 @@ private fun Hero(state: AircraftUiState, accent: Color, onHero: (HeroMode) -> Un
                     )
                     HeroMode.Cutout -> state.cutout?.let { file ->
                         AsyncImage(file, "Cutout of ${state.registration}", contentScale = ContentScale.Fit, modifier = Modifier.fillMaxSize().padding(spacing.lg))
-                    } ?: Text(if (state.cutoutWorking) "Lifting the aircraft out of its photo…" else "The cutout model is still downloading. Tap Cutout again in a moment.", style = ContrailTheme.type.bodySmall, color = colors.textSecondary)
+                    } ?: CutoutProgress(state.cutoutStatus, hasPhoto = state.photo != null, accent = accent)
                     HeroMode.Photo -> Box(Modifier.fillMaxSize())
                 }
             }
@@ -177,12 +180,89 @@ private fun Hero(state: AircraftUiState, accent: Color, onHero: (HeroMode) -> Un
             }
         }
         Row(horizontalArrangement = Arrangement.spacedBy(spacing.sm)) {
+            if (state.photo != null) ContrailChip("Photo", state.hero == HeroMode.Photo, onClick = { onHero(HeroMode.Photo) })
             ContrailChip("Livery", state.hero == HeroMode.Livery, onClick = { onHero(HeroMode.Livery) })
             ContrailChip("Cutout", state.hero == HeroMode.Cutout, onClick = { onHero(HeroMode.Cutout) })
-            if (state.photo != null) ContrailChip("Photo", state.hero == HeroMode.Photo, onClick = { onHero(HeroMode.Photo) })
         }
     }
 }
+
+/** What the cutout is doing, in words, with the model download's progress when there is one. */
+@Composable
+private fun CutoutProgress(status: CutoutStatus, hasPhoto: Boolean, accent: Color) {
+    val colors = ContrailTheme.colors
+    val spacing = ContrailTheme.spacing
+    val text = when (status) {
+        is CutoutStatus.Downloading -> "Downloading the cutout model" + (status.percent?.let { " · $it%" } ?: "…")
+        CutoutStatus.Working -> "Lifting the aircraft out of its photo…"
+        is CutoutStatus.Failed -> status.reason
+        is CutoutStatus.Ready -> ""
+        CutoutStatus.Idle -> if (hasPhoto) "Getting the cutout ready…" else "A cutout needs a photo of this aircraft, and there isn't one yet."
+    }
+    Column(
+        Modifier
+            .padding(spacing.lg)
+            .clip(ContrailTheme.shapes.medium)
+            .background(colors.scrim)
+            .padding(horizontal = spacing.lg, vertical = spacing.md),
+        horizontalAlignment = Alignment.CenterHorizontally,
+        verticalArrangement = Arrangement.spacedBy(spacing.sm),
+    ) {
+        Text(text, style = ContrailTheme.type.bodySmall, color = colors.textPrimary, textAlign = TextAlign.Center)
+        if (status is CutoutStatus.Downloading || status == CutoutStatus.Working) {
+            val fraction = (status as? CutoutStatus.Downloading)?.percent?.let { it / 100f }
+            Box(Modifier.width(160.dp).height(3.dp).clip(ContrailTheme.shapes.chip).background(colors.hairline)) {
+                if (fraction != null) {
+                    Box(Modifier.fillMaxHeight().fillMaxWidth(fraction).background(accent))
+                } else {
+                    IndeterminateBar(accent)
+                }
+            }
+        }
+    }
+}
+
+/** A short highlight sliding along its track while the length of the job is unknown. */
+@Composable
+private fun IndeterminateBar(accent: Color) {
+    val motion = ContrailTheme.motion
+    val x by if (motion.ambientEnabled) {
+        rememberInfiniteTransition(label = "bar").animateFloat(-0.3f, 1f, infiniteRepeatable(tween(1_200, easing = LinearEasing), RepeatMode.Restart), label = "x")
+    } else {
+        remember { mutableFloatStateOf(0.35f) }
+    }
+    BoxWithConstraints(Modifier.fillMaxSize()) {
+        Box(Modifier.fillMaxHeight().width(maxWidth * 0.3f).offset(x = maxWidth * x).background(accent))
+    }
+}
+
+/** Airline logo and rarity as one level row of equal-height pills, flush with the title above. */
+@Composable
+private fun IdentityRow(state: AircraftUiState) {
+    val logo = state.airline?.logo?.logoWhite
+    val rare = state.rarity < Rarity.Common
+    if (logo == null && !rare) return
+    val colors = ContrailTheme.colors
+    val spacing = ContrailTheme.spacing
+    Row(Modifier.height(IdentityPillHeight), verticalAlignment = Alignment.CenterVertically, horizontalArrangement = Arrangement.spacedBy(spacing.sm)) {
+        if (logo != null) {
+            Box(
+                Modifier
+                    .fillMaxHeight()
+                    .clip(ContrailTheme.shapes.chip)
+                    .background(colors.glassTint.copy(alpha = 0.06f))
+                    .border(ContrailTheme.sizes.hairline, colors.hairline, ContrailTheme.shapes.chip)
+                    .padding(horizontal = spacing.md),
+                contentAlignment = Alignment.CenterStart,
+            ) {
+                LiveLogo(logo, state.airlineName, Modifier.height(16.dp).widthIn(max = 96.dp), alignment = Alignment.CenterStart)
+            }
+        }
+        if (rare) HoloBadge(state.rarity, Modifier.fillMaxHeight())
+    }
+}
+
+private val IdentityPillHeight = 30.dp
 
 private fun rarityColor(r: Rarity): Color = when (r) {
     Rarity.Legendary -> RarityPalette.Legendary.first()
@@ -217,6 +297,7 @@ fun HoloBadge(rarity: Rarity, modifier: Modifier = Modifier) {
             )
             .border(ContrailTheme.sizes.hairline, Brush.linearGradient(palette), ContrailTheme.shapes.chip)
             .padding(horizontal = ContrailTheme.spacing.md, vertical = ContrailTheme.spacing.xs),
+        contentAlignment = Alignment.Center,
     ) {
         Text(rarity.label.uppercase(), style = ContrailTheme.type.eyebrow, color = palette.first())
     }

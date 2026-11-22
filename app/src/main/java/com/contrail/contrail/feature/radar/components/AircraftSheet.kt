@@ -7,9 +7,20 @@ import androidx.compose.animation.fadeOut
 import androidx.compose.animation.togetherWith
 import androidx.compose.foundation.background
 import androidx.compose.foundation.clickable
-import androidx.compose.foundation.gestures.Orientation
-import androidx.compose.foundation.gestures.draggable
-import androidx.compose.foundation.gestures.rememberDraggableState
+import androidx.compose.animation.animateColorAsState
+import androidx.compose.foundation.ScrollState
+import androidx.compose.foundation.border
+import androidx.compose.foundation.layout.IntrinsicSize
+import androidx.compose.foundation.layout.fillMaxHeight
+import androidx.compose.foundation.rememberScrollState
+import androidx.compose.foundation.selection.toggleable
+import androidx.compose.foundation.verticalScroll
+import androidx.compose.ui.geometry.Offset
+import androidx.compose.ui.input.nestedscroll.NestedScrollConnection
+import androidx.compose.ui.input.nestedscroll.NestedScrollSource
+import androidx.compose.ui.input.nestedscroll.nestedScroll
+import androidx.compose.ui.unit.Velocity
+import kotlinx.coroutines.CoroutineStart
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.BoxWithConstraints
@@ -23,6 +34,7 @@ import androidx.compose.foundation.layout.offset
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.layout.width
+import androidx.compose.foundation.layout.widthIn
 import androidx.compose.foundation.layout.WindowInsets
 import androidx.compose.foundation.layout.navigationBars
 import androidx.compose.foundation.layout.windowInsetsPadding
@@ -35,7 +47,6 @@ import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
 import androidx.compose.runtime.rememberCoroutineScope
 import androidx.compose.runtime.setValue
-import androidx.compose.runtime.snapshotFlow
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
@@ -57,13 +68,10 @@ import com.contrail.contrail.core.data.model.LiveAircraft
 import com.contrail.contrail.core.data.model.WatchItem
 import com.contrail.contrail.core.data.model.WatchKind
 import com.contrail.contrail.core.data.model.Watchlist
-import com.contrail.contrail.core.designsystem.component.ContrailChip
 import com.contrail.contrail.core.designsystem.component.LiveLogo
 import com.contrail.contrail.core.designsystem.livery.Liveries
 import com.contrail.contrail.core.designsystem.livery.LiveryRender
 import com.contrail.contrail.core.designsystem.livery.Profiles
-import androidx.compose.foundation.layout.ExperimentalLayoutApi
-import androidx.compose.foundation.layout.FlowRow
 import com.contrail.contrail.core.data.reference.Rarity
 import com.contrail.contrail.core.designsystem.component.Eyebrow
 import com.contrail.contrail.core.designsystem.component.GlassIconButton
@@ -85,9 +93,15 @@ import kotlin.math.roundToInt
 
 private enum class SheetAnchor { Expanded, Peek, Hidden }
 
+/** How much of the sheet shows when a plane is first tapped on a phone. The radar frames the plane above it. */
+val AircraftSheetPeek = 372.dp
+
 /**
  * The radar's aircraft sheet. Rises to a peek when a plane is tapped, drags up to reveal
- * everything, and flicks down to dismiss. The photo grows with the sheet.
+ * everything, and flicks down to dismiss. The photo grows with the sheet. Once fully open its
+ * content scrolls, and dragging down from the top lowers the sheet again.
+ *
+ * As a [panel] (wide screens) it fills its frame, opens fully and doesn't drag.
  */
 @Composable
 fun AircraftSheet(
@@ -95,8 +109,8 @@ fun AircraftSheet(
     following: Boolean,
     onFollow: () -> Unit,
     onDismiss: () -> Unit,
-    onVisibleHeightChanged: (Int) -> Unit,
     modifier: Modifier = Modifier,
+    panel: Boolean = false,
     startExpanded: Boolean = false,
     watchlist: List<WatchItem> = emptyList(),
     onWatch: (WatchItem) -> Unit = {},
@@ -110,8 +124,8 @@ fun AircraftSheet(
     BoxWithConstraints(modifier.fillMaxSize()) {
         val density = LocalDensity.current
         val motion = ContrailTheme.motion
-        val sheetHeight = minOf(maxHeight * 0.9f, 780.dp)
-        val peekHeight = minOf(PEEK_HEIGHT, sheetHeight)
+        val sheetHeight = if (panel) maxHeight else minOf(maxHeight * 0.9f, 780.dp)
+        val peekHeight = minOf(AircraftSheetPeek, sheetHeight)
         val sheetPx = with(density) { sheetHeight.toPx() }
         val peekOffset = with(density) { (sheetHeight - peekHeight).toPx() }
         val hiddenOffset = sheetPx + with(density) { 24.dp.toPx() }
@@ -122,18 +136,56 @@ fun AircraftSheet(
         }
 
         val offset = remember { Animatable(hiddenOffset) }
+        val scroll = rememberScrollState()
         val scope = rememberCoroutineScope()
         LaunchedEffect(selected?.aircraft?.hex) {
-            val target = if (selected == null) SheetAnchor.Hidden else if (startExpanded) SheetAnchor.Expanded else SheetAnchor.Peek
+            val target = if (selected == null) SheetAnchor.Hidden else if (startExpanded || panel) SheetAnchor.Expanded else SheetAnchor.Peek
             if (selected != null && offset.value >= hiddenOffset - 1f) offset.snapTo(hiddenOffset)
+            if (selected != null) scroll.scrollTo(0)
             offset.animateTo(anchorOffset(target), motion.gentle())
         }
-        LaunchedEffect(sheetPx) {
-            snapshotFlow { offset.value }.collect { v -> onVisibleHeightChanged((sheetPx - v).coerceAtLeast(0f).roundToInt()) }
-        }
 
-        val dragState = rememberDraggableState { delta ->
-            scope.launch { offset.snapTo((offset.value + delta).coerceIn(0f, hiddenOffset)) }
+        // Moves the sheet immediately, so the next scroll delta sees the new position.
+        fun moveBy(delta: Float) {
+            scope.launch(start = CoroutineStart.UNDISPATCHED) { offset.snapTo((offset.value + delta).coerceIn(0f, hiddenOffset)) }
+        }
+        fun settle(velocity: Float) {
+            val v = offset.value
+            val target = when {
+                velocity > FLING_VELOCITY && v > peekOffset * 0.6f -> SheetAnchor.Hidden
+                velocity > FLING_VELOCITY -> SheetAnchor.Peek
+                velocity < -FLING_VELOCITY -> SheetAnchor.Expanded
+                v > peekOffset + (hiddenOffset - peekOffset) * 0.35f -> SheetAnchor.Hidden
+                v > peekOffset / 2 -> SheetAnchor.Peek
+                else -> SheetAnchor.Expanded
+            }
+            if (target == SheetAnchor.Hidden) onDismiss()
+            scope.launch { offset.animateTo(anchorOffset(target), motion.gentle(), initialVelocity = velocity) }
+        }
+        val connection = remember(panel, peekOffset, hiddenOffset) {
+            object : NestedScrollConnection {
+                override fun onPreScroll(available: Offset, source: NestedScrollSource): Offset {
+                    // Finger moving up while the sheet isn't fully open: open the sheet first.
+                    if (panel || source != NestedScrollSource.UserInput || available.y >= 0f || offset.value <= 0f) return Offset.Zero
+                    val take = maxOf(available.y, -offset.value)
+                    moveBy(take)
+                    return Offset(0f, take)
+                }
+
+                override fun onPostScroll(consumed: Offset, available: Offset, source: NestedScrollSource): Offset {
+                    // Content is at its top and the finger keeps going down: lower the sheet.
+                    if (panel || source != NestedScrollSource.UserInput || available.y <= 0f) return Offset.Zero
+                    moveBy(available.y)
+                    return Offset(0f, available.y)
+                }
+
+                override suspend fun onPreFling(available: Velocity): Velocity {
+                    // Fully open: the content flings. Anywhere else: the sheet settles.
+                    if (panel || offset.value <= 0.5f) return Velocity.Zero
+                    settle(available.y)
+                    return available
+                }
+            }
         }
         val progress = (1f - offset.value / peekOffset.coerceAtLeast(1f)).coerceIn(0f, 1f)
         val current = shown ?: return@BoxWithConstraints
@@ -144,25 +196,9 @@ fun AircraftSheet(
                 .fillMaxWidth()
                 .height(sheetHeight)
                 .offset { IntOffset(0, offset.value.roundToInt()) }
-                .draggable(
-                    state = dragState,
-                    orientation = Orientation.Vertical,
-                    onDragStopped = { velocity ->
-                        val v = offset.value
-                        val target = when {
-                            velocity > FLING_VELOCITY && v > peekOffset * 0.6f -> SheetAnchor.Hidden
-                            velocity > FLING_VELOCITY -> SheetAnchor.Peek
-                            velocity < -FLING_VELOCITY -> SheetAnchor.Expanded
-                            v > peekOffset + (hiddenOffset - peekOffset) * 0.35f -> SheetAnchor.Hidden
-                            v > peekOffset / 2 -> SheetAnchor.Peek
-                            else -> SheetAnchor.Expanded
-                        }
-                        if (target == SheetAnchor.Hidden) onDismiss()
-                        offset.animateTo(anchorOffset(target), motion.gentle(), initialVelocity = velocity)
-                    },
-                ),
+                .nestedScroll(connection),
         ) {
-            SheetContent(current, progress, following, onFollow, onDismiss, Watchlist(watchlist), onWatch, onUnwatch, onOpenAircraft, expand = {
+            SheetContent(current, progress, following, onFollow, onDismiss, Watchlist(watchlist), onWatch, onUnwatch, onOpenAircraft, scroll, expand = {
                 scope.launch { offset.animateTo(anchorOffset(if (progress > 0.5f) SheetAnchor.Peek else SheetAnchor.Expanded), motion.gentle()) }
             })
         }
@@ -180,58 +216,69 @@ private fun SheetContent(
     onWatch: (WatchItem) -> Unit,
     onUnwatch: (WatchKind, String) -> Unit,
     onOpenAircraft: (String) -> Unit,
+    scroll: ScrollState,
     expand: () -> Unit,
 ) {
     val a = selected.aircraft
     val colors = ContrailTheme.colors
     val spacing = ContrailTheme.spacing
     val accent = a.airline?.let { Color(it.accentArgb) } ?: colors.accent
+    // Everything below the stats reveals as the sheet is pulled up.
+    val reveal = ((progress - 0.25f) / 0.75f).coerceIn(0f, 1f)
     GlassSurface(
         Modifier.fillMaxSize(),
         shape = ContrailTheme.shapes.sheet,
         level = GlassLevel.Strong,
         glow = accent,
     ) {
-        Column(
-            Modifier
-                .fillMaxSize()
-                .windowInsetsPadding(WindowInsets.navigationBars)
-                .padding(horizontal = spacing.lg),
-        ) {
-            // Drag handle
-            Box(
-                Modifier
-                    .fillMaxWidth()
-                    .clickable(onClick = expand, role = Role.Button)
-                    .padding(vertical = spacing.sm),
-                contentAlignment = Alignment.Center,
-            ) {
-                Box(Modifier.size(width = 40.dp, height = 4.dp).clip(ContrailTheme.shapes.chip).background(colors.textTertiary.copy(alpha = 0.6f)))
-            }
-            Box(Modifier.clickable(role = Role.Button) { onOpenAircraft(a.hex) }) {
-                PhotoHero(selected.photo, a, accent, progress, selected.tailArtUrl, selected.brandColorHex)
-            }
-            Spacer(Modifier.height(spacing.md))
-            HeaderRow(a, accent, following, onFollow, onDismiss, selected.airlineLogoUrl)
-            Spacer(Modifier.height(spacing.md))
-            RouteRow(selected.route, accent)
-            Spacer(Modifier.height(spacing.lg))
-            StatsRow(a)
-            // Everything below reveals as the sheet is pulled up.
+        Column(Modifier.fillMaxSize().windowInsetsPadding(WindowInsets.navigationBars)) {
             Column(
                 Modifier
-                    .padding(top = spacing.lg)
-                    .graphicsLayer {
-                        alpha = ((progress - 0.25f) / 0.75f).coerceIn(0f, 1f)
-                        translationY = (1f - progress) * 24.dp.toPx()
-                    },
-                verticalArrangement = Arrangement.spacedBy(spacing.md),
+                    .weight(1f)
+                    .fillMaxWidth()
+                    .verticalScroll(scroll)
+                    .padding(horizontal = spacing.lg),
             ) {
-                VerticalSpeedCard(selected.verticalRates, a)
-                DetailsGrid(a)
-                WatchRow(a, watchlist, onWatch, onUnwatch)
-                OpenAircraftButton(accent) { onOpenAircraft(a.hex) }
+                // Drag handle
+                Box(
+                    Modifier
+                        .fillMaxWidth()
+                        .clickable(onClick = expand, role = Role.Button, onClickLabel = "Expand or collapse")
+                        .padding(vertical = spacing.sm),
+                    contentAlignment = Alignment.Center,
+                ) {
+                    Box(Modifier.size(width = 40.dp, height = 4.dp).clip(ContrailTheme.shapes.chip).background(colors.textTertiary.copy(alpha = 0.6f)))
+                }
+                Box(Modifier.clickable(role = Role.Button, onClickLabel = "Open the aircraft page") { onOpenAircraft(a.hex) }) {
+                    PhotoHero(selected.photo, a, accent, progress, selected.tailArtUrl, selected.brandColorHex)
+                }
+                Spacer(Modifier.height(spacing.md))
+                HeaderRow(a, accent, following, onFollow, onDismiss, selected.airlineLogoUrl)
+                Spacer(Modifier.height(spacing.md))
+                RouteRow(selected.route, accent)
+                Spacer(Modifier.height(spacing.lg))
+                StatsRow(a)
+                Column(
+                    Modifier
+                        .padding(top = spacing.lg, bottom = spacing.lg)
+                        .graphicsLayer {
+                            alpha = reveal
+                            translationY = (1f - progress) * 24.dp.toPx()
+                        },
+                    verticalArrangement = Arrangement.spacedBy(spacing.md),
+                ) {
+                    VerticalSpeedCard(selected.verticalRates, a)
+                    DetailsGrid(a)
+                    WatchRow(a, accent, watchlist, onWatch, onUnwatch)
+                }
             }
+            // Pinned to the bottom, so it's always reachable however tall the content gets.
+            OpenAircraftButton(
+                accent,
+                Modifier
+                    .padding(horizontal = spacing.lg, vertical = spacing.md)
+                    .graphicsLayer { alpha = reveal },
+            ) { onOpenAircraft(a.hex) }
         }
     }
 }
@@ -314,9 +361,13 @@ private fun HeaderRow(a: LiveAircraft, accent: Color, following: Boolean, onFoll
     val spacing = ContrailTheme.spacing
     Row(verticalAlignment = Alignment.CenterVertically) {
         Column(Modifier.weight(1f), verticalArrangement = Arrangement.spacedBy(spacing.xs + spacing.xxs)) {
-            Row(verticalAlignment = Alignment.CenterVertically, horizontalArrangement = Arrangement.spacedBy(spacing.sm)) {
-                SplitFlapText(a.displayCallsign.take(8), style = ContrailTheme.type.flap, haptics = true)
-                logoUrl?.let { LiveLogo(it, a.airline?.name, Modifier.height(20.dp).width(64.dp)) }
+            SplitFlapText(a.displayCallsign.take(8), style = ContrailTheme.type.flap, haptics = true)
+            // Logo, type and rarity share one level line under the callsign.
+            Row(Modifier.height(22.dp), verticalAlignment = Alignment.CenterVertically, horizontalArrangement = Arrangement.spacedBy(spacing.sm)) {
+                logoUrl?.let { LiveLogo(it, a.airline?.name, Modifier.height(14.dp).widthIn(max = 72.dp), alignment = Alignment.CenterStart) }
+                val subtitle = (if (logoUrl != null) a.typeName else listOfNotNull(a.airline?.name, a.typeName).joinToString(" · ").ifEmpty { null })
+                    ?: a.registration ?: "Unknown aircraft"
+                Text(subtitle, style = ContrailTheme.type.body, color = colors.textSecondary, maxLines = 1, overflow = TextOverflow.Ellipsis, modifier = Modifier.weight(1f, fill = false))
                 when (a.rarity) {
                     Rarity.Legendary -> RarityBadge("Legendary", RarityPalette.Legendary)
                     Rarity.Rare -> RarityBadge("Rare", RarityPalette.Rare)
@@ -324,8 +375,6 @@ private fun HeaderRow(a: LiveAircraft, accent: Color, following: Boolean, onFoll
                     Rarity.Common -> Unit
                 }
             }
-            val subtitle = listOfNotNull(a.airline?.name, a.typeName).joinToString(" · ").ifEmpty { a.registration ?: "Unknown aircraft" }
-            Text(subtitle, style = ContrailTheme.type.body, color = colors.textSecondary, maxLines = 1, overflow = TextOverflow.Ellipsis)
             if (a.isEmergency) {
                 Text(
                     "${LiveAircraft.emergencyLabel(a.squawk) ?: "Emergency"} · squawk ${RadarFormat.squawk(a)}",
@@ -451,37 +500,66 @@ private fun DetailsGrid(a: LiveAircraft) {
     }
 }
 
-@OptIn(ExperimentalLayoutApi::class)
+/** Three clear toggles: this tail, this type, this airline. */
 @Composable
-private fun WatchRow(a: LiveAircraft, watchlist: Watchlist, onWatch: (WatchItem) -> Unit, onUnwatch: (WatchKind, String) -> Unit) {
+private fun WatchRow(a: LiveAircraft, accent: Color, watchlist: Watchlist, onWatch: (WatchItem) -> Unit, onUnwatch: (WatchKind, String) -> Unit) {
     val spacing = ContrailTheme.spacing
     val options = buildList {
-        a.registration?.let { add(WatchItem(WatchKind.Tail, it, it)) }
-        a.typeCode?.let { add(WatchItem(WatchKind.Type, it, a.typeName ?: it)) }
-        a.airline?.let { add(WatchItem(WatchKind.Airline, it.icao, it.name)) }
+        a.registration?.let { add("Tail" to WatchItem(WatchKind.Tail, it, it)) }
+        a.typeCode?.let { add("Type" to WatchItem(WatchKind.Type, it, a.typeName ?: it)) }
+        a.airline?.let { add("Airline" to WatchItem(WatchKind.Airline, it.icao, it.name)) }
     }
     if (options.isEmpty()) return
     Column(verticalArrangement = Arrangement.spacedBy(spacing.sm)) {
-        Eyebrow("Watch for")
-        FlowRow(horizontalArrangement = Arrangement.spacedBy(spacing.sm), verticalArrangement = Arrangement.spacedBy(spacing.sm)) {
-            options.forEach { item ->
+        Row(verticalAlignment = Alignment.CenterVertically) {
+            Eyebrow("Watch for", Modifier.weight(1f))
+            Text("A ring on the map, and alerts", style = ContrailTheme.type.bodySmall, color = ContrailTheme.colors.textTertiary)
+        }
+        Row(Modifier.fillMaxWidth().height(IntrinsicSize.Min), horizontalArrangement = Arrangement.spacedBy(spacing.sm)) {
+            options.forEach { (kind, item) ->
                 val on = watchlist.contains(item.kind, item.value)
-                ContrailChip(
-                    label = item.label,
-                    selected = on,
-                    onClick = { if (on) onUnwatch(item.kind, item.value) else onWatch(item) },
-                    leading = { Icon(ContrailIcons.Follow, null, Modifier.size(ContrailTheme.sizes.iconSmall), tint = ContrailTheme.colors.accent) },
-                )
+                WatchTile(kind, item.label, on, accent, Modifier.weight(1f).fillMaxHeight()) {
+                    if (on) onUnwatch(item.kind, item.value) else onWatch(item)
+                }
             }
         }
     }
 }
 
 @Composable
-private fun OpenAircraftButton(accent: Color, onClick: () -> Unit) {
+private fun WatchTile(kind: String, value: String, on: Boolean, accent: Color, modifier: Modifier, onToggle: () -> Unit) {
+    val colors = ContrailTheme.colors
+    val spacing = ContrailTheme.spacing
+    val motion = ContrailTheme.motion
+    val fill by animateColorAsState(if (on) accent.copy(alpha = 0.20f) else colors.glassTint.copy(alpha = 0.06f), motion.fade(), label = "fill")
+    val edge by animateColorAsState(if (on) accent else colors.hairline, motion.fade(), label = "edge")
+    Column(
+        modifier
+            .clip(ContrailTheme.shapes.medium)
+            .background(fill)
+            .border(ContrailTheme.sizes.hairline, edge, ContrailTheme.shapes.medium)
+            .toggleable(value = on, role = Role.Switch, onValueChange = { onToggle() })
+            .padding(spacing.md),
+        verticalArrangement = Arrangement.spacedBy(spacing.xs),
+    ) {
+        Row(verticalAlignment = Alignment.CenterVertically) {
+            Eyebrow(kind, Modifier.weight(1f), color = if (on) accent else colors.textTertiary)
+            Icon(
+                if (on) ContrailIcons.Check else ContrailIcons.Plus,
+                null,
+                tint = if (on) accent else colors.textTertiary,
+                modifier = Modifier.size(ContrailTheme.sizes.iconSmall),
+            )
+        }
+        Text(value, style = ContrailTheme.type.title, color = colors.textPrimary, maxLines = 2, overflow = TextOverflow.Ellipsis)
+    }
+}
+
+@Composable
+private fun OpenAircraftButton(accent: Color, modifier: Modifier = Modifier, onClick: () -> Unit) {
     val colors = ContrailTheme.colors
     Row(
-        Modifier
+        modifier
             .fillMaxWidth()
             .height(ContrailTheme.sizes.touchTarget)
             .clip(ContrailTheme.shapes.chip)
@@ -496,7 +574,6 @@ private fun OpenAircraftButton(accent: Color, onClick: () -> Unit) {
     }
 }
 
-private val PEEK_HEIGHT = 372.dp
 private val PHOTO_PEEK = 112.dp
 private val PHOTO_EXPANDED = 184.dp
 private const val FLING_VELOCITY = 1_400f

@@ -16,6 +16,7 @@ import androidx.compose.foundation.horizontalScroll
 import androidx.compose.foundation.interaction.MutableInteractionSource
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
+import androidx.compose.foundation.layout.BoxWithConstraints
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.ExperimentalLayoutApi
 import androidx.compose.foundation.layout.FlowRow
@@ -126,51 +127,77 @@ fun SkyScreen(state: SkyUiState, headingDeg: Float, headingUp: Boolean, actions:
     val spacing = ContrailTheme.spacing
     val colors = ContrailTheme.colors
     val accent = colors.statusAirborne
-    Column(
-        modifier
-            .fillMaxSize()
-            .verticalScroll(rememberScrollState())
-            .windowInsetsPadding(WindowInsets.statusBars)
-            .padding(horizontal = spacing.gutter)
-            .padding(top = spacing.xl, bottom = spacing.navBarClearance),
-        verticalArrangement = Arrangement.spacedBy(spacing.lg),
-    ) {
-        Row(verticalAlignment = Alignment.CenterVertically) {
-            Column(Modifier.weight(1f), verticalArrangement = Arrangement.spacedBy(spacing.sm)) {
-                Row(verticalAlignment = Alignment.CenterVertically, horizontalArrangement = Arrangement.spacedBy(spacing.sm)) {
-                    LivePulse(color = if (state.updatedAtMs != null) accent else colors.textTertiary)
-                    Eyebrow(
-                        when {
-                            state.locating -> "Finding you…"
-                            state.near != null -> "Near ${state.near}"
-                            else -> "What's overhead"
-                        },
-                        color = accent,
+    BoxWithConstraints(modifier.fillMaxSize()) {
+        val twoColumn = maxWidth >= ContrailTheme.layout.twoColumnMin
+        Column(
+            Modifier
+                .fillMaxSize()
+                .verticalScroll(rememberScrollState())
+                .windowInsetsPadding(WindowInsets.statusBars)
+                .padding(horizontal = spacing.gutter)
+                .padding(top = spacing.xl, bottom = spacing.navBarClearance),
+            verticalArrangement = Arrangement.spacedBy(spacing.lg),
+        ) {
+            Row(verticalAlignment = Alignment.CenterVertically) {
+                Column(Modifier.weight(1f), verticalArrangement = Arrangement.spacedBy(spacing.sm)) {
+                    Row(verticalAlignment = Alignment.CenterVertically, horizontalArrangement = Arrangement.spacedBy(spacing.sm)) {
+                        LivePulse(color = if (state.updatedAtMs != null) accent else colors.textTertiary)
+                        Eyebrow(
+                            when {
+                                state.locating -> "Finding you…"
+                                state.near != null -> "Near ${state.near}"
+                                else -> "What's overhead"
+                            },
+                            color = accent,
+                        )
+                    }
+                    Text("Sky", style = ContrailTheme.type.displayLarge, color = colors.textPrimary)
+                }
+                GlassIconButton(ContrailIcons.Camera, "Sky View", actions.onSkyView)
+            }
+            if (!state.permission && state.me == null) {
+                RiseIn(0) { PermissionCard(actions.onAllowLocation) }
+                return@Column
+            }
+            val radii: @Composable () -> Unit = {
+                Row(Modifier.horizontalScroll(rememberScrollState()), horizontalArrangement = Arrangement.spacedBy(spacing.sm)) {
+                    RADII.forEach { r -> ContrailChip("$r km", state.radiusKm == r, onClick = { actions.onRadius(r) }, accent = accent) }
+                }
+            }
+            val footer: @Composable () -> Unit = {
+                state.error?.let { Text(it, style = ContrailTheme.type.bodySmall, color = colors.statusDelayed) }
+                if (state.updatedAtMs != null) {
+                    Text(
+                        "Live from ${state.source ?: "ADS-B"} · positions glide between updates · every aircraft that shares its position",
+                        style = ContrailTheme.type.bodySmall,
+                        color = colors.textTertiary,
                     )
                 }
-                Text("Sky", style = ContrailTheme.type.displayLarge, color = colors.textPrimary)
             }
-            GlassIconButton(ContrailIcons.Camera, "Sky View", actions.onSkyView)
-        }
-        if (!state.permission && state.me == null) {
-            RiseIn(0) { PermissionCard(actions.onAllowLocation) }
-            return@Column
-        }
-        RiseIn(0) { ScopeCard(state, headingDeg, headingUp, actions) }
-        Row(Modifier.horizontalScroll(rememberScrollState()), horizontalArrangement = Arrangement.spacedBy(spacing.sm)) {
-            RADII.forEach { r -> ContrailChip("$r km", state.radiusKm == r, onClick = { actions.onRadius(r) }, accent = accent) }
-        }
-        state.closest?.let { c -> RiseIn(1) { ClosestCard(c, state, actions) } }
-        RiseIn(2) { SkyViewCta(actions.onSkyView) }
-        if (state.contacts.size > 1) RiseIn(3) { OverheadList(state.contacts.drop(1).take(25), headingDeg, actions.onAircraft) }
-        RiseIn(4) { AlertsCard(state.alerts, actions.onAlerts) }
-        state.error?.let { Text(it, style = ContrailTheme.type.bodySmall, color = colors.statusDelayed) }
-        if (state.updatedAtMs != null) {
-            Text(
-                "Live from ${state.source ?: "ADS-B"} · positions glide between updates · every aircraft that shares its position",
-                style = ContrailTheme.type.bodySmall,
-                color = colors.textTertiary,
-            )
+            if (twoColumn) {
+                // The scope and its controls on the left, what's overhead on the right.
+                Row(Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.spacedBy(spacing.lg), verticalAlignment = Alignment.Top) {
+                    Column(Modifier.weight(1.1f), verticalArrangement = Arrangement.spacedBy(spacing.lg)) {
+                        RiseIn(0) { ScopeCard(state, headingDeg, headingUp, actions) }
+                        radii()
+                        RiseIn(2) { SkyViewCta(actions.onSkyView) }
+                        RiseIn(4) { AlertsCard(state.alerts, actions.onAlerts) }
+                    }
+                    Column(Modifier.weight(1f), verticalArrangement = Arrangement.spacedBy(spacing.lg)) {
+                        state.closest?.let { c -> RiseIn(1) { ClosestCard(c, state, actions) } }
+                        if (state.contacts.size > 1) RiseIn(3) { OverheadList(state.contacts.drop(1).take(25), headingDeg, actions.onAircraft) }
+                        footer()
+                    }
+                }
+            } else {
+                RiseIn(0) { ScopeCard(state, headingDeg, headingUp, actions) }
+                radii()
+                state.closest?.let { c -> RiseIn(1) { ClosestCard(c, state, actions) } }
+                RiseIn(2) { SkyViewCta(actions.onSkyView) }
+                if (state.contacts.size > 1) RiseIn(3) { OverheadList(state.contacts.drop(1).take(25), headingDeg, actions.onAircraft) }
+                RiseIn(4) { AlertsCard(state.alerts, actions.onAlerts) }
+                footer()
+            }
         }
     }
 }

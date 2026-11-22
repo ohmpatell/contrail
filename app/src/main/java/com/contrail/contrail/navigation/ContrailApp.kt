@@ -116,11 +116,17 @@ private fun TabFrame(tab: TopLevelDestination, content: @Composable () -> Unit) 
     when {
         !layout.wide || tab == TopLevelDestination.Radar -> content()
         tab == TopLevelDestination.Trips && layout.roomy -> Box(Modifier.fillMaxSize().padding(start = layout.railInset)) { content() }
+        tab in TwoColumnTabs -> Box(Modifier.fillMaxSize().padding(start = layout.railInset), contentAlignment = Alignment.TopCenter) {
+            Box(Modifier.widthIn(max = layout.dashboardWidth).fillMaxSize()) { content() }
+        }
         else -> Box(Modifier.fillMaxSize().padding(start = layout.railInset), contentAlignment = Alignment.TopCenter) {
             Box(Modifier.widthIn(max = layout.readingWidth).fillMaxSize()) { content() }
         }
     }
 }
+
+/** Tabs that lay themselves out in two columns when there's room, instead of a reading-width column. */
+private val TwoColumnTabs = setOf(TopLevelDestination.Sky, TopLevelDestination.Passport, TopLevelDestination.Airports)
 
 /** Tabs slide in from the side they sit on in the bar, so the motion matches the tap. */
 private fun tabTransition(

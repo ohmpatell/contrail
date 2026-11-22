@@ -66,7 +66,7 @@ class RadarViewModel @Inject constructor(
     private val active = MutableStateFlow(false)
     private val filters = MutableStateFlow(RadarFilters())
     private val selectedHex = MutableStateFlow<String?>(null)
-    private val following = MutableStateFlow(false)
+    private val following = MutableStateFlow(FollowState())
     private val panel = MutableStateFlow(RadarPanel.None)
     private val feed = MutableStateFlow<FeedStatus>(FeedStatus.Connecting)
     private var lastSuccessMs: Long? = null
@@ -95,7 +95,9 @@ class RadarViewModel @Inject constructor(
         }.stateIn(viewModelScope, SharingStarted.Eagerly, emptyMap())
 
     val selected: StateFlow<String?> = selectedHex
-    val isFollowing: StateFlow<Boolean> = following
+    /** True while the camera should track the selected plane (following and not paused by a drag). */
+    val isFollowing: StateFlow<Boolean> = following.map { it.on && !it.paused }
+        .stateIn(viewModelScope, SharingStarted.Eagerly, false)
 
     val weatherTiles: StateFlow<WeatherTiles?> = layers
         .map { it.weather }
@@ -180,7 +182,9 @@ class RadarViewModel @Inject constructor(
                 layers = c.layers,
                 panel = c.panel,
                 selected = sel,
-                following = c.following && sel != null,
+                following = c.following.on && sel != null,
+                followPaused = c.following.paused,
+                sheetCollapsed = c.following.collapsed && sel != null,
                 radiusCapped = c.radiusCapped,
                 emergencies = all.filter { it.isEmergency },
                 watchlist = c.watch.items,
@@ -192,7 +196,7 @@ class RadarViewModel @Inject constructor(
         val filters: RadarFilters,
         val layers: RadarLayers,
         val panel: RadarPanel,
-        val following: Boolean,
+        val following: FollowState,
         val radiusCapped: Boolean,
         val watch: Watchlist = Watchlist(emptyList()),
     )
@@ -225,26 +229,41 @@ class RadarViewModel @Inject constructor(
     }
 
     fun onAircraftTapped(hex: String) {
-        if (selectedHex.value != hex) following.value = false
+        if (selectedHex.value != hex) following.value = FollowState() else following.update { it.copy(collapsed = false) }
         selectedHex.value = hex
         panel.value = RadarPanel.None
     }
 
     fun clearSelection() {
         selectedHex.value = null
-        following.value = false
+        following.value = FollowState()
     }
 
+    /** A tap on empty map: closes a panel, tucks a followed plane's sheet away, or deselects. */
     fun onMapTapped() {
-        if (panel.value != RadarPanel.None) panel.value = RadarPanel.None else clearSelection()
+        when {
+            panel.value != RadarPanel.None -> panel.value = RadarPanel.None
+            following.value.on -> following.update { it.copy(collapsed = true) }
+            else -> clearSelection()
+        }
     }
 
     fun toggleFollow() {
-        if (selectedHex.value != null) following.update { !it }
+        if (selectedHex.value != null) following.update { if (it.on) FollowState() else FollowState(on = true) }
     }
 
+    /** Dragging the map pauses following; Recentre picks it up again. */
     fun onUserGesture() {
-        following.value = false
+        following.update { if (it.on) it.copy(paused = true) else it }
+    }
+
+    fun recentre() {
+        following.update { it.copy(paused = false) }
+    }
+
+    /** Opens the followed plane's sheet again from the pinned readout. */
+    fun expandSheet() {
+        following.update { it.copy(collapsed = false) }
     }
 
     fun togglePanel(target: RadarPanel) {
@@ -353,3 +372,6 @@ class RadarViewModel @Inject constructor(
         }
     }
 }
+
+/** Following the selected plane. [collapsed] tucks its sheet into the top readout; [paused] after a drag. */
+data class FollowState(val on: Boolean = false, val paused: Boolean = false, val collapsed: Boolean = false)

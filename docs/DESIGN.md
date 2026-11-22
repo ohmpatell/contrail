@@ -310,6 +310,27 @@ Phases 1 to 5 are built (Stages 1 to 4 in `STATUS.md`). Stage 5 takes Contrail f
 6. **Automatic actual times.** When one of your flights is tracked, takeoff and landing are detected from ADS-B, and from the phone's GPS while you're on board, and saved as the real times, replacing estimates in the log and the Passport.
 7. **Follow a flight and fly together.** Share a flight and it opens in the other person's Contrail, tracked live with "landed" and "at gate" notifications. Trips can be shared: the other person follows yours live (your edits reach them) and can join it to their own log, and their Passport shows the flights you took together.
 
+### Stage 6: spotting, flying and 3D
+
+Feedback from using Stages 1 to 5 on a phone and a tablet, plus new features. Everything uses free, keyless sources.
+
+1. **Fixes.** Selecting a plane centres it above the sheet instead of sliding the map away. The aircraft sheet scrolls, with "Watch for" as three clear toggles (this tail, this type, this airline) and the Aircraft page button always reachable. Follow mode survives map taps: the sheet shrinks to a pinned pill and follow continues; dragging pauses it with a Recentre button. Sky and Passport get two-column tablet layouts. Flights in the logbook can be edited (route, aircraft, everything). The aircraft page opens on the photo, and the cutout explains what it's doing (model download with progress, or the real reason it failed). The logo and rarity row lines up.
+2. **Route check.** A callsign route is checked against what the plane is doing (position, track, descent). A route that doesn't fit is replaced by "Landing at X (from its approach)" or "Route unknown", never shown as fact. Multi-stop routes pick the leg the plane is on.
+3. **Search.** One box on the radar for a flight number (CX888), callsign (CPA888), registration (B-LXP), transponder hex or airport. Finds the plane anywhere in the world, flies the map there and opens it. Not flying: when and where it was last seen. Recent searches are kept.
+4. **My Hangar.** Pinned aircraft with your own story and photo. Always on the radar: when off screen, an edge marker points to it with the distance. Alerts when it takes off and lands, its last week of flights, and a widget.
+5. **Happening now** (replaces the news feed on the Airports tab). Live events worked out from ADS-B: go-arounds, holding, possible diversions, emergencies worldwide, rare types inbound to your favourite airports, your Hangar planes moving. Each opens the plane on the radar.
+6. **Spotter's board** for each favourite airport: what's worth seeing in the next hour (widebodies and rare types inbound with estimated times), runways in use as seen from live traffic, and which side the sun lights each approach from for photos.
+7. **Runways from traffic.** Runways in use come from planes seen landing and taking off in the last 20 minutes. With no traffic, a guess from the wind that prefers the runways the airport has been seen using in similar winds before.
+8. **Stamps, all in.** Entry and exit stamps when you cross a border, smaller airport cachets for domestic flights, regional stamp styles, inks that change by year, uneven pressure, partial prints, date bands, pages filled in order with overlaps.
+9. **Moments.** Cockpit visits, first flight on a type, milestones, crossings and sunsets at altitude, linked to your Hangar planes and shown in the Passport.
+10. **In-flight mode.**
+    - **Flight pack**, downloaded on flight day while online: map tiles along the route, the path the flight flew in recent days, places along the way with Wikipedia summaries, the sun's timeline, destination weather and time, gate and connection, the plane's photo.
+    - **Airport mode** when you reach the airport on flight day: a fresh gate check, gate-change alert, your inbound plane live, what you can spot from the gate. Opt-in automatic detection needs "Allow all the time" location; without it, it starts when you open the app at the airport.
+    - **Cabin mode**, fully offline: moving map from GPS (estimated without a fix), speed, altitude, ETA, "coming up on your side" from your seat letter, sunrise and sunset by window side, cabin altitude from the barometer, a turbulence meter, Moments captured automatically. Uses live ADS-B if the plane has Wi-Fi.
+    - **After landing:** a welcome card, the real GPS track and takeoff and landing times saved to the flight, and the pack's bulky files deleted.
+11. **Contrail forecast.** The Schmidt-Appleman criterion applied to Open-Meteo's upper-air temperature and humidity: none, short-lived or long-lasting contrails by height, labelled "forecast". Shown on Sky and for planes overhead.
+12. **3D.** First a tilted radar: 3D buildings at airports, planes floating at their real altitude over a ground shadow, the selected route as a ribbon in the air. Then a chase-cam prototype with Filament: terrain from free elevation tiles, the ground in our map style, a stylised low-poly model in the airline's colours, real sunlight. Built further only if the prototype looks stunning.
+
 ## Known limits and risks
 
 The biggest gap in free data is the aircraft rotation before a tail is assigned. Everything else has a workable fallback.

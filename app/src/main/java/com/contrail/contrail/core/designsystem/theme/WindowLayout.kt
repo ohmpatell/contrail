@@ -18,6 +18,12 @@ data class WindowLayout(val width: Dp, val height: Dp) {
     /** Reading width for phone-shaped pages on a big screen. */
     val readingWidth: Dp get() = 720.dp
 
+    /** Pages with their own two-column layout (Sky, Passport, Airports) grow up to this width. */
+    val dashboardWidth: Dp get() = 1280.dp
+
+    /** A page at least this wide splits into two columns. */
+    val twoColumnMin: Dp get() = 720.dp
+
     /** Space the floating nav rail takes on the left, margin included. */
     val railInset: Dp get() = if (wide) 104.dp else 0.dp
 

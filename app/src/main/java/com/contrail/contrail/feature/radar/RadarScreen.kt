@@ -37,7 +37,10 @@ import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.graphics.graphicsLayer
+import androidx.compose.ui.layout.boundsInParent
+import androidx.compose.ui.layout.onGloballyPositioned
 import androidx.compose.ui.platform.LocalDensity
+import kotlin.math.roundToInt
 import com.contrail.contrail.core.data.model.WatchItem
 import com.contrail.contrail.core.data.model.WatchKind
 import com.contrail.contrail.core.data.repository.RadarLayers
@@ -46,6 +49,7 @@ import com.contrail.contrail.core.designsystem.component.LocalBackdropHaze
 import com.contrail.contrail.core.designsystem.icon.ContrailIcons
 import com.contrail.contrail.core.designsystem.theme.ContrailTheme
 import com.contrail.contrail.feature.radar.components.AircraftSheet
+import com.contrail.contrail.feature.radar.components.AircraftSheetPeek
 import com.contrail.contrail.feature.radar.components.FilterPanel
 import com.contrail.contrail.feature.radar.components.FollowHud
 import com.contrail.contrail.feature.radar.components.LayersPanel
@@ -64,7 +68,10 @@ data class RadarActions(
     val onDismissAircraft: () -> Unit = {},
     val onToggleFollow: () -> Unit = {},
     val onLocate: () -> Unit = {},
-    val onSheetHeightChanged: (Int) -> Unit = {},
+    /** Screen edges covered by overlays (left, top, right, bottom px): the map frames the selected plane inside the rest. */
+    val onViewInsets: (Int, Int, Int, Int) -> Unit = { _, _, _, _ -> },
+    val onRecentre: () -> Unit = {},
+    val onExpandSheet: () -> Unit = {},
     val onWatch: (WatchItem) -> Unit = {},
     val onUnwatch: (WatchKind, String) -> Unit = { _, _ -> },
     val onOpenAircraft: (String) -> Unit = {},
@@ -86,10 +93,10 @@ fun RadarScreen(
     val spacing = ContrailTheme.spacing
     val motion = ContrailTheme.motion
     val density = LocalDensity.current
-    var sheetHeightPx by remember { mutableIntStateOf(0) }
+    var hudBottomPx by remember { mutableIntStateOf(0) }
     val shell = LocalShellChrome.current
     val layout = ContrailTheme.layout
-    val sheetOpen = state.selected != null
+    val sheetOpen = state.selected != null && !state.sheetCollapsed
     // On a wide screen the sheet sits beside the rail, so the rail stays.
     LaunchedEffect(sheetOpen, layout.wide) { shell.navBarHidden = sheetOpen && !layout.wide }
     DisposableEffect(shell) { onDispose { shell.navBarHidden = false } }
@@ -98,6 +105,19 @@ fun RadarScreen(
         BoxWithConstraints(modifier.fillMaxSize()) {
             val panelMaxHeight = maxHeight * 0.62f
             map(Modifier.fillMaxSize().hazeSource(mapHaze))
+
+            // Tell the map what's covered, so the selected plane is framed in the clear space.
+            val railPx = with(density) { layout.railInset.roundToPx() }
+            val panelPx = with(density) { (SidePanelWidth + spacing.md).roundToPx() }
+            val peekPx = with(density) { AircraftSheetPeek.roundToPx() }
+            LaunchedEffect(sheetOpen, layout.wide, hudBottomPx, railPx, panelPx, peekPx) {
+                actions.onViewInsets(
+                    railPx,
+                    hudBottomPx,
+                    if (sheetOpen && layout.wide) panelPx else 0,
+                    if (sheetOpen && !layout.wide) peekPx else 0,
+                )
+            }
 
             Column(
                 Modifier
@@ -111,9 +131,17 @@ fun RadarScreen(
                     targetState = followed != null,
                     transitionSpec = { (fadeIn(motion.fade()) + slideInVertically(motion.gentle()) { -it / 3 }) togetherWith fadeOut(motion.fade(150)) },
                     label = "hud",
+                    modifier = Modifier.onGloballyPositioned { hudBottomPx = it.boundsInParent().bottom.roundToInt() },
                 ) { isFollowing ->
                     if (isFollowing && followed != null) {
-                        FollowHud(followed, onStop = actions.onToggleFollow)
+                        FollowHud(
+                            followed,
+                            collapsed = state.sheetCollapsed,
+                            paused = state.followPaused,
+                            onStop = if (state.sheetCollapsed) actions.onDismissAircraft else actions.onToggleFollow,
+                            onRecentre = actions.onRecentre,
+                            onExpand = actions.onExpandSheet,
+                        )
                     } else {
                         RadarHud(state, actions.onTogglePanel, actions.onSelectAircraft)
                     }
@@ -146,7 +174,7 @@ fun RadarScreen(
                 }
             }
 
-            val sheetVisible = state.selected != null
+            val sheetVisible = sheetOpen
             Column(
                 Modifier
                     .align(Alignment.BottomStart)
@@ -170,7 +198,7 @@ fun RadarScreen(
             val sheetFrame = if (layout.wide) {
                 Modifier
                     .align(Alignment.TopEnd)
-                    .width(440.dp)
+                    .width(SidePanelWidth)
                     .fillMaxHeight()
                     .windowInsetsPadding(WindowInsets.statusBars)
                     .padding(end = spacing.md, top = spacing.sm)
@@ -178,7 +206,7 @@ fun RadarScreen(
                 Modifier.fillMaxSize()
             }
             Box(sheetFrame) { AircraftSheet(
-                selected = state.selected,
+                selected = state.selected.takeUnless { state.sheetCollapsed },
                 following = state.following,
                 onFollow = actions.onToggleFollow,
                 onDismiss = actions.onDismissAircraft,
@@ -186,15 +214,15 @@ fun RadarScreen(
                 onWatch = actions.onWatch,
                 onUnwatch = actions.onUnwatch,
                 onOpenAircraft = actions.onOpenAircraft,
-                onVisibleHeightChanged = {
-                    sheetHeightPx = it
-                    actions.onSheetHeightChanged(it)
-                },
-                startExpanded = sheetStartsExpanded || layout.wide,
+                panel = layout.wide,
+                startExpanded = sheetStartsExpanded,
             ) }
         }
     }
 }
+
+/** Width of the aircraft panel on wide screens. */
+private val SidePanelWidth = 440.dp
 
 /** Data and tile credits, as OpenFreeMap, OpenMapTiles, OSM and adsb.lol (ODbL) ask. */
 @Composable

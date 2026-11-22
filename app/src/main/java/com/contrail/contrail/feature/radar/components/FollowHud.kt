@@ -1,6 +1,16 @@
 package com.contrail.contrail.feature.radar.components
 
+import androidx.compose.animation.AnimatedVisibility
 import androidx.compose.animation.core.Animatable
+import androidx.compose.animation.fadeIn
+import androidx.compose.animation.fadeOut
+import androidx.compose.animation.scaleIn
+import androidx.compose.animation.scaleOut
+import androidx.compose.foundation.clickable
+import androidx.compose.foundation.layout.size
+import androidx.compose.material3.Icon
+import androidx.compose.ui.draw.rotate
+import androidx.compose.ui.semantics.Role
 import androidx.compose.foundation.Canvas
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
@@ -34,20 +44,52 @@ import com.contrail.contrail.core.designsystem.theme.AltitudeRamp
 import com.contrail.contrail.core.designsystem.theme.ContrailTheme
 import com.contrail.contrail.feature.radar.RadarFormat
 
-/** Cockpit-style readout shown while the camera is locked onto one aircraft. */
+/**
+ * Cockpit-style readout shown while the camera is locked onto one aircraft. It doubles as the
+ * pinned pill when the sheet is tucked away ([collapsed]): tap it to bring the sheet back.
+ * After a drag ([paused]) it offers Recentre.
+ */
 @Composable
-fun FollowHud(aircraft: LiveAircraft, onStop: () -> Unit, modifier: Modifier = Modifier) {
+fun FollowHud(
+    aircraft: LiveAircraft,
+    onStop: () -> Unit,
+    modifier: Modifier = Modifier,
+    collapsed: Boolean = false,
+    paused: Boolean = false,
+    onRecentre: () -> Unit = {},
+    onExpand: () -> Unit = {},
+) {
     val colors = ContrailTheme.colors
     val spacing = ContrailTheme.spacing
-    GlassSurface(modifier.fillMaxWidth(), level = GlassLevel.Strong, glow = colors.accent) {
+    val tint = if (paused) colors.textSecondary else colors.accent
+    GlassSurface(
+        modifier
+            .fillMaxWidth()
+            .then(if (collapsed) Modifier.clickable(role = Role.Button, onClickLabel = "Show details", onClick = onExpand) else Modifier),
+        level = GlassLevel.Strong,
+        glow = tint,
+    ) {
         Column(Modifier.padding(vertical = spacing.md), verticalArrangement = Arrangement.spacedBy(spacing.sm)) {
             Row(Modifier.padding(horizontal = spacing.lg), verticalAlignment = Alignment.CenterVertically) {
-                LivePulse(color = colors.accent)
+                LivePulse(color = tint)
                 Column(Modifier.weight(1f).padding(start = spacing.xs)) {
-                    Eyebrow("Following", color = colors.accent)
+                    Eyebrow(
+                        when {
+                            paused -> "Following · paused"
+                            collapsed -> "Following · tap for details"
+                            else -> "Following"
+                        },
+                        color = tint,
+                    )
                     Text(aircraft.displayCallsign, style = ContrailTheme.type.headline, color = colors.textPrimary)
                 }
-                GlassIconButton(ContrailIcons.Close, "Stop following", onStop, size = ContrailTheme.sizes.touchTarget - spacing.sm)
+                Row(horizontalArrangement = Arrangement.spacedBy(spacing.sm), verticalAlignment = Alignment.CenterVertically) {
+                    AnimatedVisibility(paused, enter = scaleIn() + fadeIn(), exit = scaleOut() + fadeOut()) {
+                        GlassIconButton(ContrailIcons.Locate, "Recentre on the plane", onRecentre, active = true, size = ContrailTheme.sizes.touchTarget - spacing.sm)
+                    }
+                    if (collapsed) Icon(ContrailIcons.ChevronRight, null, tint = colors.textTertiary, modifier = Modifier.size(ContrailTheme.sizes.iconSmall).rotate(90f))
+                    GlassIconButton(ContrailIcons.Close, if (collapsed) "Stop following and close" else "Stop following", onStop, size = ContrailTheme.sizes.touchTarget - spacing.sm)
+                }
             }
             HeadingTape(aircraft.trackDeg?.toDouble() ?: 0.0, Modifier.fillMaxWidth().height(40.dp))
             Row(Modifier.fillMaxWidth().padding(horizontal = spacing.lg), horizontalArrangement = Arrangement.SpaceBetween) {

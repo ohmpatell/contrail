@@ -2,6 +2,7 @@ package com.contrail.contrail.core.designsystem.component
 
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.remember
+import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.layout.ContentScale
 import androidx.compose.ui.platform.LocalContext
@@ -17,7 +18,7 @@ import coil3.request.ImageRequest
  * in memory only while the app is running.
  */
 @Composable
-fun LiveLogo(url: String?, contentDescription: String?, modifier: Modifier = Modifier) {
+fun LiveLogo(url: String?, contentDescription: String?, modifier: Modifier = Modifier, alignment: Alignment = Alignment.Center) {
     if (url == null) return
     val context = LocalContext.current
     val request = remember(url) {
@@ -27,5 +28,5 @@ fun LiveLogo(url: String?, contentDescription: String?, modifier: Modifier = Mod
             .httpHeaders(NetworkHeaders.Builder().set("Cache-Control", "no-store").build())
             .build()
     }
-    AsyncImage(model = request, contentDescription = contentDescription, contentScale = ContentScale.Fit, modifier = modifier)
+    AsyncImage(model = request, contentDescription = contentDescription, contentScale = ContentScale.Fit, alignment = alignment, modifier = modifier)
 }

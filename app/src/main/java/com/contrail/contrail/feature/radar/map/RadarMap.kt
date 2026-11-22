@@ -91,6 +91,7 @@ fun RadarMap(
                             latestCallbacks.value.onViewportChanged(viewport)
                         override fun onUserGesture() = latestCallbacks.value.onUserGesture()
                     },
+                    viewSize = { mapView.width to mapView.height },
                 )
                 holder.controller = controller
                 if (lifecycle.currentState.isAtLeast(Lifecycle.State.RESUMED)) controller.start()

@@ -5,12 +5,14 @@ import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.LaunchedEffect
+import androidx.compose.runtime.key
+import androidx.compose.runtime.mutableIntStateOf
+import androidx.compose.runtime.remember
 import androidx.compose.runtime.staticCompositionLocalOf
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.graphics.graphicsLayer
 import androidx.navigation3.runtime.NavEntry
 import androidx.navigation3.runtime.NavKey
-import androidx.navigation3.scene.OverlayScene
 import androidx.navigation3.scene.Scene
 import androidx.navigation3.scene.SceneStrategy
 import androidx.navigation3.scene.SceneStrategyScope
@@ -108,13 +110,16 @@ val LocalNavigator = staticCompositionLocalOf<Navigator> {
 /**
  * Detail pages slide in *over* the shell instead of replacing it, so the radar keeps its
  * live map, camera and polling while you look at an aircraft or airport.
+ *
+ * One scene, under one key, draws the shell and every detail page above it, newest on top.
+ * With an overlay scene per page, NavDisplay (navigation3 1.2.0) kept the existing overlay when
+ * a page was opened from another page and drew the new one underneath, so Logbook → flight and
+ * flight → Edit opened pages nobody could see.
  */
 class DetailOverlayStrategy<T : Any>(private val motion: ContrailMotion) : SceneStrategy<T> {
     override fun SceneStrategyScope<T>.calculateScene(entries: List<NavEntry<T>>): Scene<T>? {
-        if (entries.size < 2) return null
-        val top = entries.last()
-        if (top.metadata[DETAIL] != true) return null
-        return DetailScene(top, entries.dropLast(1), motion)
+        if (entries.isEmpty() || entries.first().metadata[DETAIL] == true) return null
+        return StackScene(entries, motion)
     }
 
     companion object {
@@ -123,35 +128,83 @@ class DetailOverlayStrategy<T : Any>(private val motion: ContrailMotion) : Scene
     }
 }
 
-private class DetailScene<T : Any>(
-    private val entry: NavEntry<T>,
-    override val previousEntries: List<NavEntry<T>>,
-    private val motion: ContrailMotion,
-) : OverlayScene<T> {
-    override val key: Any = entry.contentKey
-    override val entries: List<NavEntry<T>> = listOf(entry)
-    override val overlaidEntries: List<NavEntry<T>> = previousEntries
+/** One key for every back stack, so NavDisplay never swaps scenes: pages animate inside [StackScene]. */
+private object StackKey
 
-    /** 0 = off-screen to the right, 1 = in place. */
-    private val progress = Animatable(if (motion.reduced) 1f else 0f)
+private class StackScene<T : Any>(
+    override val entries: List<NavEntry<T>>,
+    private val motion: ContrailMotion,
+) : Scene<T> {
+    override val key: Any = StackKey
+    override val previousEntries: List<NavEntry<T>> = entries.dropLast(1)
 
     override val content: @Composable () -> Unit = {
-        LaunchedEffect(Unit) { progress.animateTo(1f, motion.gentle()) }
-        Box(
-            Modifier
-                .fillMaxSize()
-                .graphicsLayer {
-                    val p = progress.value
-                    translationX = (1f - p) * size.width * 0.35f
-                    alpha = p.coerceIn(0f, 1f)
-                },
-        ) { entry.Content() }
+        val base = entries.first()
+        Box(Modifier.fillMaxSize()) {
+            key(base.contentKey) { base.Content() }
+            DetailStack(entries.drop(1), motion)
+        }
     }
+}
 
-    override suspend fun onRemove() {
-        progress.animateTo(0f, motion.snappy())
+/** Pages that left the back stack but are still sliding out. Plain state: changes are announced through [tick]. */
+private class StackMemory<T : Any> {
+    var last: List<NavEntry<T>> = emptyList()
+    val leaving = mutableListOf<NavEntry<T>>()
+    val tick = mutableIntStateOf(0)
+}
+
+/**
+ * Draws the detail pages bottom to top. Only the top page and the one under it are composed
+ * (their state and view models are kept by the entry decorators while they stay in the back
+ * stack); a page that was just popped keeps drawing on top until it has slid away.
+ */
+@Composable
+private fun <T : Any> DetailStack(details: List<NavEntry<T>>, motion: ContrailMotion) {
+    val memory = remember { StackMemory<T>() }
+    memory.tick.intValue // re-read so a finished exit redraws
+    val current = details.map { it.contentKey }.toSet()
+    memory.last.filter { it.contentKey !in current && memory.leaving.none { l -> l.contentKey == it.contentKey } }.forEach { memory.leaving += it }
+    memory.leaving.removeAll { it.contentKey in current }
+    memory.last = details
+
+    val visible = details.takeLast(2)
+    Box(Modifier.fillMaxSize()) {
+        visible.forEach { entry ->
+            key(entry.contentKey) {
+                DetailPage(entry, leaving = false, motion = motion, onGone = {})
+            }
+        }
+        memory.leaving.toList().forEach { entry ->
+            key(entry.contentKey) {
+                DetailPage(entry, leaving = true, motion = motion) {
+                    memory.leaving.removeAll { it.contentKey == entry.contentKey }
+                    memory.tick.intValue++
+                }
+            }
+        }
     }
+}
 
-    override fun equals(other: Any?): Boolean = other is DetailScene<*> && other.key == key && other.previousEntries == previousEntries
-    override fun hashCode(): Int = key.hashCode() * 31 + previousEntries.hashCode()
+@Composable
+private fun <T : Any> DetailPage(entry: NavEntry<T>, leaving: Boolean, motion: ContrailMotion, onGone: () -> Unit) {
+    /** 0 = off-screen to the right, 1 = in place. A page leaving starts where it is. */
+    val progress = remember { Animatable(if (motion.reduced || leaving) 1f else 0f) }
+    LaunchedEffect(leaving) {
+        if (leaving) {
+            progress.animateTo(0f, motion.snappy())
+            onGone()
+        } else {
+            progress.animateTo(1f, motion.gentle())
+        }
+    }
+    Box(
+        Modifier
+            .fillMaxSize()
+            .graphicsLayer {
+                val p = progress.value
+                translationX = (1f - p) * size.width * 0.35f
+                alpha = p.coerceIn(0f, 1f)
+            },
+    ) { entry.Content() }
 }

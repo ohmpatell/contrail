@@ -79,6 +79,8 @@ fun RadarRoute(onOpenAircraft: (String) -> Unit = {}, viewModel: RadarViewModel 
         viewModel.watch.collectLatest { c.setWatchlist(it) }
     }
     LaunchedEffect(controller, userLocation) { controller?.setUserLocation(userLocation) }
+    var insets by remember { mutableStateOf(listOf(0, 0, 0, 0)) }
+    LaunchedEffect(controller, insets) { controller?.setViewInsets(insets[0], insets[1], insets[2], insets[3]) }
 
     val locate: () -> Unit = {
         requestLocation(context) { loc ->
@@ -120,7 +122,9 @@ fun RadarRoute(onOpenAircraft: (String) -> Unit = {}, viewModel: RadarViewModel 
                     permission.launch(arrayOf(Manifest.permission.ACCESS_FINE_LOCATION, Manifest.permission.ACCESS_COARSE_LOCATION))
                 }
             },
-            onSheetHeightChanged = { px -> controller?.setBottomPadding(px) },
+            onViewInsets = { l, t, r, b -> insets = listOf(l, t, r, b) },
+            onRecentre = viewModel::recentre,
+            onExpandSheet = viewModel::expandSheet,
             onWatch = viewModel::watch,
             onUnwatch = viewModel::unwatch,
             onOpenAircraft = onOpenAircraft,

@@ -16,6 +16,7 @@ import com.contrail.contrail.core.data.model.Watchlist
 import com.contrail.contrail.feature.radar.RouteOverlay
 import com.contrail.contrail.feature.radar.Viewport
 import com.google.gson.JsonObject
+import org.maplibre.android.camera.CameraPosition
 import org.maplibre.android.camera.CameraUpdateFactory
 import org.maplibre.android.geometry.LatLng
 import org.maplibre.android.maps.MapLibreMap
@@ -46,12 +47,15 @@ class RadarMapController(
     private val density: Float,
     reducedMotion: Boolean,
     private val callbacks: Callbacks,
+    /** The map view's size in pixels, for framing the selected plane in the uncovered area. */
+    private val viewSize: () -> Pair<Int, Int> = { 0 to 0 },
 ) : Choreographer.FrameCallback {
 
     interface Callbacks {
         fun onAircraftTapped(hex: String)
         fun onMapTapped()
         fun onViewportChanged(viewport: Viewport)
+        /** The user dragged the map with one finger (a pinch is not a drag). */
         fun onUserGesture()
     }
 
@@ -75,6 +79,10 @@ class RadarMapController(
     private var selectedHex: String? = null
     private var following = false
     private var followZoom: Double? = null
+    /** Screen edges covered by the HUD, sheet or side panel: left, top, right, bottom, in px. */
+    private var insets = IntArray(4)
+    /** A new selection waits for the sheet's insets so it can be framed above it. */
+    private var focusPendingUntil = 0L
     private var showTrails = true
     private var running = false
     private var dirty = true
@@ -119,7 +127,10 @@ class RadarMapController(
         map.addOnMapClickListener { latLng -> handleTap(map.projection.toScreenLocation(latLng)); true }
         map.addOnCameraIdleListener { callbacks.onViewportChanged(currentViewport()) }
         map.addOnMoveListener(object : MapLibreMap.OnMoveListener {
-            override fun onMoveBegin(detector: org.maplibre.android.gestures.MoveGestureDetector) = callbacks.onUserGesture()
+            override fun onMoveBegin(detector: org.maplibre.android.gestures.MoveGestureDetector) {
+                focusPendingUntil = 0L
+                if (detector.pointersCount <= 1) callbacks.onUserGesture()
+            }
             override fun onMove(detector: org.maplibre.android.gestures.MoveGestureDetector) = Unit
             override fun onMoveEnd(detector: org.maplibre.android.gestures.MoveGestureDetector) = Unit
         })
@@ -149,17 +160,62 @@ class RadarMapController(
         rebuildTrails()
         dirty = true
         if (!running) renderFrame()
+        if (hex != null) {
+            focusSelected()
+            focusPendingUntil = SystemClock.uptimeMillis() + FOCUS_WINDOW_MS
+        } else {
+            focusPendingUntil = 0L
+        }
     }
 
     fun setFollowing(follow: Boolean) {
+        if (follow == following) return
         following = follow
         followZoom = if (follow) maxOf(map.cameraPosition.zoom, FOLLOW_MIN_ZOOM) else null
+        // Pinch-zooming while following zooms around the plane, not the fingers.
+        map.uiSettings.focalPoint = if (follow) paddedCenter() else null
         if (follow && !animate) {
             val hex = selectedHex ?: return
             if (motion.sample(hex, System.currentTimeMillis(), sample)) {
                 map.moveCamera(CameraUpdateFactory.newLatLngZoom(LatLng(sample.lat, sample.lon), followZoom!!))
             }
         }
+    }
+
+    /**
+     * Tells the map which edges are covered. The selected plane is framed in the space left over.
+     * Changing the insets never slides the map: the place in the middle of the uncovered area stays put,
+     * unless a plane was just selected, in which case it glides into the middle of that area.
+     */
+    fun setViewInsets(left: Int, top: Int, right: Int, bottom: Int) {
+        val next = intArrayOf(left, top, right, bottom)
+        if (next.contentEquals(insets)) return
+        insets = next
+        if (following) map.uiSettings.focalPoint = paddedCenter()
+        if (selectedHex != null && SystemClock.uptimeMillis() < focusPendingUntil) {
+            focusSelected()
+            return
+        }
+        val target = map.projection.fromScreenLocation(paddedCenter())
+        map.moveCamera(CameraUpdateFactory.newCameraPosition(CameraPosition.Builder(map.cameraPosition).target(target).padding(paddingArray()).build()))
+    }
+
+    /** Glides the camera so the selected plane sits in the middle of the uncovered area. */
+    private fun focusSelected() {
+        val hex = selectedHex ?: return
+        if (!motion.sample(hex, System.currentTimeMillis(), sample)) return
+        val position = CameraPosition.Builder(map.cameraPosition)
+            .target(LatLng(sample.lat, sample.lon))
+            .padding(paddingArray())
+            .build()
+        if (animate) map.animateCamera(CameraUpdateFactory.newCameraPosition(position), FOCUS_MS) else map.moveCamera(CameraUpdateFactory.newCameraPosition(position))
+    }
+
+    private fun paddingArray() = doubleArrayOf(insets[0].toDouble(), insets[1].toDouble(), insets[2].toDouble(), insets[3].toDouble())
+
+    private fun paddedCenter(): PointF {
+        val (w, h) = viewSize()
+        return PointF((insets[0] + w - insets[2]) / 2f, (insets[1] + h - insets[3]) / 2f)
     }
 
     fun setLayers(layers: LayerToggles) {
@@ -256,10 +312,6 @@ class RadarMapController(
         map.animateCamera(CameraUpdateFactory.newLatLngZoom(LatLng(location.lat, location.lon), zoom), 900)
     }
 
-    fun setBottomPadding(px: Int) {
-        map.moveCamera(CameraUpdateFactory.paddingTo(0.0, 0.0, 0.0, px.toDouble()))
-    }
-
     // endregion
 
     // region Frame loop
@@ -332,6 +384,8 @@ class RadarMapController(
                 val lat = if (target == null) s.lat else target.latitude + (s.lat - target.latitude) * ease
                 val lon = if (target == null) s.lon else target.longitude + Geo.headingDelta(target.longitude, s.lon) * ease
                 val zoom = followZoom?.let { cam.zoom + (it - cam.zoom) * FOLLOW_EASE } ?: cam.zoom
+                // Once at a readable zoom, hand zoom back to the user's pinch.
+                if (followZoom != null && kotlin.math.abs(zoom - followZoom!!) < 0.02) followZoom = null
                 map.moveCamera(CameraUpdateFactory.newLatLngZoom(LatLng(lat, lon), zoom))
             }
         }
@@ -464,6 +518,9 @@ class RadarMapController(
         const val ROUTE_UPDATE_MS = 500L
         const val TAP_RADIUS_DP = 22f
         const val FOLLOW_MIN_ZOOM = 9.0
+        const val FOCUS_MS = 650
+        /** How long after a selection the sheet's insets still re-frame the plane. */
+        const val FOCUS_WINDOW_MS = 1_200L
         /** Fraction of the remaining distance the follow camera covers each frame. */
         const val FOLLOW_EASE = 0.12
     }

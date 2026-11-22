@@ -92,6 +92,10 @@ data class RadarUiState(
     val panel: RadarPanel = RadarPanel.None,
     val selected: SelectedAircraft? = null,
     val following: Boolean = false,
+    /** Following, but the user dragged away: show Recentre. */
+    val followPaused: Boolean = false,
+    /** Following with the sheet tucked away into the top readout. */
+    val sheetCollapsed: Boolean = false,
     /** True when zoomed out past what one query covers. */
     val radiusCapped: Boolean = false,
     val emergencies: List<LiveAircraft> = emptyList(),

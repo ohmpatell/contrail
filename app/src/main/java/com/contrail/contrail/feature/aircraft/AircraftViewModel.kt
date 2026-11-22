@@ -14,6 +14,7 @@ import com.contrail.contrail.core.data.reference.Airlines
 import com.contrail.contrail.core.data.reference.Rarity
 import com.contrail.contrail.core.data.repository.AircraftDetailsRepository
 import com.contrail.contrail.core.data.repository.CutoutRepository
+import com.contrail.contrail.core.data.repository.CutoutStatus
 import com.contrail.contrail.core.data.repository.LiveTrafficRepository
 import com.contrail.contrail.core.data.repository.LogostreamRepository
 import com.contrail.contrail.core.data.repository.SightingEntity
@@ -53,14 +54,14 @@ data class AircraftUiState(
     val photo: AircraftPhoto? = null,
     val route: FlightRoute? = null,
     val sightings: List<SightingEntity> = emptyList(),
-    val cutout: File? = null,
-    val cutoutWorking: Boolean = false,
-    val hero: HeroMode = HeroMode.Livery,
+    val cutoutStatus: CutoutStatus = CutoutStatus.Idle,
+    val hero: HeroMode = HeroMode.Photo,
     val watchlist: Watchlist = Watchlist(emptyList()),
 ) {
     val typeName: String? get() = AircraftTypes.nameFor(typeCode)
     val rarity: Rarity get() = AircraftTypes.rarityFor(typeCode, Airlines.byIcao(airlineIcao))
     val airlineName: String? get() = airline?.name ?: Airlines.byIcao(airlineIcao)?.name
+    val cutout: File? get() = (cutoutStatus as? CutoutStatus.Ready)?.file
 
     /** Share of the great-circle distance already flown, when live and on a known route. */
     val progress: Float? get() {
@@ -89,9 +90,9 @@ class AircraftViewModel @AssistedInject constructor(
         fun create(hex: String): AircraftViewModel
     }
 
-    private val hero = MutableStateFlow(HeroMode.Livery)
-    private val cutout = MutableStateFlow(cutouts.cached(hex))
-    private val cutoutWorking = MutableStateFlow(false)
+    /** Null until the user picks one: then the real photo leads when there is one. */
+    private val hero = MutableStateFlow<HeroMode?>(null)
+    private val cutout = MutableStateFlow<CutoutStatus>(cutouts.cached(hex)?.let { CutoutStatus.Ready(it) } ?: CutoutStatus.Idle)
 
     private val live = traffic.observeTraffic().map { list -> list.firstOrNull { it.hex == hex } }.distinctUntilChanged()
     private val seen = sightings.forAircraft(hex)
@@ -121,15 +122,19 @@ class AircraftViewModel @AssistedInject constructor(
     val state: StateFlow<AircraftUiState> = combine(
         combine(live, identity, seen) { l, id, s -> Triple(l, id, s) },
         combine(airline, photo, route) { a, p, r -> Triple(a, p, r) },
-        combine(cutout, cutoutWorking, hero) { c, w, h -> Triple(c, w, h) },
+        combine(cutout, hero) { c, h -> c to h },
         watchlist.observe().map { Watchlist(it) },
-    ) { (l, id, s), (a, p, r), (c, w, h), watch ->
+    ) { (l, id, s), (a, p, r), (c, h), watch ->
         AircraftUiState(
             hex = hex, live = l, registration = id.registration, typeCode = id.typeCode, callsign = id.callsign,
             airlineIcao = id.airlineIcao, airline = a, photo = p, route = r, sightings = s,
-            cutout = c, cutoutWorking = w,
-            // With no airline to paint, the real aircraft cutout is the better floating image.
-            hero = if (h == HeroMode.Livery && id.airlineIcao == null && c != null) HeroMode.Cutout else h,
+            cutoutStatus = c,
+            hero = h ?: when {
+                p != null -> HeroMode.Photo
+                // With no airline to paint, the real aircraft cutout is the better floating image.
+                id.airlineIcao == null && c is CutoutStatus.Ready -> HeroMode.Cutout
+                else -> HeroMode.Livery
+            },
             watchlist = watch,
         )
     }.stateIn(viewModelScope, SharingStarted.WhileSubscribed(5_000), AircraftUiState(hex))
@@ -153,16 +158,19 @@ class AircraftViewModel @AssistedInject constructor(
     }
 
     private suspend fun makeCutout() {
-        if (cutout.value != null || cutoutWorking.value) return
+        when (cutout.value) {
+            is CutoutStatus.Ready, is CutoutStatus.Working, is CutoutStatus.Downloading -> return
+            else -> Unit
+        }
         val p = photo.filterNotNull().first()
-        cutoutWorking.value = true
-        cutout.value = runCatching { cutouts.cutout(hex, p.largeUrl) }.getOrNull()
-        cutoutWorking.value = false
+        cutout.value = CutoutStatus.Working
+        cutout.value = runCatching { cutouts.cutout(hex, p.largeUrl) { cutout.value = it } }
+            .getOrElse { CutoutStatus.Failed("Something went wrong making the cutout. Tap Cutout to try again.") }
     }
 
     fun showHero(mode: HeroMode) {
         hero.value = mode
-        // The segmentation model downloads on first use; asking again retries once it's there.
+        // A failed cutout (no model yet, photo didn't load) is retried each time Cutout is tapped.
         if (mode == HeroMode.Cutout) viewModelScope.launch { makeCutout() }
     }
 
