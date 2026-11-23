@@ -181,6 +181,7 @@ fun SkyScreen(state: SkyUiState, headingDeg: Float, headingUp: Boolean, actions:
                         RiseIn(0) { ScopeCard(state, headingDeg, headingUp, actions) }
                         radii()
                         RiseIn(2) { SkyViewCta(actions.onSkyView) }
+                        state.contrails?.let { f -> RiseIn(3) { ContrailCard(f, state.nowMs) } }
                         RiseIn(4) { AlertsCard(state.alerts, actions.onAlerts) }
                     }
                     Column(Modifier.weight(1f), verticalArrangement = Arrangement.spacedBy(spacing.lg)) {
@@ -194,6 +195,7 @@ fun SkyScreen(state: SkyUiState, headingDeg: Float, headingUp: Boolean, actions:
                 radii()
                 state.closest?.let { c -> RiseIn(1) { ClosestCard(c, state, actions) } }
                 RiseIn(2) { SkyViewCta(actions.onSkyView) }
+                state.contrails?.let { f -> RiseIn(3) { ContrailCard(f, state.nowMs) } }
                 if (state.contacts.size > 1) RiseIn(3) { OverheadList(state.contacts.drop(1).take(25), headingDeg, actions.onAircraft) }
                 RiseIn(4) { AlertsCard(state.alerts, actions.onAlerts) }
                 footer()
@@ -325,6 +327,7 @@ private fun ClosestCard(c: SkyContact, state: SkyUiState, actions: SkyActions) {
                         listOfNotNull(a.airline?.name, a.typeName ?: a.typeCode).joinToString(" · ").ifEmpty { "Unknown aircraft" },
                         style = ContrailTheme.type.bodySmall, color = colors.textSecondary, maxLines = 1, overflow = TextOverflow.Ellipsis,
                     )
+                    trailLine(state.contrails, a, state.nowMs)?.let { Text(it, style = ContrailTheme.type.label, color = colors.textPrimary) }
                 }
                 Column(horizontalAlignment = Alignment.End) {
                     Text(String.format(Locale.US, "%.1f", c.distanceKm), style = ContrailTheme.type.numericLarge, color = tint)

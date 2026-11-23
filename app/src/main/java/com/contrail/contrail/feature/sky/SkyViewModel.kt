@@ -43,6 +43,8 @@ data class SkyUiState(
     val alerts: AlertRules = AlertRules(),
     val watchlist: Watchlist = Watchlist(emptyList()),
     val nowMs: Long = 0,
+    /** Will planes up there leave contrails today? From Open-Meteo, labelled forecast. */
+    val contrails: com.contrail.contrail.core.data.sky.ContrailForecast? = null,
 ) {
     val closest: SkyContact? get() = contacts.firstOrNull()
 }
@@ -58,8 +60,10 @@ class SkyViewModel @Inject constructor(
     private val alertsScheduler: ProximityAlerts,
     watchlist: WatchlistRepository,
     private val clock: Clock,
+    private val contrailRepo: com.contrail.contrail.core.data.sky.ContrailForecastRepository,
 ) : ViewModel() {
     private val live = MutableStateFlow(Live(permission = location.hasPermission()))
+    private val contrails = MutableStateFlow<com.contrail.contrail.core.data.sky.ContrailForecast?>(null)
     private var polling: Job? = null
 
     /** A once-a-second tick so countdowns and dead-reckoned positions move between updates. */
@@ -80,7 +84,8 @@ class SkyViewModel @Inject constructor(
             watchlist = Watchlist(w),
             nowMs = now,
         )
-    }.stateIn(viewModelScope, SharingStarted.WhileSubscribed(5_000), SkyUiState())
+    }.combine(contrails) { s, c -> s.copy(contrails = c) }
+        .stateIn(viewModelScope, SharingStarted.WhileSubscribed(5_000), SkyUiState())
 
     /** The Sky tab is on screen: find you, then poll the feed every few seconds. */
     fun setActive(active: Boolean) {
@@ -110,7 +115,10 @@ class SkyViewModel @Inject constructor(
         if (!location.hasPermission()) {
             live.update { it.copy(permission = false) }
             // Without permission, use the last place you allowed (if any).
-            settings.current().spot?.let { spot -> live.update { it.copy(me = spot, near = settings.current().spotName) } }
+            settings.current().spot?.let { spot ->
+                live.update { it.copy(me = spot, near = settings.current().spotName) }
+                viewModelScope.launch { contrails.value = runCatching { contrailRepo.forecast(spot) }.getOrNull() }
+            }
             return
         }
         live.update { it.copy(permission = true, locating = it.me == null) }
@@ -122,6 +130,7 @@ class SkyViewModel @Inject constructor(
         val near = airports.nearest(me)?.let { "${it.city} (${it.iata})" }
         live.update { it.copy(me = me, near = near, locating = false) }
         settings.setSpot(me, near)
+        viewModelScope.launch { contrails.value = runCatching { contrailRepo.forecast(me) }.getOrNull() ?: contrails.value }
     }
 
     fun setRadius(km: Int) = viewModelScope.launch { settings.setRadius(km) }
