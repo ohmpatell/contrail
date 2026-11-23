@@ -31,10 +31,12 @@ import com.contrail.contrail.core.data.repository.SightingEntity
         RunwaySightingEntity::class,
         HappeningEntity::class,
         MomentEntity::class,
+        FlightPackEntity::class,
+        CabinTrackEntity::class,
     ],
-    version = 11,
+    version = 12,
     exportSchema = true,
-    autoMigrations = [AutoMigration(from = 1, to = 2), AutoMigration(from = 2, to = 3), AutoMigration(from = 3, to = 4), AutoMigration(from = 4, to = 5, spec = FillUids::class), AutoMigration(from = 5, to = 6), AutoMigration(from = 6, to = 7, spec = RefreshRoutes::class), AutoMigration(from = 7, to = 8), AutoMigration(from = 8, to = 9), AutoMigration(from = 9, to = 10), AutoMigration(from = 10, to = 11)],
+    autoMigrations = [AutoMigration(from = 1, to = 2), AutoMigration(from = 2, to = 3), AutoMigration(from = 3, to = 4), AutoMigration(from = 4, to = 5, spec = FillUids::class), AutoMigration(from = 5, to = 6), AutoMigration(from = 6, to = 7, spec = RefreshRoutes::class), AutoMigration(from = 7, to = 8), AutoMigration(from = 8, to = 9), AutoMigration(from = 9, to = 10), AutoMigration(from = 10, to = 11), AutoMigration(from = 11, to = 12)],
 )
 abstract class ContrailDatabase : RoomDatabase() {
     abstract fun liveAircraftDao(): LiveAircraftDao
@@ -53,4 +55,5 @@ abstract class ContrailDatabase : RoomDatabase() {
     abstract fun runwayLogDao(): RunwayLogDao
     abstract fun happeningDao(): HappeningDao
     abstract fun momentDao(): MomentDao
+    abstract fun cabinDao(): CabinDao
 }

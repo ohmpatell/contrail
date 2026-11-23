@@ -108,6 +108,9 @@ object NetworkModule {
     fun tracks(client: HttpClient): TrackSource = OpenSkyTrackSource(client)
 
     @Provides @Singleton
+    fun wikipedia(client: HttpClient): com.contrail.contrail.core.network.wiki.WikipediaSource = com.contrail.contrail.core.network.wiki.WikipediaSource(client)
+
+    @Provides @Singleton
     fun logostream(client: HttpClient): LogostreamSource = LogostreamSource(client)
 
 

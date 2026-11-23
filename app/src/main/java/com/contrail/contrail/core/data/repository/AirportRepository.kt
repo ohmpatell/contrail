@@ -146,6 +146,19 @@ class AirportRepository @Inject constructor(
             .toList()
     }
 
+    /** Large and medium airports within [radiusM] of [p], nearest first: the cities a flight passes. */
+    suspend fun majorNear(p: com.contrail.contrail.core.common.LatLon, radiusM: Double): List<AirportEntity> {
+        ensureImported()
+        val dLat = radiusM / 111_000.0
+        val dLon = dLat / kotlin.math.cos(Math.toRadians(p.lat)).coerceAtLeast(0.05)
+        return dao.within(p.lat - dLat, p.lat + dLat, p.lon - dLon, p.lon + dLon)
+            .filter { (it.size == "L" || it.size == "M") && it.scheduled }
+            .map { it to com.contrail.contrail.core.common.Geo.distanceM(p.lat, p.lon, it.lat, it.lon) }
+            .filter { it.second <= radiusM }
+            .sortedBy { it.second }
+            .map { it.first }
+    }
+
     /** The nearest airport with scheduled service to [p], for naming where you are. */
     suspend fun nearest(p: com.contrail.contrail.core.common.LatLon): AirportInfo? {
         directory()

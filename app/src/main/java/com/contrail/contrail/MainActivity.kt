@@ -173,6 +173,7 @@ private fun ContrailNavHost(inbox: SharedTicketInbox) {
             override fun openShareCard() = push(ShareCardKey)
             override fun openHangar() = push(HangarKey)
             override fun openMoments() = push(com.contrail.contrail.navigation.MomentsKey)
+            override fun openCabin(segmentId: Long) = push(com.contrail.contrail.navigation.CabinKey(segmentId))
             override fun openAddMoment(momentId: String, segmentId: Long, registration: String) =
                 push(com.contrail.contrail.navigation.AddMomentKey(momentId, segmentId, registration))
             override fun openHangarPlane(registration: String) = push(HangarPlaneKey(registration.uppercase()))
@@ -255,6 +256,7 @@ private fun ContrailNavHost(inbox: SharedTicketInbox) {
                 entry<SkyViewKey>(metadata = DetailOverlayStrategy.detail) { SkyViewRoute() }
                 entry<ShareCardKey>(metadata = DetailOverlayStrategy.detail) { ShareCardRoute() }
                 entry<HangarKey>(metadata = DetailOverlayStrategy.detail) { HangarRoute() }
+                entry<com.contrail.contrail.navigation.CabinKey>(metadata = DetailOverlayStrategy.detail) { com.contrail.contrail.feature.cabin.CabinRoute(it.segmentId) }
                 entry<com.contrail.contrail.navigation.MomentsKey>(metadata = DetailOverlayStrategy.detail) { com.contrail.contrail.feature.passport.MomentsRoute() }
                 entry<com.contrail.contrail.navigation.AddMomentKey>(metadata = DetailOverlayStrategy.detail) {
                     com.contrail.contrail.feature.passport.AddMomentRoute(it.momentId, it.segmentId, it.registration)

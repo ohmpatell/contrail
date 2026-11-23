@@ -90,6 +90,22 @@ class TripRepository @Inject constructor(
         dao.updateSegment(s.copy(tail = tail?.uppercase()?.trim()?.ifEmpty { null }))
     }
 
+    /**
+     * Real take-off and landing times from your phone's GPS in Cabin mode. They only fill gaps:
+     * the airline's runway times, when they come, are better.
+     */
+    suspend fun recordGpsTimes(segmentId: Long, takeoffMs: Long?, landingMs: Long?) {
+        val s = dao.segment(segmentId) ?: return
+        if (s.actualSource == "runway") return
+        dao.updateSegment(
+            s.copy(
+                actualDepartureUtcMs = s.actualDepartureUtcMs.takeIf { s.actualSource == "gps" && it != null } ?: takeoffMs ?: s.actualDepartureUtcMs,
+                actualArrivalUtcMs = landingMs ?: s.actualArrivalUtcMs,
+                actualSource = "gps",
+            ),
+        )
+    }
+
     suspend fun rename(tripId: Long, title: String) {
         val t = dao.trip(tripId) ?: return
         dao.updateTrip(t.copy(title = title.trim().ifEmpty { t.title }))

@@ -89,6 +89,7 @@ fun FlightRoute(segmentId: Long) {
         onOpenVisit = { v -> nav.openLounge(segmentId, v.phase.name, v.id) },
         onEdit = { nav.openAddFlight(segmentId) },
         onAddMoment = { nav.openAddMoment(segmentId = segmentId) },
+        onCabin = { nav.openCabin(segmentId) },
         onMoment = { m -> if (m.mine) nav.openAddMoment(momentId = m.id) },
         onCheckStatus = viewModel::checkStatus,
     )
@@ -109,6 +110,7 @@ fun FlightScreen(
     onCheckStatus: () -> Unit = {},
     onAddMoment: () -> Unit = {},
     onMoment: (com.contrail.contrail.core.data.moments.Moment) -> Unit = {},
+    onCabin: () -> Unit = {},
 ) {
     val s = state.segment
     val now by rememberNow(fixedNow)
@@ -124,6 +126,7 @@ fun FlightScreen(
     ) {
         if (s == null) return@DetailScaffold
         val flown = s.arrival.isBefore(now) && state.live.aircraft == null
+        com.contrail.contrail.feature.cabin.AirportModeBanner(s, state.places[s.origin], now, accent, onCheckStatus, state.statusChecking)
         if (flown) {
             FlownCard(s, state, now, accent)
             BoardingPass(PassData.of(s, state.places), flap = false)
@@ -133,6 +136,7 @@ fun FlightScreen(
         }
         if (showsAirlineStatus(s, now)) AirlineStatusCard(s, state.statusChecking, state.unitsLeft, onCheckStatus)
         AircraftCard(s, state, accent, onSetTail, onOpenAircraft)
+        if (com.contrail.contrail.feature.cabin.cabinRelevant(s, now)) com.contrail.contrail.feature.cabin.InFlightCard(s, state.pack, accent, onCabin)
         if (!flown) RotationPanel(s, state.rotation, state.rotationLoading, state.thresholds, state.places, onRefreshRotation, onOpenSettings)
         BookingCard(s, state)
         NotesCard(s)

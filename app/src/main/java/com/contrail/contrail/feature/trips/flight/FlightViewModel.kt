@@ -64,6 +64,8 @@ data class FlightUiState(
     val unitsLeft: Int? = null,
     /** Moments from this flight: yours, captured in the air, or noticed in your logbook. */
     val moments: List<com.contrail.contrail.core.data.moments.Moment> = emptyList(),
+    /** What's saved for Cabin mode with no internet. */
+    val pack: com.contrail.contrail.core.data.cabin.FlightPack? = null,
 )
 
 /** One row of the gate-to-gate timeline. Estimates are always labelled as such. */
@@ -118,6 +120,7 @@ class FlightViewModel @AssistedInject constructor(
     private val schedule: com.contrail.contrail.core.data.repository.ScheduleRepository,
     private val clock: Clock,
     moments: com.contrail.contrail.feature.passport.AllMoments,
+    packs: com.contrail.contrail.core.data.cabin.FlightPackRepository,
 ) : ViewModel() {
     private val statusChecking = MutableStateFlow(false)
 
@@ -148,6 +151,7 @@ class FlightViewModel @AssistedInject constructor(
     }.combine(statusChecking) { s, busy -> s.copy(statusChecking = busy) }
         .combine(schedule.units) { s, u -> s.copy(unitsLeft = u.remaining) }
         .combine(moments.observe()) { s, m -> s.copy(moments = m.moments.filter { it.segmentId == segmentId }) }
+        .combine(packs.observe(segmentId)) { s, p -> s.copy(pack = p) }
         .stateIn(viewModelScope, SharingStarted.WhileSubscribed(5_000), FlightUiState())
 
     init {

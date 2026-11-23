@@ -70,6 +70,13 @@ class ContrailApplication : Application(), SingletonImageLoader.Factory, Configu
             @OptIn(FlowPreview::class)
             trips.get().trips.drop(1).debounce(1_500).collect { Widgets.updateTrips(this@ContrailApplication) }
         }
+        // Flights in the next few days get their offline flight pack on flight day.
+        appScope.launch {
+            @OptIn(FlowPreview::class)
+            trips.get().trips.debounce(3_000).collect { list ->
+                com.contrail.contrail.feature.cabin.FlightPackWorker.schedule(this@ContrailApplication, list.flatMap { it.segments }, java.time.Instant.now())
+            }
+        }
         // Happening now: watches whatever traffic the app already has.
         events.get().start(appScope)
         // The Hangar check runs while anything is pinned.

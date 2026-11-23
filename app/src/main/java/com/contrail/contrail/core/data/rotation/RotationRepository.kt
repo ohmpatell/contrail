@@ -43,6 +43,7 @@ class RotationRepository @Inject constructor(
     private val usage: UsageTracker,
     private val json: Json,
     private val clock: Clock,
+    private val tracks: com.contrail.contrail.core.network.track.TrackSource,
 ) {
     private val cache = db.cacheDao()
 
@@ -63,6 +64,30 @@ class RotationRepository @Inject constructor(
         }.orEmpty()
         val turn = runCatching { turnaround(segment) }.onFailure { error = error ?: friendly(it) }.getOrNull()
         return Rotation(false, tail, hex, live, legs, turn, error)
+    }
+
+    /**
+     * The path [callsign] actually flew into [destIcao] on a recent day (OpenSky publishes each day
+     * the day after), for the flight pack: real routes bend around jet streams and oceanic tracks.
+     * Null when OpenSky isn't set up, credits are low, or it isn't found.
+     */
+    suspend fun recentPath(callsign: String, destIcao: String): List<com.contrail.contrail.core.common.LatLon>? {
+        if (!hasOpenSky()) return null
+        val today = clock.nowMs() / 1000 / 86_400 * 86_400
+        for (daysBack in 1..3) {
+            val begin = today - daysBack * 86_400L
+            val key = "arr:$destIcao:$begin"
+            val arrivals = runCatching {
+                cache.get(key)?.let { json.decodeFromString<List<HistoricFlight>>(it.body) }
+                    ?: callOpenSky { history.arrivals(destIcao, begin, begin + 86_400) }.also {
+                        cache.put(CachedResponseEntity(key, json.encodeToString(it), clock.nowMs()))
+                    }
+            }.getOrNull() ?: continue
+            val match = arrivals.firstOrNull { it.cleanCallsign == callsign.uppercase() } ?: continue
+            val track = runCatching { callOpenSky { tracks.trackAt(match.icao24, match.firstSeen + 600) } }.getOrNull()
+            if (track != null && track.points.size >= 8) return track.points
+        }
+        return null
     }
 
     /** Registration → transponder hex, for planes pinned to My Hangar. */

@@ -68,6 +68,10 @@ data object SkyViewKey : NavKey
 @Serializable
 data object ShareCardKey : NavKey
 
+/** Cabin mode for one of your flights. */
+@Serializable
+data class CabinKey(val segmentId: Long) : NavKey
+
 /** Every moment, as a timeline. */
 @Serializable
 data object MomentsKey : NavKey
@@ -102,6 +106,7 @@ interface Navigator {
     fun openShareCard()
     fun openHangar()
     fun openMoments()
+    fun openCabin(segmentId: Long)
     fun openAddMoment(momentId: String = "", segmentId: Long = 0, registration: String = "")
     fun openHangarPlane(registration: String)
     /** Closes every page, switches to the radar and flies to the plane. */
@@ -127,6 +132,7 @@ val LocalNavigator = staticCompositionLocalOf<Navigator> {
         override fun openShareCard() = Unit
         override fun openHangar() = Unit
         override fun openMoments() = Unit
+        override fun openCabin(segmentId: Long) = Unit
         override fun openAddMoment(momentId: String, segmentId: Long, registration: String) = Unit
         override fun openHangarPlane(registration: String) = Unit
         override fun showOnRadar(hex: String?, lat: Double, lon: Double) = Unit

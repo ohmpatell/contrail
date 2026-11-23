@@ -117,8 +117,13 @@ class LiveFlightWorker @AssistedInject constructor(
             updates.reschedule()
             return Result.success()
         }
-        // The airline's gate, times and tail, at most three times per flight.
+        // The airline's gate, times and tail, at most three times per flight. A new gate is worth a ping.
+        val gateBefore = seg.gate
         runCatching { schedule.checkIfDue(seg.id) }
+        val gateAfter = trips.segment(seg.id).first()?.second?.gate
+        if (gateBefore != null && gateAfter != null && !gateBefore.equals(gateAfter, ignoreCase = true) && seg.departure.isAfter(now)) {
+            LiveFlightNotification.gateChanged(applicationContext, seg, gateBefore, gateAfter)
+        }
         val dir = airports.directory()
         val o = dir.find(seg.origin)
         val d = dir.find(seg.destination)
@@ -188,6 +193,28 @@ object LiveFlightNotification {
         nm.notify(LANDED_BASE + (seg.id % 1000).toInt(), n)
     }
 
+    /** Your gate moved: worth knowing before you walk to the old one. */
+    fun gateChanged(context: Context, seg: FlightSegment, from: String, to: String) {
+        if (ContextCompat.checkSelfPermission(context, Manifest.permission.POST_NOTIFICATIONS) != PackageManager.PERMISSION_GRANTED) return
+        val nm = context.getSystemService(NotificationManager::class.java)
+        nm.createNotificationChannel(NotificationChannel(LANDED_CHANNEL, context.getString(R.string.landed_channel), NotificationManager.IMPORTANCE_HIGH))
+        val open = PendingIntent.getActivity(
+            context, seg.id.toInt() + 2,
+            Intent(context, MainActivity::class.java).putExtra(MainActivity.EXTRA_FLIGHT, seg.id).addFlags(Intent.FLAG_ACTIVITY_SINGLE_TOP),
+            PendingIntent.FLAG_IMMUTABLE or PendingIntent.FLAG_UPDATE_CURRENT,
+        )
+        val n = NotificationCompat.Builder(context, LANDED_CHANNEL)
+            .setSmallIcon(R.drawable.ic_stat_plane)
+            .setContentTitle("Gate change: ${seg.designator} now leaves from $to")
+            .setContentText("It was $from. From the airline.")
+            .setColor((Airlines.byIata(seg.airlineIata)?.accentArgb ?: 0xFF8FD8FF).toInt())
+            .setContentIntent(open)
+            .setAutoCancel(true)
+            .build()
+        nm.notify(GATE_BASE + (seg.id % 1000).toInt(), n)
+    }
+
+    private const val GATE_BASE = 4_400
     private const val LANDED_CHANNEL = "followed-landed"
     private const val LANDED_BASE = 4_300
 

@@ -16,6 +16,9 @@ data class FlightTrack(val hex: String, val startTimeSec: Long, val points: List
 interface TrackSource {
     /** The current flight's track, or null when the provider has none. Throws on network errors. */
     suspend fun trackFor(hex: String): FlightTrack?
+
+    /** The track of the flight the aircraft was on at [timeSec] (a past flight), if the provider keeps it. */
+    suspend fun trackAt(hex: String, timeSec: Long): FlightTrack? = null
 }
 
 /** OpenSky's anonymous `tracks/all` endpoint: waypoints since take-off, free with a daily credit budget. */
@@ -23,8 +26,12 @@ class OpenSkyTrackSource(
     private val client: HttpClient,
     private val baseUrl: String = "https://opensky-network.org/api",
 ) : TrackSource {
-    override suspend fun trackFor(hex: String): FlightTrack? {
-        val response = client.get("$baseUrl/tracks/all?icao24=${hex.lowercase()}&time=0")
+    override suspend fun trackFor(hex: String): FlightTrack? = track(hex, 0)
+
+    override suspend fun trackAt(hex: String, timeSec: Long): FlightTrack? = track(hex, timeSec)
+
+    private suspend fun track(hex: String, timeSec: Long): FlightTrack? {
+        val response = client.get("$baseUrl/tracks/all?icao24=${hex.lowercase()}&time=$timeSec")
         if (response.status.value == 404) return null
         if (!response.status.isSuccess()) error("OpenSky returned HTTP ${response.status.value}")
         val body: OpenSkyTrack = response.body()
