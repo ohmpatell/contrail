@@ -113,6 +113,18 @@ interface SyncDao {
     @Query("DELETE FROM watch_item WHERE kind = :kind AND value = :value")
     suspend fun deleteWatch(kind: String, value: String)
 
+    @Query("SELECT * FROM moment")
+    suspend fun moments(): List<MomentEntity>
+
+    @Query("SELECT * FROM moment WHERE uid = :uid")
+    suspend fun moment(uid: String): MomentEntity?
+
+    @Upsert
+    suspend fun upsertMoment(m: MomentEntity)
+
+    @Query("DELETE FROM moment WHERE uid = :uid")
+    suspend fun deleteMoment(uid: String)
+
     @Query("SELECT * FROM hangar_plane")
     suspend fun hangar(): List<HangarPlaneEntity>
 

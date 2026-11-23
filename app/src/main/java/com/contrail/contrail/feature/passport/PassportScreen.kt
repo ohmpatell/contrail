@@ -87,10 +87,12 @@ import java.util.Locale
 fun PassportRoute(viewModel: PassportViewModel = hiltViewModel()) {
     val state by viewModel.state.collectAsStateWithLifecycle()
     val hangar by viewModel.hangar.collectAsStateWithLifecycle()
+    val moments by viewModel.moments.collectAsStateWithLifecycle()
     val nav = LocalNavigator.current
     PassportScreen(
         state,
         hangar = hangar,
+        moments = moments,
         actions = PassportActions(
             onYearInReview = nav::openYearInReview,
             onImport = nav::openLogImport,
@@ -102,6 +104,9 @@ fun PassportRoute(viewModel: PassportViewModel = hiltViewModel()) {
             onSelectYear = viewModel::selectYear,
             onShare = nav::openShareCard,
             onHangar = nav::openHangar,
+            onMoments = nav::openMoments,
+            onAddMoment = { nav.openAddMoment() },
+            onMoment = { m -> if (m.mine) nav.openAddMoment(momentId = m.id) else m.segmentId?.let(nav::openFlight) },
         ),
     )
 }
@@ -118,6 +123,9 @@ data class PassportActions(
     val onSelectYear: (Int?) -> Unit = {},
     val onShare: () -> Unit = {},
     val onHangar: () -> Unit = {},
+    val onMoments: () -> Unit = {},
+    val onAddMoment: () -> Unit = {},
+    val onMoment: (com.contrail.contrail.core.data.moments.Moment) -> Unit = {},
 )
 
 @Composable
@@ -127,6 +135,7 @@ fun PassportScreen(
     modifier: Modifier = Modifier,
     autoplay: Boolean = false,
     hangar: List<com.contrail.contrail.core.data.hangar.HangarPlane> = emptyList(),
+    moments: List<com.contrail.contrail.core.data.moments.Moment> = emptyList(),
 ) {
     val spacing = ContrailTheme.spacing
     val colors = ContrailTheme.colors
@@ -175,6 +184,7 @@ fun PassportScreen(
                 val together: @Composable () -> Unit = { if (state.together.isNotEmpty()) RiseIn(4) { FlownTogetherCard(state.together) } }
                 val medals: @Composable () -> Unit = { RiseIn(4) { AchievementsCard(s.achievements) } }
                 val pinned: @Composable () -> Unit = { RiseIn(4) { HangarPreview(hangar, actions.onHangar) } }
+                val memories: @Composable () -> Unit = { RiseIn(3) { MomentsStrip(moments, actions.onMoments, actions.onAddMoment, actions.onMoment) } }
                 val year: @Composable () -> Unit = { s.years.firstOrNull()?.let { y -> RiseIn(5) { YearCard(state.selectedYear ?: y, s.years, actions.onYearInReview) } } }
                 val years: @Composable () -> Unit = { if (state.selectedYear == null) RiseIn(6) { YearsChart(s.insights) } }
                 val calendar: @Composable () -> Unit = { RiseIn(7) { FlyingCalendar(s.insights) } }
@@ -205,6 +215,7 @@ fun PassportScreen(
                             pinned()
                         }
                     }
+                    memories()
                     Row(Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.spacedBy(spacing.lg), verticalAlignment = Alignment.Top) {
                         Column(Modifier.weight(1f), verticalArrangement = Arrangement.spacedBy(spacing.lg)) {
                             stamps(); together(); year(); years(); calendar(); how(); countries(); collection()
@@ -214,7 +225,7 @@ fun PassportScreen(
                         }
                     }
                 } else {
-                    globe(); headline(); logbook(); pinned(); stamps(); together(); medals(); year(); years(); calendar()
+                    globe(); headline(); logbook(); memories(); pinned(); stamps(); together(); medals(); year(); years(); calendar()
                     airlines(); airports(); routes(); types(); how(); edges(); countries(); places(); records(); collection(); lounges()
                 }
             }

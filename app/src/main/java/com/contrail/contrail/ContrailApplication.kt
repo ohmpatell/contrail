@@ -81,7 +81,7 @@ class ContrailApplication : Application(), SingletonImageLoader.Factory, Configu
         // Signed in: sync shortly after anything that syncs changes here, and whenever the app opens.
         appScope.launch {
             if (account.get().signedIn.first()) com.contrail.contrail.core.data.sync.SyncScheduler.start(this@ContrailApplication)
-            database.get().invalidationTracker.createFlow("trip", "segment", "connection_pref", "lounge_visit", "lounge", "watch_item", "airport_user", "hangar_plane", emitInitialState = false)
+            database.get().invalidationTracker.createFlow("trip", "segment", "connection_pref", "lounge_visit", "lounge", "watch_item", "airport_user", "hangar_plane", "moment", emitInitialState = false)
                 .debounce(3_000)
                 .collect { if (account.get().signedIn.first()) com.contrail.contrail.core.data.sync.SyncScheduler.soon(this@ContrailApplication) }
         }

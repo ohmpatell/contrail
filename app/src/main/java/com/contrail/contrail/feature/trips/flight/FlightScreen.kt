@@ -24,6 +24,8 @@ import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
+import androidx.compose.foundation.clickable
+import androidx.compose.ui.semantics.Role
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.graphics.drawscope.Stroke
 import androidx.compose.ui.platform.LocalUriHandler
@@ -86,6 +88,8 @@ fun FlightRoute(segmentId: Long) {
         onLogLounge = { phase -> nav.openLounge(segmentId, phase.name) },
         onOpenVisit = { v -> nav.openLounge(segmentId, v.phase.name, v.id) },
         onEdit = { nav.openAddFlight(segmentId) },
+        onAddMoment = { nav.openAddMoment(segmentId = segmentId) },
+        onMoment = { m -> if (m.mine) nav.openAddMoment(momentId = m.id) },
         onCheckStatus = viewModel::checkStatus,
     )
 }
@@ -103,6 +107,8 @@ fun FlightScreen(
     fixedNow: Instant? = null,
     onEdit: () -> Unit = {},
     onCheckStatus: () -> Unit = {},
+    onAddMoment: () -> Unit = {},
+    onMoment: (com.contrail.contrail.core.data.moments.Moment) -> Unit = {},
 ) {
     val s = state.segment
     val now by rememberNow(fixedNow)
@@ -130,6 +136,21 @@ fun FlightScreen(
         if (!flown) RotationPanel(s, state.rotation, state.rotationLoading, state.thresholds, state.places, onRefreshRotation, onOpenSettings)
         BookingCard(s, state)
         NotesCard(s)
+        if (flown || state.moments.isNotEmpty()) {
+            SectionCard("Moments", trailing = {
+                Text(
+                    "Add",
+                    style = ContrailTheme.type.label,
+                    color = com.contrail.contrail.core.designsystem.theme.RarityPalette.Legendary.first(),
+                    modifier = Modifier.clip(ContrailTheme.shapes.chip).clickable(role = Role.Button, onClickLabel = "Add a moment", onClick = onAddMoment).padding(horizontal = ContrailTheme.spacing.sm),
+                )
+            }) {
+                if (state.moments.isEmpty()) {
+                    Text("A cockpit visit, an upgrade, a sunset worth remembering? Keep it with this flight.", style = ContrailTheme.type.bodySmall, color = ContrailTheme.colors.textTertiary)
+                }
+                state.moments.forEach { m -> com.contrail.contrail.feature.passport.MomentCard(m, onClick = { onMoment(m) }) }
+            }
+        }
         SectionCard("Lounges") {
             val dep = state.lounges.filter { it.phase == LoungePhase.Departure }
             val arr = state.lounges.filter { it.phase == LoungePhase.Arrival }

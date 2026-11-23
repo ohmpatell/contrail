@@ -256,6 +256,8 @@ fun HangarPlaneRoute(registration: String) {
         onRemove = viewModel::remove,
         onShowOnRadar = { c -> showOnRadar(c, nav::showOnRadar) },
         onAircraftPage = { hex -> nav.openAircraft(hex) },
+        onAddMoment = { nav.openAddMoment(registration = registration) },
+        onMoment = { m -> if (m.mine) nav.openAddMoment(momentId = m.id) else m.segmentId?.let(nav::openFlight) },
     )
 }
 
@@ -269,6 +271,8 @@ fun HangarPlaneScreen(
     onRemove: () -> Unit,
     onShowOnRadar: (HangarCard) -> Unit,
     onAircraftPage: (String) -> Unit,
+    onAddMoment: () -> Unit = {},
+    onMoment: (com.contrail.contrail.core.data.moments.Moment) -> Unit = {},
 ) {
     val c = state.card
     val p = c?.plane
@@ -290,6 +294,17 @@ fun HangarPlaneScreen(
             }
         }
         StoryCard(p, onStory, onPickPhoto)
+        SectionCard("Moments with ${p.registration}", trailing = {
+            Text(
+                "Add", style = ContrailTheme.type.label, color = Gold,
+                modifier = Modifier.clip(ContrailTheme.shapes.chip).clickable(role = Role.Button, onClickLabel = "Add a moment", onClick = onAddMoment).padding(horizontal = spacing.sm),
+            )
+        }) {
+            if (state.moments.isEmpty()) {
+                Text("Sat in the captain's seat? Keep it here as a moment, with the date and a photo.", style = ContrailTheme.type.bodySmall, color = colors.textTertiary)
+            }
+            state.moments.forEach { m -> com.contrail.contrail.feature.passport.MomentCard(m, onClick = { onMoment(m) }) }
+        }
         SectionCard("Alerts") {
             Row(Modifier.fillMaxWidth().clickable(role = Role.Switch) { onAlerts(!p.alerts) }, verticalAlignment = Alignment.CenterVertically) {
                 Column(Modifier.weight(1f)) {

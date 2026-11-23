@@ -68,6 +68,14 @@ data object SkyViewKey : NavKey
 @Serializable
 data object ShareCardKey : NavKey
 
+/** Every moment, as a timeline. */
+@Serializable
+data object MomentsKey : NavKey
+
+/** Write a moment ([momentId] empty) or edit one, optionally starting from a flight or a plane. */
+@Serializable
+data class AddMomentKey(val momentId: String = "", val segmentId: Long = 0, val registration: String = "") : NavKey
+
 /** My Hangar: your pinned planes. */
 @Serializable
 data object HangarKey : NavKey
@@ -93,6 +101,8 @@ interface Navigator {
     fun openSkyView()
     fun openShareCard()
     fun openHangar()
+    fun openMoments()
+    fun openAddMoment(momentId: String = "", segmentId: Long = 0, registration: String = "")
     fun openHangarPlane(registration: String)
     /** Closes every page, switches to the radar and flies to the plane. */
     fun showOnRadar(hex: String?, lat: Double, lon: Double)
@@ -116,6 +126,8 @@ val LocalNavigator = staticCompositionLocalOf<Navigator> {
         override fun openSkyView() = Unit
         override fun openShareCard() = Unit
         override fun openHangar() = Unit
+        override fun openMoments() = Unit
+        override fun openAddMoment(momentId: String, segmentId: Long, registration: String) = Unit
         override fun openHangarPlane(registration: String) = Unit
         override fun showOnRadar(hex: String?, lat: Double, lon: Double) = Unit
         override fun back() = Unit

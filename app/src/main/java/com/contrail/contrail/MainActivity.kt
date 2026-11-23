@@ -172,6 +172,9 @@ private fun ContrailNavHost(inbox: SharedTicketInbox) {
             override fun openSkyView() = push(SkyViewKey)
             override fun openShareCard() = push(ShareCardKey)
             override fun openHangar() = push(HangarKey)
+            override fun openMoments() = push(com.contrail.contrail.navigation.MomentsKey)
+            override fun openAddMoment(momentId: String, segmentId: Long, registration: String) =
+                push(com.contrail.contrail.navigation.AddMomentKey(momentId, segmentId, registration))
             override fun openHangarPlane(registration: String) = push(HangarPlaneKey(registration.uppercase()))
             override fun showOnRadar(hex: String?, lat: Double, lon: Double) {
                 while (backStack.size > 1) backStack.removeAt(backStack.lastIndex)
@@ -252,6 +255,10 @@ private fun ContrailNavHost(inbox: SharedTicketInbox) {
                 entry<SkyViewKey>(metadata = DetailOverlayStrategy.detail) { SkyViewRoute() }
                 entry<ShareCardKey>(metadata = DetailOverlayStrategy.detail) { ShareCardRoute() }
                 entry<HangarKey>(metadata = DetailOverlayStrategy.detail) { HangarRoute() }
+                entry<com.contrail.contrail.navigation.MomentsKey>(metadata = DetailOverlayStrategy.detail) { com.contrail.contrail.feature.passport.MomentsRoute() }
+                entry<com.contrail.contrail.navigation.AddMomentKey>(metadata = DetailOverlayStrategy.detail) {
+                    com.contrail.contrail.feature.passport.AddMomentRoute(it.momentId, it.segmentId, it.registration)
+                }
                 entry<HangarPlaneKey>(metadata = DetailOverlayStrategy.detail) { HangarPlaneRoute(it.registration) }
             },
         )

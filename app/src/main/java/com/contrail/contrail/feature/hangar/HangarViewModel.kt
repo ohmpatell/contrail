@@ -83,6 +83,8 @@ data class HangarPlaneUiState(
     val flightsError: String? = null,
     val flownOnIt: Int = 0,
     val removed: Boolean = false,
+    /** Moments with this plane. */
+    val moments: List<com.contrail.contrail.core.data.moments.Moment> = emptyList(),
 )
 
 /** One pinned plane: story, your photo, alerts, its last week and your history with it. */
@@ -94,6 +96,7 @@ class HangarPlaneViewModel @AssistedInject constructor(
     traffic: LiveTrafficRepository,
     private val details: AircraftDetailsRepository,
     private val trips: TripRepository,
+    moments: com.contrail.contrail.feature.passport.AllMoments,
 ) : ViewModel() {
 
     @AssistedFactory
@@ -112,7 +115,9 @@ class HangarPlaneViewModel @AssistedInject constructor(
             combine(photo, route) { ph, r -> HangarCard(p, now, ph, r) }
         }
 
-    val state: StateFlow<HangarPlaneUiState> = combine(card, extra) { c, e -> e.copy(card = c) }
+    val state: StateFlow<HangarPlaneUiState> = combine(card, extra, moments.observe()) { c, e, m ->
+        e.copy(card = c, moments = m.moments.filter { it.registration.equals(registration, ignoreCase = true) })
+    }
         .stateIn(viewModelScope, SharingStarted.WhileSubscribed(5_000), HangarPlaneUiState())
 
     init {

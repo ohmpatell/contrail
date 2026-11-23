@@ -18,6 +18,7 @@ import kotlinx.coroutines.flow.flatMapLatest
 import kotlinx.coroutines.flow.SharingStarted
 import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.flow.combine
+import kotlinx.coroutines.flow.map
 import kotlinx.coroutines.flow.stateIn
 import java.time.Instant
 import javax.inject.Inject
@@ -65,11 +66,16 @@ class PassportViewModel @Inject constructor(
     airports: AirportRepository,
     clock: Clock,
     hangar: com.contrail.contrail.core.data.hangar.HangarRepository,
+    moments: AllMoments,
 ) : ViewModel() {
     private val year = MutableStateFlow<Int?>(null)
 
     val state: StateFlow<PassportUiState> = year.flatMapLatest { y -> passportFlow(trips, lounges, airports, clock, y) }
         .stateIn(viewModelScope, SharingStarted.WhileSubscribed(5_000), PassportUiState())
+
+    /** Every moment, newest first, for the Moments strip. */
+    val moments: StateFlow<List<com.contrail.contrail.core.data.moments.Moment>> = moments.observe().map { it.moments }
+        .stateIn(viewModelScope, SharingStarted.WhileSubscribed(5_000), emptyList())
 
     /** Your pinned planes, for the My Hangar card. */
     val hangar: StateFlow<List<com.contrail.contrail.core.data.hangar.HangarPlane>> = hangar.observe()
