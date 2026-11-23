@@ -77,15 +77,49 @@ Releases: every push to `master` publishes a signed APK to GitHub Releases for O
   - They can tap **I'm on this trip too**, which turns it into their own trip, in their log and Passport. Their Passport then gets a **Flown together** card.
 - 188 unit and screenshot tests green, lint clean. Verified on the Pixel 9 emulator: the database upgrade keeps existing trips, sign-up and sync with the real Supabase project (with a throwaway account that was deleted after), the new Settings, and the Chart theme with its map.
 
-## In progress: Stage 6 (spotting, flying and 3D)
-Plan: `docs/DESIGN.md` → Stage 6.
-- ✅ Fixes: pages opened from other pages (logbook → flight → Edit) now appear; selecting a plane keeps it in view above the sheet; follow survives map taps (tap the readout to bring the sheet back, Recentre after a drag); the sheet scrolls, with Tail / Type / Airline watch toggles and the Aircraft page button always reachable; Sky and Passport in two columns on tablets; the aircraft page opens on the photo; the cutout says what it's doing; the logo row lines up.
-- ✅ Route check: two route databases, and a route is only shown when it fits how the plane is flying ("Landing at Toronto · from its approach" otherwise).
-- ✅ Search (radar, magnifier) and My Hangar (star on a plane's sheet; Passport card; alerts on take-off and landing).
-- Next: Happening now, Spotter's board and runways from traffic, then stamps and Moments, in-flight mode, contrail forecast, 3D.
+### Stage 6: spotting, flying and 3D (Nov 22, 2026)
+- ✅ **Fixes:**
+  - Pages opened from other pages now show up (Logbook → flight → Edit was hidden underneath).
+  - Tapping a plane keeps it in view above the sheet.
+  - Follow survives map taps: the sheet tucks into the readout, tap it to bring it back; after a drag there's Recentre.
+  - The sheet scrolls, with Tail / Type / Airline watch toggles and the Aircraft page button always reachable.
+  - Sky, Passport and Airports are two columns on tablets.
+  - The aircraft page opens on the photo; the cutout shows its model download and says what went wrong.
+  - The logo and rarity row lines up.
+- ✅ **Route check:** two route databases, and a route is only shown when it fits how the plane is flying. Otherwise: "Landing at Toronto · from its approach" or "Route unknown", saying what the callsign claims. Through-flights pick the leg being flown.
+- ✅ **Search** (radar, magnifier): flight number, callsign, registration, transponder code or airport, worldwide.
+- ✅ **My Hangar:** the star on any plane's sheet or aircraft page, or from search.
+  - A gold ring on the radar, and an edge marker when off screen.
+  - Your story and photo, its last week of flights.
+  - Take-off and landing alerts; a Passport card.
+- ✅ **Airports tab:**
+  - **Happening now** (go-arounds, holds, likely diversions and rare visitors near your favourites, emergencies worldwide, your Hangar planes) replaces the news.
+  - A **Spotter's board** per favourite: runways in use from live traffic, wind, which side to stand on for front-lit photos, what's worth seeing in the next 40 minutes.
+- ✅ **Runways from traffic:** in-use runways are what planes were seen using; with no traffic, a guess that learns each airport's habits by wind (Pearson in a north-westerly says 23 and the 24s).
+- ✅ **Stamps:**
+  - Entry and exit on every border crossing, nothing inside Schengen, transit marks, domestic cachets.
+  - Regional styles, inks by year, officer numbers, uneven ink, overlapping pages.
+- ✅ **Moments:**
+  - Write your own (cockpit visit, upgrade, livery, crew, view) with a photo, flight and plane.
+  - Contrail adds firsts, milestones, crossings and flights on Hangar planes.
+  - In the Passport, on flights and on Hangar planes.
+- ✅ **In-flight mode:**
+  - **Cabin mode:**
+    - an offline moving map, with position from GPS (works in airplane mode), ADS-B over Wi-Fi, or estimated, always labelled;
+    - speed, altitude, cabin altitude from the barometer, how bumpy it is;
+    - what's coming up on your side, sunset or sunrise seen from cruise height, the next border;
+    - moments captured automatically, and real take-off and landing times.
+  - The **flight pack** (route as really flown lately, places with Wikipedia notes, borders, weather, map tiles) downloads on flight day or with Get ready.
+  - **Airport mode** on the flight page at the departure airport, and **gate-change alerts**.
+- ✅ **Contrail forecast** on Sky: none, short, may linger or long-lasting, at FL300/340/390 for the next 12 hours, and whether the closest plane should be leaving a trail.
+- ✅ **3D radar** (Layers → 3D):
+  - Planes float at their height over shadows; buildings rise; the selected route flies.
+  - Following becomes a chase view.
+- 247 unit and screenshot tests green, lint clean. Verified on the Pixel 9 emulator: logbook → flight → edit, radar framing and follow, sheet scrolling, search for B-LXP (live over Alaska as CPA826) and pinning it, the Spotter's board for YYZ with live runways, Cabin mode with a simulated in-flight GPS fix, the contrail forecast, the 3D radar and chase view.
 
 ## Next
-- Feedback from your phones. Optional ideas from the planning chat: a Wear OS tile, and an "at gate" alert if a free source for it turns up.
+- Your feedback from the phone and tablet.
+- Waiting on your yes: a Filament chase-cam prototype with real terrain and a 3D model of the plane (see DECISIONS).
 
 ## Known limits
 - AeroDataBox's free plan is 400 units a month: about 200 lookups. Airport boards load when tapped and stop at 60 units left, so your own flights always get their checks.

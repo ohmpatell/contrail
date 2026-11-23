@@ -313,7 +313,7 @@ Phases 1 to 5 are built (Stages 1 to 4 in `STATUS.md`). Stage 5 takes Contrail f
 
 ### Stage 6: spotting, flying and 3D
 
-Feedback from using Stages 1 to 5 on a phone and a tablet, plus new features. Everything uses free, keyless sources.
+Feedback from using Stages 1 to 5 on a phone and a tablet, plus new features. Everything uses free, keyless sources. Built on Nov 22, 2026, except the Filament part of item 12 (see `DECISIONS.md`).
 
 1. **Fixes.** Selecting a plane centres it above the sheet instead of sliding the map away. The aircraft sheet scrolls, with "Watch for" as three clear toggles (this tail, this type, this airline) and the Aircraft page button always reachable. Follow mode survives map taps: the sheet shrinks to a pinned pill and follow continues; dragging pauses it with a Recentre button. Sky and Passport get two-column tablet layouts. Flights in the logbook can be edited (route, aircraft, everything). The aircraft page opens on the photo, and the cutout explains what it's doing (model download with progress, or the real reason it failed). The logo and rarity row lines up.
 2. **Route check.** A callsign route is checked against what the plane is doing (position, track, descent). A route that doesn't fit is replaced by "Landing at X (from its approach)" or "Route unknown", never shown as fact. Multi-stop routes pick the leg the plane is on.
