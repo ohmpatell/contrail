@@ -95,7 +95,7 @@ fun InFlightCard(segment: FlightSegment, pack: FlightPack?, accent: Color, onCab
             )
         }
         Row(horizontalArrangement = Arrangement.spacedBy(spacing.sm)) {
-            AccentButton("Open Cabin mode", onCabin, icon = ContrailIcons.Plane, accent = accent, modifier = Modifier.weight(1f))
+            AccentButton("Cabin mode", onCabin, icon = ContrailIcons.Plane, accent = accent, modifier = Modifier.weight(1f))
             AccentButton(if (pack == null) "Get ready" else "Refresh", { FlightPackWorker.runNow(context, segment.id) }, accent = accent, secondary = true, enabled = running == null, modifier = Modifier.weight(0.75f))
         }
     }

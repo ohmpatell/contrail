@@ -201,7 +201,10 @@ class CabinViewModel @AssistedInject constructor(
         val to = s.destination ?: return
         val now = clock.nowMs()
         val route = s.pack?.route?.takeIf { it.size >= 2 } ?: Geo.greatCircle(LatLon(from.lat, from.lon), LatLon(to.lat, to.lon), 96)
-        val fix = lastFix?.takeIf { now - it.time < 120_000 }
+        // A fix far from anywhere on the route (a stale one from the ground somewhere else) isn't this flight.
+        val fix = lastFix?.takeIf { f ->
+            now - f.time < 120_000 && route.minOf { Geo.distanceM(it.lat, it.lon, f.latitude, f.longitude) } < 600_000
+        }
         val gpsSpeedKt = fix?.takeIf { it.hasSpeed() }?.speed?.toDouble()?.div(Geo.MPS_PER_KNOT)
         val gpsAltFt = fix?.takeIf { it.hasAltitude() }?.altitude?.times(3.28084)
         val adsb = lastAdsb?.takeIf { now - it.fetchedAtMs < 120_000 }
