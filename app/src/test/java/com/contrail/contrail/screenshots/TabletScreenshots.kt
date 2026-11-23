@@ -48,4 +48,16 @@ class TabletScreenshots {
     }
 
     @Test fun stampBook() = snap("tablet_stamp_book") { StampBookScreen(historyState, onBack = {}, startPage = 1) }
+
+    @Test fun passport() = snap("tablet_passport") {
+        ContrailApp(initial = TopLevelDestination.Passport) {
+            com.contrail.contrail.feature.passport.PassportScreen(historyState, com.contrail.contrail.feature.passport.PassportActions())
+        }
+    }
+
+    @Test fun airports() = snap("tablet_airports") {
+        ContrailApp(initial = TopLevelDestination.Airports) {
+            com.contrail.contrail.feature.airports.AirportsScreen(airportsState, com.contrail.contrail.feature.airports.AirportsActions(), nowMs = NOW)
+        }
+    }
 }

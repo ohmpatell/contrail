@@ -1,7 +1,6 @@
 package com.contrail.contrail.feature.cabin
 
 import android.Manifest
-import android.app.Activity
 import android.view.WindowManager
 import androidx.activity.compose.rememberLauncherForActivityResult
 import androidx.activity.result.contract.ActivityResultContracts
@@ -40,7 +39,7 @@ import androidx.compose.ui.draw.clip
 import androidx.compose.ui.graphics.Brush
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.graphics.graphicsLayer
-import androidx.compose.ui.platform.LocalContext
+import androidx.activity.compose.LocalActivity
 import androidx.compose.ui.semantics.Role
 import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
@@ -95,7 +94,7 @@ fun CabinScreen(state: CabinState, onBack: () -> Unit) {
     val accent = airlineAccent(seg?.airlineIata)
     var follow by rememberSaveable { mutableStateOf(true) }
     var keepOn by rememberSaveable { mutableStateOf(false) }
-    val activity = LocalContext.current as? Activity
+    val activity = LocalActivity.current
     DisposableEffect(keepOn) {
         if (keepOn) activity?.window?.addFlags(WindowManager.LayoutParams.FLAG_KEEP_SCREEN_ON)
         onDispose { activity?.window?.clearFlags(WindowManager.LayoutParams.FLAG_KEEP_SCREEN_ON) }
@@ -299,7 +298,13 @@ private fun SunCard(state: CabinState) {
             Icon(ContrailIcons.Moon, null, tint = gold, modifier = Modifier.size(22.dp))
             Column(verticalArrangement = Arrangement.spacedBy(spacing.xxs)) {
                 lines.forEach { Text(it, style = ContrailTheme.type.body, color = colors.textPrimary) }
-                e?.let { Text("Up here the horizon sits lower, so the sun sets later than on the ground.", style = ContrailTheme.type.bodySmall, color = colors.textTertiary) }
+                e?.let {
+                    Text(
+                        if (it.sunset) "Up here the horizon sits lower, so the sun sets later than on the ground." else "Up here the horizon sits lower, so the sun rises earlier than on the ground.",
+                        style = ContrailTheme.type.bodySmall,
+                        color = colors.textTertiary,
+                    )
+                }
             }
         }
     }

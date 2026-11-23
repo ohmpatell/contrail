@@ -178,6 +178,10 @@ private class StackScene<T : Any>(
             DetailStack(entries.drop(1), motion)
         }
     }
+
+    // Same back stack, same scene; a new stack is a new scene (same key, so no transition).
+    override fun equals(other: Any?): Boolean = other is StackScene<*> && other.entries == entries
+    override fun hashCode(): Int = entries.hashCode()
 }
 
 /** Pages that left the back stack but are still sliding out. Plain state: changes are announced through [tick]. */

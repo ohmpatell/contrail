@@ -263,7 +263,8 @@ private fun IndeterminateBar(accent: Color) {
         remember { mutableFloatStateOf(0.35f) }
     }
     BoxWithConstraints(Modifier.fillMaxSize()) {
-        Box(Modifier.fillMaxHeight().width(maxWidth * 0.3f).offset(x = maxWidth * x).background(accent))
+        val travel = maxWidth
+        Box(Modifier.fillMaxHeight().width(travel * 0.3f).offset { androidx.compose.ui.unit.IntOffset((travel * x).roundToPx(), 0) }.background(accent))
     }
 }
 
