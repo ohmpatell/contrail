@@ -74,6 +74,10 @@ class RadarMapController(
     private val nightSource = GeoJsonSource(RadarLayers.SRC_NIGHT)
     private val meSource = GeoJsonSource(RadarLayers.SRC_ME)
     private val routeSource = GeoJsonSource(RadarLayers.SRC_ROUTE)
+    private val shadowSource = GeoJsonSource(RadarLayers.SRC_SHADOWS, GeoJsonOptions().withTolerance(0.3f))
+    private val shadowFeatures = ArrayList<Feature>(1024)
+    /** Tilted radar with floating planes. */
+    private var threeD = false
     private var route: RouteOverlay? = null
     private var routeStatic: List<Feature> = emptyList()
     private var lastRouteUpdate = 0L
@@ -108,6 +112,10 @@ class RadarMapController(
         addBelowLabels(RadarLayers.night())
         style.addLayer(RadarLayers.trails())
         style.addLayer(RadarLayers.trailHeads())
+        style.addSource(shadowSource)
+        addBelowLabels(RadarLayers.buildings3D())
+        style.addLayer(RadarLayers.shadows())
+        style.addLayer(RadarLayers.stalks())
         style.addLayer(RadarLayers.routeGlow())
         style.addLayer(RadarLayers.routeRemaining())
         style.addLayer(RadarLayers.routeFlown())
@@ -132,7 +140,15 @@ class RadarMapController(
 
         map.addOnMapClickListener { latLng -> handleTap(map.projection.toScreenLocation(latLng)); true }
         map.addOnCameraIdleListener { callbacks.onViewportChanged(currentViewport()) }
-        map.addOnCameraMoveListener { callbacks.onCameraMoved() }
+        map.addOnCameraMoveListener {
+            // Floating planes and the flying route depend on where the camera is.
+            if (threeD) {
+                dirty = true
+                lastRouteUpdate = 0L
+            }
+            callbacks.onCameraMoved()
+        }
+        map.setMaxPitchPreference(60.0)
         map.addOnMoveListener(object : MapLibreMap.OnMoveListener {
             override fun onMoveBegin(detector: org.maplibre.android.gestures.MoveGestureDetector) {
                 focusPendingUntil = 0L
@@ -236,6 +252,26 @@ class RadarMapController(
             showTrails = layers.trails
             dirty = true
         }
+        if (threeD != layers.threeD) {
+            threeD = layers.threeD
+            listOf(RadarLayers.L_SHADOWS, RadarLayers.L_STALKS, RadarLayers.L_BUILDINGS_3D).forEach { setVisible(it, threeD) }
+            map.uiSettings.isTiltGesturesEnabled = threeD
+            if (!threeD) shadowSource.setGeoJson(FeatureCollection.fromFeatures(emptyList()))
+            val tilted = CameraPosition.Builder(map.cameraPosition).tilt(if (threeD) TILT_3D else 0.0).bearing(if (threeD) map.cameraPosition.bearing else 0.0).build()
+            if (animate) map.animateCamera(CameraUpdateFactory.newCameraPosition(tilted), 900) else map.moveCamera(CameraUpdateFactory.newCameraPosition(tilted))
+            dirty = true
+            lastRouteUpdate = 0L
+            if (!running) renderFrame()
+        }
+    }
+
+    /** The camera as the floating maths needs it: the ground point under it and its height. */
+    private fun floatCamera(): Pair<LatLon, Double>? {
+        val cam = map.cameraPosition
+        val t = cam.target ?: return null
+        val (_, h) = viewSize()
+        if (h <= 0) return null
+        return Floating3D.camera(FloatCamera(LatLon(t.latitude, t.longitude), cam.zoom, cam.tilt, cam.bearing, h / density.toDouble()))
     }
 
     fun setWeather(tiles: WeatherTiles?) {
@@ -330,11 +366,38 @@ class RadarMapController(
         val start = if (motion.sample(hex, now, sample)) LatLon(sample.lat, sample.lon) else overlay.flown.lastOrNull() ?: return
         val dest = LatLon(overlay.destination.lat, overlay.destination.lon)
         val segments = (Geo.distanceM(start, dest) / 60_000).toInt().coerceIn(8, 96)
-        val remaining = Feature.fromGeometry(
-            LineString.fromLngLats(Geo.greatCircle(start, dest, segments).map { Point.fromLngLat(it.lon, it.lat) }),
-            JsonObject().apply { addProperty(RadarLayers.P_PART, "remaining") },
-        )
-        routeSource.setGeoJson(FeatureCollection.fromFeatures(routeStatic + remaining))
+        val ahead = Geo.greatCircle(start, dest, segments)
+        val float = if (threeD) floatCamera() else null
+        if (float == null) {
+            val remaining = Feature.fromGeometry(
+                LineString.fromLngLats(ahead.map { Point.fromLngLat(it.lon, it.lat) }),
+                JsonObject().apply { addProperty(RadarLayers.P_PART, "remaining") },
+            )
+            routeSource.setGeoJson(FeatureCollection.fromFeatures(routeStatic + remaining))
+        } else {
+            // In 3D the route flies: climbing out, at the plane's height, then down to the destination.
+            val now3d = if (motion.sample(hex, now, sample)) sample.altitudeFt.toDouble() else 35_000.0
+            fun lifted(points: List<LatLon>, altitude: (Double, Double) -> Double): List<Point> {
+                var along = 0.0
+                val total = points.zipWithNext().sumOf { (a, b) -> Geo.distanceM(a, b) }
+                return points.mapIndexed { i, p ->
+                    if (i > 0) along += Geo.distanceM(points[i - 1], p)
+                    val up = Floating3D.lift(p, altitude(along, total - along), float.first, float.second)
+                    Point.fromLngLat(up.lon, up.lat)
+                }
+            }
+            val flownLine = lifted(overlay.flown + start) { fromStart, _ -> minOf(now3d, Floating3D.routeAltitudeFt(fromStart, Double.MAX_VALUE)) }
+            val aheadLine = lifted(ahead) { _, toEnd -> minOf(now3d, Floating3D.routeAltitudeFt(Double.MAX_VALUE, toEnd)) }
+            val ends = routeStatic.filter { it.getStringProperty(RadarLayers.P_PART) == "end" }
+            routeSource.setGeoJson(
+                FeatureCollection.fromFeatures(
+                    ends + listOf(
+                        Feature.fromGeometry(LineString.fromLngLats(flownLine), JsonObject().apply { addProperty(RadarLayers.P_PART, "flown") }),
+                        Feature.fromGeometry(LineString.fromLngLats(aheadLine), JsonObject().apply { addProperty(RadarLayers.P_PART, "remaining") }),
+                    ),
+                ),
+            )
+        }
         lastRouteUpdate = now
     }
 
@@ -391,13 +454,24 @@ class RadarMapController(
         if (!animate && !dirty) return
         dirty = false
         features.clear()
+        shadowFeatures.clear()
         val headProps = if (showTrails) JsonObject() else null
+        val float = if (threeD) floatCamera() else null
         motion.forEach(now, sample) { fix, s ->
             val p = props[fix.hex] ?: return@forEach
             p.addProperty(RadarLayers.P_HEADING, s.headingDeg)
             p.addProperty(RadarLayers.P_ALT, s.altitudeFt.toInt())
             p.addProperty(RadarLayers.P_FRESH, s.freshness)
-            features += Feature.fromGeometry(Point.fromLngLat(s.lon, s.lat), p)
+            // In 3D the plane is drawn up at its height, over a shadow and a thin stalk.
+            val up = if (float != null && !s.onGround) Floating3D.lift(LatLon(s.lat, s.lon), s.altitudeFt.toDouble(), float.first, float.second) else null
+            features += Feature.fromGeometry(Point.fromLngLat(up?.lon ?: s.lon, up?.lat ?: s.lat), p)
+            if (up != null) {
+                shadowFeatures += Feature.fromGeometry(Point.fromLngLat(s.lon, s.lat))
+                shadowFeatures += Feature.fromGeometry(
+                    LineString.fromLngLats(listOf(Point.fromLngLat(s.lon, s.lat), Point.fromLngLat(up.lon, up.lat))),
+                    JsonObject().apply { addProperty(RadarLayers.P_ALT, s.altitudeFt.toInt()) },
+                )
+            }
             if (headProps != null) {
                 val tip = trailTips[fix.hex]
                 if (tip != null && Geo.distanceM(tip.lat, tip.lon, s.lat, s.lon) < 30_000) {
@@ -423,10 +497,18 @@ class RadarMapController(
                 val zoom = followZoom?.let { cam.zoom + (it - cam.zoom) * FOLLOW_EASE } ?: cam.zoom
                 // Once at a readable zoom, hand zoom back to the user's pinch.
                 if (followZoom != null && kotlin.math.abs(zoom - followZoom!!) < 0.02) followZoom = null
-                map.moveCamera(CameraUpdateFactory.newLatLngZoom(LatLng(lat, lon), zoom))
+                if (threeD) {
+                    // Chase view: behind the plane, looking where it's going.
+                    val bearing = cam.bearing + Geo.headingDelta(cam.bearing, s.headingDeg) * FOLLOW_EASE * 0.5
+                    val tilt = cam.tilt + (CHASE_TILT - cam.tilt) * FOLLOW_EASE
+                    map.moveCamera(CameraUpdateFactory.newCameraPosition(CameraPosition.Builder().target(LatLng(lat, lon)).zoom(zoom).bearing(bearing).tilt(tilt).build()))
+                } else {
+                    map.moveCamera(CameraUpdateFactory.newLatLngZoom(LatLng(lat, lon), zoom))
+                }
             }
         }
         aircraftSource.setGeoJson(FeatureCollection.fromFeatures(features))
+        if (threeD) shadowSource.setGeoJson(FeatureCollection.fromFeatures(shadowFeatures))
         if (hasEmergency && animate) pulseEmergencies(now)
         if (route != null && now - lastRouteUpdate > ROUTE_UPDATE_MS) updateRoute(now)
         if (now - lastNightUpdate > 60_000) updateNight(now)
@@ -556,6 +638,8 @@ class RadarMapController(
         const val ROUTE_UPDATE_MS = 500L
         const val TAP_RADIUS_DP = 22f
         const val FOLLOW_MIN_ZOOM = 9.0
+        const val TILT_3D = 55.0
+        const val CHASE_TILT = 60.0
         const val FOCUS_MS = 650
         /** How long after a selection the sheet's insets still re-frame the plane. */
         const val FOCUS_WINDOW_MS = 1_200L

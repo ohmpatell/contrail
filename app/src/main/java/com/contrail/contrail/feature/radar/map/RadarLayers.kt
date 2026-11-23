@@ -35,6 +35,10 @@ internal object RadarLayers {
     const val L_LABELS = "contrail-labels"
     const val L_ME = "contrail-me"
     const val SRC_ROUTE = "contrail-route"
+    const val SRC_SHADOWS = "contrail-shadows"
+    const val L_SHADOWS = "contrail-shadows"
+    const val L_STALKS = "contrail-stalks"
+    const val L_BUILDINGS_3D = "contrail-buildings-3d"
     const val L_WATCH = "contrail-watch"
     const val L_HANGAR = "contrail-hangar"
     const val L_ROUTE_GLOW = "contrail-route-glow"
@@ -269,6 +273,36 @@ internal object RadarLayers {
     ).withFilter(
         Expression.all(isPoint, Expression.toBool(get(P_WATCHED)), Expression.not(Expression.toBool(get(P_SELECTED)))),
     )
+
+    /** 3D: each plane's shadow on the ground, under where it floats. */
+    fun shadows(): CircleLayer = CircleLayer(L_SHADOWS, SRC_SHADOWS).withProperties(
+        PropertyFactory.circleRadius(byZoom(3 to 3f, 8 to 6f, 13 to 11f)),
+        PropertyFactory.circleColor(Expression.color(android.graphics.Color.BLACK)),
+        PropertyFactory.circleOpacity(0.45f),
+        PropertyFactory.circleBlur(0.8f),
+        PropertyFactory.visibility(Property.NONE),
+    ).withFilter(isPoint)
+
+    /** 3D: a thin line from the shadow up to the plane, coloured by altitude. */
+    fun stalks(): LineLayer = LineLayer(L_STALKS, SRC_SHADOWS).withProperties(
+        PropertyFactory.lineColor(altitudeColor),
+        PropertyFactory.lineWidth(1.1f),
+        PropertyFactory.lineOpacity(0.45f),
+        PropertyFactory.visibility(Property.NONE),
+    ).withFilter(Expression.eq(Expression.geometryType(), literal("LineString")))
+
+    /** 3D: buildings rise at street zoom (OpenMapTiles heights). */
+    fun buildings3D(): org.maplibre.android.style.layers.FillExtrusionLayer =
+        org.maplibre.android.style.layers.FillExtrusionLayer(L_BUILDINGS_3D, "omt").withProperties(
+            PropertyFactory.fillExtrusionColor(colors.canvasRaised.toArgb()),
+            PropertyFactory.fillExtrusionOpacity(0.75f),
+            PropertyFactory.fillExtrusionHeight(Expression.coalesce(Expression.get("render_height"), literal(8f))),
+            PropertyFactory.fillExtrusionBase(Expression.coalesce(Expression.get("render_min_height"), literal(0f))),
+            PropertyFactory.visibility(Property.NONE),
+        ).apply {
+            sourceLayer = "building"
+            minZoom = 13f
+        }
 
     /** Your pinned planes: a gold double ring that reads at any zoom, even when selected. */
     fun hangarRing(): CircleLayer = CircleLayer(L_HANGAR, SRC_AIRCRAFT).withProperties(

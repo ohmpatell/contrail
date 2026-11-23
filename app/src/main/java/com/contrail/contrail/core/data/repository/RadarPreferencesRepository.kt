@@ -23,6 +23,8 @@ data class RadarLayers(
     val dayNight: Boolean = true,
     val trails: Boolean = true,
     val callsigns: Boolean = true,
+    /** Tilted radar: planes float at their altitude over a shadow, buildings rise, the selected route flies. */
+    val threeD: Boolean = false,
 )
 
 interface RadarPreferencesRepository {
@@ -57,6 +59,7 @@ class DataStoreRadarPreferences @Inject constructor(
             dayNight = p[L_DAYNIGHT] ?: d.dayNight,
             trails = p[L_TRAILS] ?: d.trails,
             callsigns = p[L_CALLSIGNS] ?: d.callsigns,
+            threeD = p[L_3D] ?: d.threeD,
         )
     }
 
@@ -92,6 +95,7 @@ class DataStoreRadarPreferences @Inject constructor(
             it[L_DAYNIGHT] = layers.dayNight
             it[L_TRAILS] = layers.trails
             it[L_CALLSIGNS] = layers.callsigns
+            it[L_3D] = layers.threeD
         }
     }
 
@@ -107,5 +111,6 @@ class DataStoreRadarPreferences @Inject constructor(
         val L_DAYNIGHT = booleanPreferencesKey("radar.layer.daynight")
         val L_TRAILS = booleanPreferencesKey("radar.layer.trails")
         val L_CALLSIGNS = booleanPreferencesKey("radar.layer.callsigns")
+        val L_3D = booleanPreferencesKey("radar.layer.3d")
     }
 }

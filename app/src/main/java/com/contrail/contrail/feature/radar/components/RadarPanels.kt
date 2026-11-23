@@ -283,6 +283,7 @@ fun LayersPanel(
             ToggleRow(ContrailIcons.Passport, "Day / night", "Shades where the sun has set", layers.dayNight) { onChange { it.copy(dayNight = !it.dayNight) } }
             ToggleRow(ContrailIcons.Radar, "Trails", "Last four minutes, fading with age", layers.trails) { onChange { it.copy(trails = !it.trails) } }
             ToggleRow(ContrailIcons.Trips, "Callsigns", "Labels when zoomed in", layers.callsigns) { onChange { it.copy(callsigns = !it.callsigns) } }
+            ToggleRow(ContrailIcons.Globe, "3D", "Tilt the map: planes float at their height over a shadow, buildings rise, following becomes a chase view", layers.threeD) { onChange { it.copy(threeD = !it.threeD) } }
         }
     }
 }

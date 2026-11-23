@@ -22,6 +22,7 @@ import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.layout.sizeIn
 import androidx.compose.foundation.layout.width
+import androidx.compose.foundation.layout.widthIn
 import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.material3.Icon
 import androidx.compose.material3.Text
@@ -53,8 +54,9 @@ fun RadarHud(
     val spacing = ContrailTheme.spacing
     Column(modifier, verticalArrangement = Arrangement.spacedBy(spacing.sm)) {
         Row(verticalAlignment = Alignment.CenterVertically) {
-            FeedPill(state)
-            Spacer(Modifier.weight(1f))
+            // The pill gives way first, so the buttons never get pushed off the screen.
+            FeedPill(state, Modifier.weight(1f, fill = false))
+            Spacer(Modifier.weight(0.001f).widthIn(min = spacing.sm))
             GlassIconButton(
                 ContrailIcons.Search,
                 contentDescription = "Search flights, planes and airports",
@@ -120,7 +122,10 @@ private fun FeedPill(state: RadarUiState, modifier: Modifier = Modifier) {
             Column {
                 val label = if (state.filters.isEmpty) "aircraft" else "of ${state.totalCount} shown"
                 Text(label, style = ContrailTheme.type.label, color = colors.textSecondary, maxLines = 1)
-                Eyebrow(if (state.radiusCapped) "$source · zoom in for more" else source, color = colors.textTertiary)
+                Text(
+                    (if (state.radiusCapped) "$source · zoom in for more" else source).uppercase(),
+                    style = ContrailTheme.type.eyebrow, color = colors.textTertiary, maxLines = 1, overflow = androidx.compose.ui.text.style.TextOverflow.Ellipsis,
+                )
             }
         }
     }
